@@ -1,0 +1,27 @@
+// Validation des niveaux : un pilote automatique parcourt chaque niveau.
+// Usage : node tools/sim.mjs   (échoue si un niveau est infaisable ou hors durée)
+import { LEVELS, HELIS } from '../js/data.js';
+import { generateLevel } from '../js/levelgen.js';
+import { Game, autopilot, DT } from '../js/game.js';
+
+let ok = true;
+for (const def of LEVELS) {
+  const L = generateLevel(def);
+  const g = new Game(L, HELIS[0]);
+  let respawns = 0, steps = 0;
+  while (g.state !== 'win' && steps < 120 * 600) {
+    autopilot(g);
+    if (g.state === 'ready') g.input.thrust = true;
+    g.step(DT);
+    steps++;
+    if (g.state === 'dead' && g.stateT > 1.5) { g.reset(true); respawns++; }
+  }
+  const s = g.stats, won = g.state === 'win';
+  const good = won && g.t > 95 && g.t < 215;
+  if (!good) ok = false;
+  console.log(
+    `N${String(def.id).padStart(2)} ${good ? 'OK ' : 'KO '} long=${Math.round(L.length)} temps=${g.t.toFixed(0)}s chocs=${s.hits} reprises=${respawns} ` +
+    `orbes=${s.orbs}/${L.orbTotal} anneaux=${s.rings}/${L.ringTotal} obstacles=${L.obs.length} x=${Math.round(g.heli.x)} pv=${Math.round(g.heli.hp)} pose=${s.padImpact.toFixed(0)} ${won ? '' : L.secs.find((q) => q.x1 > g.heli.x).type + ' y=' + Math.round(g.heli.y) + ' path=' + Math.round(L.pathAt(g.heli.x))}`
+  );
+}
+process.exit(ok ? 0 : 1);

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1b1840">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Heli — jeu de pilotage d'hélicoptère 2D à une main. 100 % hors ligne, sans pub.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+<title>Heli</title>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="hud" hidden>
+    <div class="hud-top">
+      <div class="hp" aria-hidden="true"><i id="hpFill"></i></div>
+      <button id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button>
+    </div>
+    <div class="prog"><i id="progFill"></i><span id="cpMarks"></span></div>
+    <div class="hud-info"><span id="orbTxt"></span><span id="ringTxt"></span><span id="timeTxt"></span></div>
+    <div id="hint"></div>
+    <div id="fps"></div>
+  </div>
+  <div id="ui"></div>
+  <div id="toast"></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

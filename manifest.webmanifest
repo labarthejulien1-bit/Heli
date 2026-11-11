@@ -1,0 +1,20 @@
+{
+  "id": "heli",
+  "name": "Heli — Maîtrise la gravité",
+  "short_name": "Heli",
+  "description": "Jeu de pilotage d'hélicoptère 2D à une main. 10 niveaux, 10 hélicoptères, 100 % hors ligne, sans pub.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "theme_color": "#1b1840",
+  "background_color": "#1b1840",
+  "categories": ["games", "arcade"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
