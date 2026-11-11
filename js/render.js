@@ -269,32 +269,32 @@ export class Renderer {
   }
 
   pads(c, L, def, g, time, x0, x1) {
-    for (const [pad, end] of [[L.startPad, false], [L.pad, true]]) {
+    const GREEN = '#6ee7a0';
+    for (const pad of L.pads) {
       if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
-      const y = L.groundAt(pad.x);
-      if (end) {
-        const gr = c.createLinearGradient(0, y - 420, 0, y);
-        gr.addColorStop(0, rgba(def.accent, 0)); gr.addColorStop(1, rgba(def.accent, 0.28 + 0.08 * Math.sin(time * 3)));
-        c.fillStyle = gr; c.fillRect(pad.x - pad.w / 2, y - 420, pad.w, 420);
+      const y = pad.y, end = pad.kind === 'end', fuel = pad.kind === 'fuel', hw = pad.w / 2;
+      const col = end ? def.accent : fuel ? GREEN : def.rim, here = g.onPad === pad.i;
+      if (end || fuel) {
+        const hgt = end ? 420 : 150, gr = c.createLinearGradient(0, y - hgt, 0, y);
+        gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(1, rgba(col, (end ? 0.28 : 0.2) + 0.08 * Math.sin(time * 3)));
+        c.fillStyle = gr; c.fillRect(pad.x - hw, y - hgt, pad.w, hgt);
       }
-      c.fillStyle = mix(def.obs, '#ffffff', 0.25); c.fillRect(pad.x - pad.w / 2, y - 3, pad.w, 7);
-      c.fillStyle = end ? def.accent : rgba(def.rim, 0.8); c.fillRect(pad.x - pad.w / 2, y - 3, pad.w, 2);
-      c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText('H', pad.x, y + 14);
+      c.fillStyle = mix(def.obs, '#ffffff', 0.25); c.fillRect(pad.x - hw, y - 3, pad.w, 7);
+      c.fillStyle = col; c.fillRect(pad.x - hw, y - 3, pad.w, 2.2);
       for (const sx of [-1, 1]) {
-        c.fillStyle = Math.sin(time * 5) * sx > 0 ? def.accent : rgba(def.accent, 0.3);
-        c.beginPath(); c.arc(pad.x + sx * (pad.w / 2 - 4), y - 6, 2.4, 0, 7); c.fill();
+        c.fillStyle = Math.sin(time * 5) * sx > 0 || here ? col : rgba(col, 0.3);
+        c.beginPath(); c.arc(pad.x + sx * (hw - 4), y - 6, 2.4, 0, 7); c.fill();
+      }
+      if (fuel) {
+        // borne de carburant
+        const bx = pad.x + hw + 9;
+        c.fillStyle = def.obs; c.fillRect(bx - 5, y - 20, 10, 22);
+        c.fillStyle = here && g.fuel < 1 ? '#ffffff' : GREEN; c.fillRect(bx - 3.5, y - 18, 7, 6);
+        c.strokeStyle = def.obs; c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx - 5, y - 8); c.quadraticCurveTo(bx - 12, y - 6, bx - 11, y - 14); c.stroke();
+      } else {
+        c.fillStyle = col; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText('H', pad.x, y + 14);
       }
     }
-    L.checkpoints.forEach((cp, i) => {
-      if (cp.x < x0 - 30 || cp.x > x1 + 30) return;
-      const on = g.cpIdx >= i;
-      c.strokeStyle = rgba(on ? def.accent : '#ffffff', on ? 0.5 : 0.25); c.lineWidth = 1.5; c.setLineDash([5, 9]);
-      c.beginPath(); c.moveTo(cp.x, 40); c.lineTo(cp.x, cp.g - 44); c.stroke(); c.setLineDash([]);
-      c.fillStyle = def.obs; c.fillRect(cp.x - 2, cp.g - 44, 4, 46);
-      c.fillStyle = on ? def.accent : rgba(def.rim, 0.7);
-      const w = Math.sin(time * 4) * 3;
-      c.beginPath(); c.moveTo(cp.x + 2, cp.g - 44); c.lineTo(cp.x + 26, cp.g - 37 + w); c.lineTo(cp.x + 2, cp.g - 28); c.fill();
-    });
   }
 
   items(c, L, def, g, time, x0, x1) {
@@ -312,9 +312,11 @@ export class Renderer {
         c.lineWidth = 3; c.strokeStyle = '#ffffff'; c.stroke();
         c.lineWidth = 1.5; c.strokeStyle = def.accent; c.beginPath(); c.ellipse(it.x, it.y, 11 + 3 * Math.sin(time * 4), 32 + 3 * Math.sin(time * 4), 0, 0, 7); c.stroke();
       } else {
-        c.fillStyle = 'rgba(80,230,150,.25)'; c.beginPath(); c.arc(it.x, y, 15, 0, 7); c.fill();
-        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(it.x, y, 10, 0, 7); c.fill();
-        c.fillStyle = '#22b573'; c.fillRect(it.x - 6, y - 2, 12, 4); c.fillRect(it.x - 2, y - 6, 4, 12);
+        c.fillStyle = 'rgba(255,211,77,.22)'; c.beginPath(); c.arc(it.x, y, 17, 0, 7); c.fill();
+        c.fillStyle = '#ffd34d'; c.beginPath();
+        for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5 + Math.sin(time * 2 + it.x) * 0.15, r = k % 2 ? 5 : 11.5; c.lineTo(it.x + Math.cos(a) * r, y + Math.sin(a) * r); }
+        c.fill();
+        c.fillStyle = '#fff6c9'; c.beginPath(); c.arc(it.x - 2, y - 2.500, 2.2, 0, 7); c.fill();
       }
     }
   }
@@ -429,6 +431,15 @@ export class Renderer {
           c.strokeStyle = rgba(def.rim, 0.55); c.lineWidth = 2; c.beginPath(); c.moveTo(l + 2, top + 5 + j(1)); c.lineTo(l + w * 0.25, top + j(2) * 0.4); c.lineTo(l + w * 0.5, top); c.lineTo(l + w * 0.75, top + j(3) * 0.5); c.lineTo(l + w - 2, top + 4 + j(4)); c.stroke();
         }
       }
+      return;
+    }
+    if (o.kind === 'shelter') {
+      const l = x - 100, top = o.y, j = (k) => hash(k, o.v * 91) * 8;
+      c.beginPath(); c.moveTo(l - 6, top + 50); c.lineTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.lineTo(l + 204, o.g + 24);
+      c.lineTo(l + 176, o.g + 24); c.lineTo(l + 176, top + 62); c.lineTo(l, top + 62); c.fill();
+      c.fillStyle = rgba('#000000', 0.22); c.fillRect(l, top + 62, 176, o.g - top - 62);
+      c.strokeStyle = rgba(def.rim, 0.5); c.lineWidth = 2; c.beginPath(); c.moveTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.stroke();
+      c.strokeStyle = rgba(def.rim, 0.25); c.lineWidth = 1.5; c.beginPath(); c.moveTo(l, top + 62); c.lineTo(l + 176, top + 62); c.stroke();
       return;
     }
     if (o.kind === 'hang') {

@@ -8,12 +8,11 @@ let ok = true;
 for (const def of LEVELS) {
   const L = generateLevel(def);
   const g = new Game(L, HELIS[0]);
-  let respawns = 0, steps = 0;
+  let respawns = 0, steps = 0, minFuel = 1;
   while (g.state !== 'win' && steps < 120 * 600) {
     autopilot(g);
-    if (g.state === 'ready') g.input.thrust = true;
     g.step(DT);
-    steps++;
+    steps++; if (g.fuel < minFuel) minFuel = g.fuel;
     if (g.state === 'dead' && g.stateT > 1.5) { g.reset(true); respawns++; }
   }
   const s = g.stats, won = g.state === 'win';
@@ -21,7 +20,7 @@ for (const def of LEVELS) {
   if (!good) ok = false;
   console.log(
     `N${String(def.id).padStart(2)} ${good ? 'OK ' : 'KO '} long=${Math.round(L.length)} temps=${g.t.toFixed(0)}s chocs=${s.hits} reprises=${respawns} ` +
-    `orbes=${s.orbs}/${L.orbTotal} anneaux=${s.rings}/${L.ringTotal} obstacles=${L.obs.length} x=${Math.round(g.heli.x)} pv=${Math.round(g.heli.hp)} pose=${s.padImpact.toFixed(0)} ${won ? '' : L.secs.find((q) => q.x1 > g.heli.x).type + ' y=' + Math.round(g.heli.y) + ' path=' + Math.round(L.pathAt(g.heli.x))}`
+    `orbes=${s.orbs}/${L.orbTotal} anneaux=${s.rings}/${L.ringTotal} obstacles=${L.obs.length} x=${Math.round(g.heli.x)} pv=${Math.round(g.heli.hp)} essenceMin=${(minFuel * 100).toFixed(0)}% poses=${s.lands} pose=${s.padImpact.toFixed(0)} ${won ? '' : L.secs.find((q) => q.x1 > g.heli.x).type + ' y=' + Math.round(g.heli.y) + ' path=' + Math.round(L.pathAt(g.heli.x))}`
   );
 }
 process.exit(ok ? 0 : 1);

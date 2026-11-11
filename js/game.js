@@ -8,7 +8,7 @@ export const TOP = 24; // plafond de vol
 export const DT = 1 / 120;
 export const BASE_TILT = 14, MIN_TILT = -28, MAX_TILT = 38;
 const HIT = [[2, 0, 11], [-19, -2, 6]]; // cercles de collision (repère de l'appareil)
-const SOFT = 60; // vitesse d'impact sous laquelle on ne subit aucun dégât
+const SOFT = 50; // vitesse d'impact sous laquelle on ne subit aucun dégât
 
 // Point le plus proche d'un polygone convexe (ou d'un segment) ; renvoie distance signée.
 function polyContact(pts, cx, cy, out) {
@@ -38,22 +38,19 @@ export class Game {
     this.reset(false);
   }
 
-  reset(fromCheckpoint) {
+  reset(fromPad) {
     const L = this.L;
-    if (!fromCheckpoint) {
+    if (!fromPad) {
       this.t = 0;
       this.taken = new Uint8Array(L.items.length);
-      this.cpIdx = -1;
-      this.stats = { orbs: 0, rings: 0, hits: 0, respawns: 0, padImpact: 0, dist: 0 };
-    }
-    const h = (this.heli = { x: L.startX, y: L.groundAt(L.startX) - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: this.H.armor, inv: 0, grounded: true, spin: 0, air: 0 });
+      this.seen = new Uint8Array(L.pads.length);
+      this.padIdx = 0; // dernier héliport atteint (point de reprise)
+      this.stats = { orbs: 0, rings: 0, stars: 0, hits: 0, respawns: 0, padImpact: 0, dist: 0, lands: 0 };
+    } else this.stats.respawns++;
+    const p = L.pads[this.padIdx];
+    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: fromPad ? Math.round(this.H.armor * 0.6) : this.H.armor, inv: fromPad ? 2 : 0, grounded: true, spin: 0, air: 0 };
+    this.fuel = 1; this.onPad = this.padIdx; this.dryT = 0; this.botDone = this.padIdx;
     this.state = 'fly';
-    if (fromCheckpoint && this.cpIdx >= 0) {
-      const c = L.checkpoints[this.cpIdx];
-      h.x = c.x; h.y = c.y; h.grounded = false; h.hp = Math.round(this.H.armor * 0.6); h.inv = 2.5; h.tilt = 6;
-      this.state = 'ready';
-      this.stats.respawns++;
-    }
     this.stateT = 0; this.padT = 0; this.o0 = 0;
     this.input.tilt = BASE_TILT;
   }
@@ -68,18 +65,18 @@ export class Game {
 
   step(dt = DT) {
     const h = this.heli, L = this.L, inp = this.input, H = this.H;
-    if (this.state === 'ready') { if (!inp.thrust) return; this.state = 'fly'; }
     this.stateT += dt;
     if (this.state === 'win') { h.power += (0 - h.power) * Math.min(1, dt * 2); return; }
     const fly = this.state === 'fly';
     if (fly) this.t += dt;
-    const thrust = fly && inp.thrust;
+    const thrust = fly && inp.thrust && this.fuel > 0;
     h.power += ((thrust ? 1 : 0) - h.power) * Math.min(1, dt * (thrust ? 9 : 6));
     if (fly) {
       const tt = h.grounded && !thrust ? 0 : clamp(inp.tilt, MIN_TILT, MAX_TILT);
       h.tilt += clamp(tt - h.tilt, -H.agility * dt, H.agility * dt);
     } else { h.spin += dt * 9; }
     if (h.inv > 0) h.inv -= dt;
+    if (fly && this.fuel > 0) { this.fuel -= (h.power * dt) / L.tank; if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
 
     // Forces : poussée du rotor le long de l'axe de l'appareil, gravité, traînée, vent.
     const T = H.power * G * h.power, a = h.tilt * DEG;
@@ -114,19 +111,44 @@ export class Game {
       const d = Math.hypot(dx, it.y - h.y);
       if (it.type === 'orb' && d < 27) { this.taken[i] = 1; this.stats.orbs++; this.ev.push({ type: 'orb', x: it.x, y: it.y }); }
       else if (it.type === 'ring' && d < 30) { this.taken[i] = 1; this.stats.rings++; this.ev.push({ type: 'ring', x: it.x, y: it.y }); }
-      else if (it.type === 'repair' && d < 30) {
-        this.taken[i] = 1; h.hp = Math.min(H.armor, h.hp + H.armor * 0.35); this.ev.push({ type: 'repair', x: it.x, y: it.y });
-      }
+      else if (it.type === 'star' && d < 28) { this.taken[i] = 1; this.stats.stars++; this.ev.push({ type: 'star', x: it.x, y: it.y }); }
     }
-    const nc = L.checkpoints[this.cpIdx + 1];
-    if (nc && h.x > nc.x) { this.cpIdx++; this.ev.push({ type: 'cp', x: nc.x, y: nc.y }); }
 
-    // Victoire : posé et immobile sur l'héliport d'arrivée.
-    const onPad = Math.abs(h.x - L.pad.x) < L.pad.w / 2;
-    if (h.grounded && onPad && Math.abs(h.vx) < 30) {
-      this.padT += dt;
-      if (this.padT > 0.45) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
-    } else this.padT = 0;
+    // Héliports : posé (ou quasi immobile au ras de la plateforme) = ravitaillement, reprise, arrivée.
+    let on = -1;
+    for (const p of L.pads) {
+      if (Math.abs(h.x - p.x) > p.w / 2 + 12) continue;
+      const gap = p.y - (h.y + 11);
+      if (gap > -4 && gap < 3 && Math.abs(h.vy) < 30 && (h.grounded || gap < 1.5)) { on = p.i; h.grounded = true; }
+    }
+    if (on >= 0 && Math.abs(h.vx) < 30) {
+      const p = L.pads[on];
+      if (this.onPad !== on) {
+        this.onPad = on;
+        if (p.kind === 'fuel') {
+          this.stats.lands++;
+          if (on > this.padIdx) this.padIdx = on;
+          if (!this.seen[on]) { this.seen[on] = 1; h.hp = Math.min(H.armor, h.hp + H.armor * 0.3); }
+          this.ev.push({ type: 'pad', x: p.x, y: p.y });
+        }
+      }
+      if (p.kind === 'end') {
+        this.padT += dt;
+        if (this.padT > 0.3) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
+      } else if (this.fuel < 1) {
+        this.fuel = Math.min(1, this.fuel + dt / 1.6);
+        if (this.fuel === 1) this.ev.push({ type: 'fueled' });
+      }
+      this.dryT = 0;
+    } else {
+      this.padT = 0;
+      if (on < 0) this.onPad = -1;
+      // Panne sèche au sol, loin d'un héliport : l'appareil est perdu.
+      if (this.fuel <= 0 && Math.abs(h.vx) + Math.abs(h.vy) < 40 && h.air < 0.3) {
+        this.dryT += dt;
+        if (this.dryT > 1.5) { h.hp = 0; this.state = 'dead'; this.stateT = 0; this.ev.push({ type: 'crash', x: h.x, y: h.y }); }
+      } else this.dryT = 0;
+    }
   }
 
   collide(dt) {
@@ -166,18 +188,18 @@ export class Game {
     h.x += nx * pen; h.y += ny * pen;
     const vn = h.vx * nx + h.vy * ny;
     if (hz) {
-      this.damage(hz, px, py);
+      this.damage(hz * 1.5, px, py);
       if (vn < 150) { h.vx += (150 - vn) * nx; h.vy += (150 - vn) * ny; }
       return;
     }
-    if (vn >= 0) return;
+    if (vn >= 0) { if (ny < -0.75 && vn < 20) h.grounded = true; return; }
     const impact = -vn, soft = impact < SOFT, e = soft ? 0 : 0.4;
     h.vx -= (1 + e) * vn * nx; h.vy -= (1 + e) * vn * ny;
     if (!soft) {
-      this.damage(5 + (impact - SOFT) * 0.13, px, py);
+      this.damage(10 + (impact - SOFT) * 0.22, px, py);
       this.ev.push({ type: 'bump', x: px, y: py });
     }
-    if (isGround && Math.abs(h.x - L.pad.x) < L.pad.w / 2 && impact > this.stats.padImpact && h.air > 0.15) this.stats.padImpact = impact;
+    if (Math.abs(h.x - L.pad.x) < L.pad.w / 2 + 12 && ny < -0.75 && impact > this.stats.padImpact && h.air > 0.15) this.stats.padImpact = impact;
     if (ny < -0.75 && soft) {
       h.grounded = true;
       h.vx -= h.vx * Math.min(1, 7 * dt);
@@ -196,6 +218,7 @@ export class Game {
       case 'nocp': return s.respawns === 0;
       case 'soft': return s.padImpact <= o.v;
       case 'rings': return s.rings >= L.ringTotal;
+      case 'stars': return s.stars >= L.starTotal;
     }
     return false;
   }
@@ -205,13 +228,19 @@ export class Game {
 export function autopilot(g) {
   const h = g.heli, L = g.L, inp = g.input;
   let ty = L.pathAt(h.x + 55 + Math.max(0, h.vx) * 0.35), vdes = 150;
-  const dxp = L.pad.x - h.x;
+  // Prochain héliport à utiliser : ravitaillements principaux, puis l'arrivée.
+  let P = L.pad;
+  for (const p of L.pads) {
+    if (p.kind === 'start' || (p.kind === 'fuel' && !p.main)) continue;
+    if (g.onPad === p.i && g.fuel >= 0.995) g.botDone = p.i;
+    if (p.i > (g.botDone || 0)) { P = p; break; }
+  }
+  const dxp = P.x - h.x;
   let landing = false;
   if (dxp < 430) {
     vdes = clamp(dxp * 0.9, -70, 140);
-    const gy = L.groundAt(h.x) - 12;
-    if (Math.abs(dxp) < 42 && Math.abs(h.vx) < 45) landing = true;
-    else ty = Math.min(ty, gy - 55);
+    if (Math.abs(dxp) < P.w * 0.3 && Math.abs(h.vx) < 45) landing = true;
+    else ty = Math.min(ty, P.y - 12 - 55);
   }
   for (let i = g.o0; i < L.obs.length; i++) {
     const o = L.obs[i];
@@ -231,5 +260,5 @@ export function autopilot(g) {
   const err = Math.abs(h.y - ty);
   if (err > 70) vdes = Math.min(vdes, 90);
   inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3, -24, 32);
-  inp.thrust = landing ? h.vy > 38 : h.grounded || h.y + h.vy * 0.26 > ty;
+  inp.thrust = landing ? h.vy > 36 : h.grounded || h.y + h.vy * 0.26 > ty;
 }

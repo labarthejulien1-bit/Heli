@@ -6,10 +6,10 @@ import { Renderer } from './render.js';
 import { drawHeli } from './helidraw.js';
 import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
-import { load, store, defaults, importSave, medalCount, levelUnlocked, unlockMet, refreshUnlocks } from './save.js';
+import { load, store, defaults, importSave, medalCount, starCount, levelUnlocked, refreshUnlocks } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -69,7 +69,8 @@ function startLevel(id) {
   S.game = new Game(S.level, heliOf(save.heli));
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
-  $('#cpMarks').innerHTML = S.level.checkpoints.map((c) => `<b style="left:${(c.x / S.level.length) * 100}%"></b>`).join('');
+  $('#cpMarks').innerHTML = S.level.pads.filter((p) => p.kind === 'fuel').map((p) => `<b class="${p.main ? '' : 'bonus'}" style="left:${(p.x / S.level.pad.x) * 100}%"></b>`).join('');
+  lowBeep = 0;
   $('#fps').hidden = !save.settings.fps;
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart();
   save.lastLevel = id; save.stats.flights++; persist();
@@ -79,7 +80,7 @@ function commitRun() {
   const g = S.game;
   if (!g || g.committed) return;
   g.committed = true;
-  save.stats.dist += g.stats.dist; save.stats.orbs += g.stats.orbs; save.stats.time += g.t;
+  save.stats.dist += g.stats.dist; save.stats.orbs += g.stats.orbs; save.stats.time += g.t; save.stats.refuels += g.stats.lands;
   persist();
 }
 async function requestWake() { try { wake = await navigator.wakeLock?.request('screen'); } catch { /* refusé */ } }
@@ -121,7 +122,7 @@ function levels() {
     const open = levelUnlocked(save, l.id), rec = save.levels[l.id];
     return `<button class="lvl ${open ? '' : 'locked'}" data-level="${l.id}" style="--a:${l.sky[0][0]};--b:${l.sky[0][1]};--gr:${l.ground}">
       <span class="n">${l.id}</span>
-      <span class="name">${t('lvl' + l.id)}<small>${open ? (rec?.time != null ? `${t('best')} ${fmtTime(rec.time)}` : '&nbsp;') : t('lockedLevel', l.id - 1)}</small></span>
+      <span class="name">${t('lvl' + l.id)}<small>${open ? `★ ${rec?.stars || 0}/${getLevel(l.id).starTotal}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', l.id - 1)}</small></span>
       ${open ? `<span class="medals">${[0, 1, 2].map((i) => `<i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
     </button>`;
   }).join('')}</div></section>${nav('levels')}`;
@@ -131,7 +132,7 @@ function levelSheet(id) {
   if (!levelUnlocked(save, id)) return toast(t('lockedLevel', id - 1));
   setDemo(id);
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
-    <h2>${id} · ${t('lvl' + id)}</h2><p class="sub">${rec?.time != null ? `${t('best')} ${fmtTime(rec.time)}` : t('objectives')}</p>
+    <h2>${id} · ${t('lvl' + id)}</h2><p class="sub">★ ${rec?.stars || 0}/${getLevel(id).starTotal} ${t('stars').toLowerCase()}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
     ${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
     <button class="btn primary" style="width:100%;margin-top:14px" data-play="${id}">${ICON.play}${t('play')}</button>
   </div></div>`);
@@ -161,7 +162,7 @@ function profile() {
       <div class="pbar"><i style="width:${nx ? ((m - RANKS[r]) / (nx - RANKS[r])) * 100 : 100}%"></i></div></div>
     <h3>${t('pilot')}</h3><input class="field" data-set="pilot" maxlength="16" value="${esc(save.pilot)}" placeholder="${t('namePh')}" autocomplete="off" enterkeyhint="done">
     <h3>${t('hangar')} · ${save.helis.length}/${HELIS.length}</h3>
-    <div class="grid">${cell(st.flights, 'st_flights')}${cell(st.landings, 'st_landings')}${cell((st.dist / 1000).toFixed(1) + ' km', 'st_dist')}${cell(fmtTime(st.time), 'st_time')}${cell(st.orbs, 'st_orbs')}${cell(st.crashes, 'st_crashes')}</div>
+    <div class="grid">${cell(st.flights, 'st_flights')}${cell(st.landings, 'st_landings')}${cell((st.dist / 1000).toFixed(1) + ' km', 'st_dist')}${cell(fmtTime(st.time), 'st_time')}${cell(st.refuels, 'st_refuels')}${cell('★ ' + starCount(save), 'stars')}${cell(st.orbs, 'st_orbs')}${cell(st.crashes, 'st_crashes')}</div>
   </div></section>${nav('profile')}`;
 }
 
@@ -213,7 +214,7 @@ function pause() {
   const l = S.level.def, g = S.game;
   ui.innerHTML = `<div class="overlay center"><div class="sheet col">
     <h2>${t('pause')}</h2><p class="sub">${l.id} · ${t('lvl' + l.id)}</p>
-    <div>${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${save.levels[l.id]?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}${o.t === 'orbs' ? `<small>${g.stats.orbs}/${Math.ceil((S.level.orbTotal * o.v) / 100)}</small>` : o.t === 'rings' ? `<small>${g.stats.rings}/${S.level.ringTotal}</small>` : o.t === 'hits' ? `<small>${g.stats.hits}/${o.v}</small>` : ''}</div>`).join('')}</div>
+    <div>${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${save.levels[l.id]?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}${o.t === 'orbs' ? `<small>${g.stats.orbs}/${Math.ceil((S.level.orbTotal * o.v) / 100)}</small>` : o.t === 'rings' ? `<small>${g.stats.rings}/${S.level.ringTotal}</small>` : o.t === 'hits' ? `<small>${g.stats.hits}/${o.v}</small>` : o.t === 'stars' ? `<small>${g.stats.stars}/${S.level.starTotal}</small>` : ''}</div>`).join('')}</div>
     <button class="btn primary" data-act="resume">${ICON.play}${t('resume')}</button>
     <button class="btn" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button>
@@ -222,9 +223,9 @@ function pause() {
 function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorStart(); guardBack(); }
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
-  const hasCp = S.game.cpIdx >= 0;
-  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${t('crashed')}</h2><p class="sub">${S.level.def.id} · ${t('lvl' + S.level.def.id)}</p>
-    ${hasCp ? `<button class="btn primary" data-act="respawn">${t('fromCp')}</button>` : ''}
+  const hasCp = S.game.padIdx > 0, dry = S.game.fuel <= 0;
+  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${S.level.def.id} · ${t('lvl' + S.level.def.id)}</p>
+    ${hasCp ? `<button class="btn primary" data-act="respawn">${t('fromPad')}</button>` : ''}
     <button class="btn ${hasCp ? '' : 'primary'}" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button></div></div>`;
 }
@@ -232,12 +233,12 @@ function showResult() {
   S.ended = true;
   const g = S.game, L = S.level, def = L.def, id = def.id;
   const done = def.objectives.map((o) => g.objectiveDone(o));
-  const rec = (save.levels[id] ||= { done: false, obj: [false, false, false], time: null, orbs: 0 });
+  const rec = (save.levels[id] ||= { done: false, obj: [false, false, false], time: null, orbs: 0, stars: 0 });
   const newRec = rec.time != null && g.t < rec.time;
   const fresh = done.map((d, i) => d && !rec.obj[i]);
   rec.done = true; rec.obj = rec.obj.map((o, i) => o || done[i]);
   if (rec.time == null || g.t < rec.time) rec.time = g.t;
-  rec.orbs = Math.max(rec.orbs, g.stats.orbs);
+  rec.orbs = Math.max(rec.orbs, g.stats.orbs); rec.stars = Math.max(rec.stars || 0, g.stats.stars);
   save.stats.landings++; save.tut = true;
   const newHelis = refreshUnlocks(save);
   commitRun(); persist();
@@ -246,7 +247,7 @@ function showResult() {
     <h2>${t('levelDone')}</h2><p class="sub">${id} · ${t('lvl' + id)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
     ${newHelis.map((h) => `<div class="banner"><canvas data-heli="${h.id}"></canvas><span>${t('newHeli')}<br>${h.name}</span></div>`).join('')}
     ${def.objectives.map((o, i) => `<div class="obj ${fresh[i] ? 'new' : ''}"><i class="medal ${done[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
-    <div class="stats3"><div><b>${fmtTime(g.t)}</b><small>${t('time')}</small></div><div><b>${g.stats.orbs}/${L.orbTotal}</b><small>${t('orbs')}</small></div><div><b>${g.stats.hits}</b><small>${t('hits')}</small></div></div>
+    <div class="stats3"><div><b>${fmtTime(g.t)}</b><small>${t('time')}</small></div><div><b>${g.stats.orbs}/${L.orbTotal}</b><small>${t('orbs')}</small></div><div><b>★ ${g.stats.stars}/${L.starTotal}</b><small>${t('stars')}</small></div><div><b>${g.stats.hits}</b><small>${t('hits')}</small></div></div>
     <div class="col">
       ${hasNext ? `<button class="btn primary" data-play="${id + 1}">${ICON.play}${t('next')}</button>` : ''}
       <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
@@ -375,27 +376,36 @@ function events() {
       case 'bump': if (play) snd.sfx('bump'); break;
       case 'land': R.spawn(g.heli.x, g.heli.y + 11, 8, { a: -Math.PI / 2, spread: 3, v: 60, col: 'rgba(255,255,255,.5)', life: 0.5 }); break;
       case 'crash': R.spawn(e.x, e.y, 46, { v: 230, col: '#ff8a3a', life: 1, g: 220, size: 3 }); R.spawn(e.x, e.y, 16, { v: 60, col: 'rgba(30,30,40,.7)', life: 1.4, size: 5, grow: 8 }); R.shake = 26; if (play) { snd.sfx('crash'); snd.rotorStop(); vibe([80, 40, 180]); } break;
-      case 'cp': if (play) { toast('⚑ ' + t('checkpoint')); snd.sfx('cp'); vibe(20); } break;
-      case 'repair': R.spawn(e.x, e.y, 12, { v: 80, col: '#7dffb0', life: 0.6 }); if (play) { toast('✚ ' + t('repaired')); snd.sfx('repair'); } break;
+      case 'pad': R.spawn(e.x, e.y - 6, 14, { a: -Math.PI / 2, spread: 2.6, v: 90, col: '#7dffb0', life: 0.6 }); if (play) { toast('⛽ ' + t('refuel')); snd.sfx('cp'); vibe(20); } break;
+      case 'fueled': if (play) { toast('✔ ' + t('fueled')); snd.sfx('repair'); } break;
+      case 'star': R.spawn(e.x, e.y, 20, { v: 140, col: '#ffd34d', life: 0.7, size: 2 }); if (play) { snd.sfx('ring'); vibe(25); } break;
+      case 'nofuel': if (play) { toast('⚠ ' + t('noFuel')); snd.sfx('bump'); vibe([40, 60, 40]); } break;
       case 'win': R.spawn(g.heli.x, g.heli.y, 40, { a: -Math.PI / 2, spread: 2.2, v: 260, col: def.accent, life: 1.2, g: 260, size: 2.4 }); if (play) { snd.sfx('win'); snd.rotorStop(); vibe([30, 40, 30, 40, 80]); } break;
     }
   }
   g.ev.length = 0;
 }
-const hpFill = $('#hpFill'), progFill = $('#progFill'), orbTxt = $('#orbTxt'), ringTxt = $('#ringTxt'), timeTxt = $('#timeTxt'), hint = $('#hint'), fpsEl = $('#fps');
+let lowBeep = 0;
+const fuelFill = $('#fuelFill'), fuelBar = $('#fuelBar'), starTxt = $('#starTxt'), hpFill = $('#hpFill'), progFill = $('#progFill'), orbTxt = $('#orbTxt'), ringTxt = $('#ringTxt'), timeTxt = $('#timeTxt'), hint = $('#hint'), fpsEl = $('#fps');
 let hintKey = '';
 function updateHud() {
   const g = S.game, L = S.level, h = g.heli, k = h.hp / g.H.armor;
   hpFill.style.width = k * 100 + '%';
   hpFill.style.background = k > 0.5 ? '#6ee7a0' : k > 0.25 ? '#ffd166' : '#ff6b6b';
   progFill.style.width = clamp(h.x / L.pad.x, 0, 1) * 100 + '%';
+  fuelFill.style.width = g.fuel * 100 + '%';
+  const low = g.fuel < 0.22 && g.state === 'fly';
+  fuelBar.classList.toggle('low', low);
+  if (low && g.fuel > 0 && time > lowBeep) { lowBeep = time + 1.1; snd.tone(520, 0.09, 'square', 0.1); snd.tone(520, 0.09, 'square', 0.1, 0.16); }
+  starTxt.textContent = L.starTotal ? `★ ${g.stats.stars}/${L.starTotal}` : '';
   orbTxt.textContent = `● ${g.stats.orbs}/${L.orbTotal}`;
   ringTxt.textContent = L.ringTotal ? `◯ ${g.stats.rings}/${L.ringTotal}` : '';
   timeTxt.textContent = fmtTime(g.t);
   let key = '';
-  if (g.state === 'ready') key = 'ready';
+  const fp = L.pads[1];
+  if (g.fuel < 0.22 && g.fuel > 0 && g.state === 'fly') key = 'lowFuel';
   else if (g.state === 'fly' && L.def.id === 1 && !save.tut) {
-    if (h.x < 260) key = 'tut1'; else if (h.x < 900) key = 'tut2'; else if (h.x > 1300 && h.x < 2300) key = 'tut3';
+    if (h.x < 260) key = 'tut1'; else if (h.x < 900) key = 'tut2'; else if (h.x > 1300 && h.x < 2300) key = 'tut3'; else if (h.x > fp.x - 700 && h.x < fp.x + 100 && g.padIdx < 1) key = 'tut5';
   }
   if (g.state === 'fly' && L.def.id === 1 && h.x > L.pad.x - 700) key = 'tut4';
   if (key !== hintKey) { hintKey = key; if (key) hint.textContent = t(key); hint.classList.toggle('on', !!key); }
@@ -414,7 +424,7 @@ function loop(ts) {
     }
     acc += dt;
     while (acc >= DT) {
-      if (S.mode === 'demo') { autopilot(g); if (g.state === 'ready') g.input.thrust = true; }
+      if (S.mode === 'demo') autopilot(g);
       g.step(DT); acc -= DT;
     }
     events();

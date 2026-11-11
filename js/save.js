@@ -5,8 +5,8 @@ const KEY = 'heli-save-v1';
 export function defaults() {
   return {
     v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false,
-    levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs }
-    stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0 },
+    levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, stars }
+    stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },
     settings: { music: 0.6, sfx: 0.8, vibe: true, quality: 'high', sens: 1, invert: false, shake: true, fps: false, battery: false },
   };
 }
@@ -33,6 +33,7 @@ export function store(s) {
 export function importSave(text) { return sanitize(JSON.parse(text)); }
 
 export const medalCount = (s) => Object.values(s.levels).reduce((n, l) => n + (l.obj || []).filter(Boolean).length, 0);
+export const starCount = (s) => Object.values(s.levels).reduce((n, l) => n + (l.stars || 0), 0);
 export const levelUnlocked = (s, id) => id === 1 || !!s.levels[id - 1]?.done;
 export function unlockMet(s, u) {
   if (!u) return true;

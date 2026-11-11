@@ -8,16 +8,17 @@ PWA Android **100 % locale** : aucune pub, aucun compte, aucune collecte de donn
 - **Maintenir** le pouce sur l'écran : le rotor pousse l'appareil le long de son axe.
 - **Relâcher** : la gravité reprend la main.
 - **Glisser** à droite / à gauche : incliner l'appareil (accélérer / freiner, reculer). L'inclinaison est conservée entre deux appuis.
+- **Carburant** : le rotor consomme de l'essence. Se poser sur un héliport vert refait le plein, répare un peu l'appareil et sert de point de reprise.
 - Se **poser en douceur** sur l'héliport d'arrivée pour terminer le niveau.
 - Clavier (PC) : Espace = rotor, ← → = inclinaison, Échap = pause.
 
-Les collisions retirent du blindage (proportionnellement à la vitesse d'impact) sans détruire l'appareil d'un coup ; un contact lent est sans dégât. Deux points de contrôle par niveau.
+Les collisions retirent du blindage (proportionnellement à la vitesse d'impact) sans détruire l'appareil d'un coup ; un contact lent est sans dégât. Chaque niveau compte 3 à 5 héliports de ravitaillement : les principaux (au sol ou sur un toit) et des héliports bonus difficiles (clairière entre deux arbres, abri rocheux) gardés par des étoiles à récolter. Tomber en panne sèche loin d'un héliport détruit l'appareil.
 
 ## Contenu
 
 - **10 niveaux** de 2 à 3 minutes, chacun avec sa palette, ses décors animés, sa météo et sa musique : montagnes, forêt, canyon, côte, métropole, glaciers, temples, volcan, ville néon, archipel céleste.
 - Passages techniques : pics, forêts denses, immeubles, portes, grottes, obstacles mobiles, éoliennes, geysers / lasers, zones de vent.
-- **3 objectifs par niveau** (médailles) : orbes, temps, blindage, collisions, anneaux, atterrissage en douceur…
+- **3 objectifs par niveau** (médailles) : orbes, étoiles, temps, blindage, collisions, anneaux, atterrissage en douceur…
 - **10 hélicoptères** aux caractéristiques différentes, débloqués par des objectifs précis.
 - Profil pilote (nom, rang, statistiques), 6 langues, réglages (audio, vibrations, sensibilité, qualité graphique, économie de batterie), export / import de la sauvegarde.
 

@@ -8,7 +8,7 @@ export const STEP = 8;
 
 const SPEC = {
   open: { dx: 420, lo: 380, hi: 520, dy: 90, hug: 0, gap: 240 },
-  cp: { dx: 420, lo: 400, hi: 480, dy: 40, hug: 0, gap: 250, len: 440 },
+  fuel: { hug: 0, gap: 250 },
   hills: { dx: 330, lo: 230, hi: 560, dy: 210, hug: 1 },
   peaks: { dx: 310, alt: 1, hi: 560, hug: 1 },
   forest: { dx: 300, lo: 330, hi: 540, dy: 150, hug: 0.5 },
@@ -49,13 +49,15 @@ export function generateLevel(def) {
   const R = rng(def.seed), rand = (a, b) => a + (b - a) * R(), pick = (a) => a[(R() * a.length) | 0];
   const secs = [];
   let X = 0;
-  const add = (type, d, len) => { secs.push({ type, d, x0: X, x1: X + len, kp: [] }); X += len; };
+  const add = (type, d, len, variant) => { secs.push({ type, d, x0: X, x1: X + len, kp: [], variant }); X += len; };
   add('start', 1, 520);
   const list = def.sections.trim().split(/\s+/).map((s) => { const [a, b] = s.split(':'); return [a, +b || 1]; });
-  const cpAt = [Math.round(list.length / 3), Math.round((list.length * 2) / 3)];
+  // Arrêts de ravitaillement répartis régulièrement entre les sections.
+  const stops = (def.fuel || 'easy easy').split(/\s+/);
+  const stopAt = stops.map((_, k) => Math.round(((k + 1) * list.length) / (stops.length + 1)));
   list.forEach(([ty, d], i) => {
-    if (cpAt.includes(i)) add('cp', 1, 440);
-    add(ty, d, 1100 * (def.lenScale || 1) * rand(0.92, 1.08));
+    stopAt.forEach((at, k) => { if (at === i) add('fuel', 1, 520, stops[k]); });
+    add(ty, d, 1000 * (def.lenScale || 1) * rand(0.92, 1.08));
   });
   add('end', 1, 780);
   const LEN = X, N = Math.ceil(LEN / STEP) + 2;
@@ -72,6 +74,12 @@ export function generateLevel(def) {
     if (s.type === 'start') continue;
     if (s.type === 'end') {
       kp.push({ x: s.x0 + 130, y: 440 }, { x: s.x1 - 470, y: 560 }, { x: s.x1 - 300, y: 640 }, { x: LEN + 60, y: 640 });
+      continue;
+    }
+    if (s.type === 'fuel') {
+      const x = (s.x0 + s.x1) / 2, want = s.variant === 'easy' ? 560 : s.variant === 'roof' ? 500 : 400;
+      const md = 0.62 * (x - px), y = clamp(want, py - md, py + md);
+      kp.push({ x, y }); py = y; px = x;
       continue;
     }
     const sp = SPEC[s.type], g = gapOf(s);
@@ -108,7 +116,7 @@ export function generateLevel(def) {
     gap[i] = gapOf(s);
     hug[i] = sp.hug || 0;
     cw[i] = sp.ceil || 0;
-    flat[i] = x < 420 || x > LEN - 640 ? 1 : 0;
+    flat[i] = x < 420 || x > LEN - 640 || s.type === 'fuel' ? 1 : 0;
   }
   blur(gap, 12); blur(hug, 16); blur(cw, 14); blur(flat, 10);
 
@@ -139,7 +147,7 @@ export function generateLevel(def) {
   const tMax = (x, w) => Math.max(tAt(x - w / 2), tAt(x), tAt(x + w / 2));
 
   // --- 3. Obstacles
-  const obs = [], items = [], zones = [], cps = [];
+  const obs = [], items = [], zones = [], pads = [{ x: 170, y: groundAt(170), w: 120, kind: 'start' }];
   const th = def.theme;
   const push = (o) => { o.v = R(); obs.push(o); return o; };
 
@@ -184,10 +192,26 @@ export function generateLevel(def) {
     const every = (lo, hi, fn) => { for (let x = a + rand(0, lo); x < b; x += rand(lo, hi)) fn(x); };
     switch (s.type) {
       case 'open': every(150, 300, (x) => tree(x, 0.7, 60)); break;
-      case 'cp': {
-        const x = (s.x0 + s.x1) / 2;
-        cps.push({ x, y: pathAt(x), g: groundAt(x) });
-        items.push({ type: 'repair', x: x + 150, y: pathAt(x + 150) });
+      case 'fuel': {
+        const x = (s.x0 + s.x1) / 2, gy = groundAt(x), v = s.variant;
+        let pad;
+        if (v === 'roof') {
+          const w = 92, top = gy - 140;
+          push({ kind: 'pillar', st: pick(th.pillar), x, y: top, w, h: gy + 24 - top, shapes: [{ p: rectPoly(x - w / 2, top, w, gy + 24 - top) }], minX: x - w / 2, maxX: x + w / 2 });
+          pad = { x, y: top, w: 86 };
+        } else if (v === 'trees') {
+          // clairière étroite entre deux grands arbres : descente verticale
+          tree(x - 70, 3, 0); tree(x + 70, 3, 0);
+          for (let k = 0; k < 3; k++) items.push({ type: 'star', x, y: gy - 50 - k * 58 });
+          pad = { x, y: gy, w: 66 };
+        } else if (v === 'cave') {
+          // abri rocheux ouvert à gauche : entrer sous la dalle, se poser, ressortir en marche arrière
+          push({ kind: 'shelter', x, y: gy - 150, w: 200, g: gy, minX: x - 100, maxX: x + 100,
+            shapes: [{ p: rectPoly(x - 100, gy - 150, 200, 62) }, { p: rectPoly(x + 76, gy - 150, 24, 174) }] });
+          for (let k = 0; k < 3; k++) items.push({ type: 'star', x: x - 84 + k * 46, y: gy - 40 });
+          pad = { x: x + 12, y: gy, w: 84 };
+        } else pad = { x, y: gy, w: 130 };
+        pads.push({ ...pad, kind: 'fuel', variant: v, main: v === 'easy' || v === 'roof' });
         break;
       }
       case 'hills':
@@ -265,13 +289,21 @@ export function generateLevel(def) {
     items.push({ type: 'ring', x: rx, y: pathAt(rx) });
   }
   items.sort((p, q) => p.x - q.x);
+  const endPad = { x: LEN - 300, y: groundAt(LEN - 300), w: 150, kind: 'end' };
+  pads.push(endPad);
+  pads.forEach((p, i) => { p.i = i; });
+  // Réservoir : dimensionné sur le plus long trajet entre deux ravitaillements principaux.
+  let maxGap = 0, lastX = 170;
+  for (const p of pads) if (p.kind !== 'fuel' || p.main) { maxGap = Math.max(maxGap, p.x - lastX); lastX = p.x; }
+  const tank = (maxGap / 200) * (def.id <= 2 ? 2 : 1.75); // secondes de rotor à pleine puissance
 
   return {
-    def, length: LEN, secs, obs, items, zones, checkpoints: cps,
+    def, length: LEN, secs, obs, items, zones, pads, tank,
     ground, ceil, groundAt, ceilAt, pathAt, gapAt, groundSlope: slope(ground), ceilSlope: slope(ceil),
-    startX: 170, pad: { x: LEN - 300, w: 150 }, startPad: { x: 170, w: 120 },
+    startX: 170, pad: endPad,
     orbTotal: items.filter((i) => i.type === 'orb').length,
     ringTotal: items.filter((i) => i.type === 'ring').length,
+    starTotal: items.filter((i) => i.type === 'star').length,
   };
 }
 
