@@ -9,7 +9,7 @@ import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -170,9 +170,12 @@ function welcome() {
     <h2>${t('welcome')}</h2><p class="sub">${t('welcomeText')}</p>
     <input class="field" id="pilotName" maxlength="16" placeholder="${t('namePh')}" autocomplete="off" enterkeyhint="done">
     <div class="row"><span>${t('s_lang')}</span>${langSelect()}</div>
+    <div><h3 style="margin:4px 2px 8px">${t('s_diff')}</h3>${diffPicker()}</div>
     <button class="btn primary" data-act="welcomeOk">${t('start')}</button>
   </div></div>`;
 }
+const diffPicker = () => `<div class="seg wide">${['easy', 'normal', 'hard'].map((q) => `<button data-diff="${q}" class="${save.settings.diff === q ? 'on' : ''}">${t('d_' + q)}</button>`).join('')}</div>
+      <p class="sub" style="margin:10px 2px 0;font-size:13px">${t('d_' + save.settings.diff + 'Txt')}</p>`;
 const langSelect = () => `<select data-set="lang">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${k === getLang() ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
 
 function levels() {
@@ -245,8 +248,7 @@ function settings() {
       ${installEvt ? `<div class="row"><button class="btn primary" style="flex:1" data-act="install">${t('install')}</button></div>` : ''}
     </div>
     <h3>${t('s_diff')}</h3><div class="panel">
-      <div class="seg wide">${['easy', 'normal', 'hard'].map((q) => `<button data-diff="${q}" class="${s.diff === q ? 'on' : ''}">${t('d_' + q)}</button>`).join('')}</div>
-      <p class="sub" style="margin:10px 2px 0;font-size:13px">${t('d_' + s.diff + 'Txt')}</p>
+      ${diffPicker()}
     </div>
     <h3>${t('s_audio')}</h3><div class="panel">
       <div class="row"><span>${t('s_music')}</span>${rng('music', 0, 1, 0.05)}</div>
@@ -348,7 +350,11 @@ ui.addEventListener('click', (e) => {
     save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
   if (d.heliSel) { save.heli = d.heliSel; persist(); snd.preview(heliOf(d.heliSel)); setDemo(S.levelId); return hangar(); }
-  if (d.diff) { save.settings.diff = d.diff; persist(); return settings(); }
+  if (d.diff) {
+    save.settings.diff = d.diff; persist();
+    if (save.pilot) return settings();
+    const keep = $('#pilotName').value; welcome(); $('#pilotName').value = keep; return;
+  }
   if (d.quality) { save.settings.quality = d.quality; persist(); R.resize(d.quality); R.setLevel(S.level); return settings(); }
   switch (d.act) {
     case 'closeSheet': b.remove(); break;

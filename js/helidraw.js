@@ -204,12 +204,27 @@ export function drawHeli(c, look, t = 0, power = 0.6) {
       if (look.glow) { c.shadowColor = look.glow; c.shadowBlur = 12; }
       c.fillStyle = c1; c.beginPath(); c.ellipse(0, 0, 31, 7.5, 0, 0, 7); c.fill();
       c.shadowBlur = 0;
-      c.fillStyle = '#8d97a8'; c.beginPath(); c.ellipse(0, 3, 20, 5, 0, 0, Math.PI); c.fill();
+      c.fillStyle = look.c3 || '#8d97a8'; c.beginPath(); c.ellipse(0, 3, 20, 5, 0, 0, Math.PI); c.fill();
       for (let k = 0; k < 7; k++) {
         const lx = -24 + k * 8, on = ((k + Math.floor(t * (4 + 10 * power))) % 3) === 0;
         c.fillStyle = on ? '#ffffff' : c2; c.beginPath(); c.arc(lx, 0.5 + Math.abs(k - 3) * -0.35 + 1, 1.7, 0, 7); c.fill();
       }
       c.strokeStyle = '#6b7484'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-12, 6); c.lineTo(-16, 11.4); c.moveTo(12, 6); c.lineTo(16, 11.4); c.moveTo(-19, 11.4); c.lineTo(-13, 11.4); c.moveTo(13, 11.4); c.lineTo(19, 11.4); c.stroke();
+      break;
+    }
+    case 'shark': { // requin : aileron, queue en croissant, ventre blanc, dents
+      skids(c, dark);
+      c.fillStyle = c1; c.beginPath(); c.moveTo(23, 0); c.bezierCurveTo(16, -9, 0, -10, -12, -7); c.lineTo(-27, -4); c.lineTo(-38, -15); c.lineTo(-33, -2.5); c.lineTo(-37, 6); c.lineTo(-27, 0.5); c.lineTo(-10, 5); c.bezierCurveTo(4, 9, 16, 7, 23, 0); c.fill();
+      poly(c, [-5, -8.5, -11, -19, -15, -7.5], c1); // aileron dorsal
+      c.fillStyle = c2; c.beginPath(); c.moveTo(23, 0); c.bezierCurveTo(16, 7, 4, 9, -10, 5); c.lineTo(-24, 1.2); c.bezierCurveTo(-8, 2.5, 8, 3.5, 23, 0); c.fill();
+      poly(c, [3, 3.5, -5, 12, -3, 3.5], c1); // nageoire pectorale
+      c.fillStyle = '#7a1420'; c.beginPath(); c.moveTo(21, 1.2); c.lineTo(9, 2.6); c.lineTo(11, 5.6); c.closePath(); c.fill();
+      c.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(19.5 - k * 2.2, 1.5 + k * 0.25); c.lineTo(18.4 - k * 2.2, 3.6 + k * 0.2); c.lineTo(17.3 - k * 2.2, 1.7 + k * 0.25); c.fill(); }
+      c.strokeStyle = rgba('#0f172a', 0.5); c.lineWidth = 1; c.beginPath(); for (let k = 0; k < 3; k++) { c.moveTo(3 - k * 3, -4); c.lineTo(2 - k * 3, 1); } c.stroke();
+      c.fillStyle = '#ffffff'; c.beginPath(); c.arc(13.5, -3, 2.2, 0, 7); c.fill();
+      c.fillStyle = glass; c.beginPath(); c.arc(14, -3, 1.2, 0, 7); c.fill();
+      tailRotor(c, -30, -3, t, power, dark);
+      rotor(c, 1, -16, 33, t, power, dark);
       break;
     }
     default: // future
@@ -223,5 +238,102 @@ export function drawHeli(c, look, t = 0, power = 0.6) {
       c.strokeStyle = '#2a2a36'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-3, 7.5); c.lineTo(-5, 11.4); c.lineTo(11, 11.4); c.lineTo(9, 7.8); c.stroke();
       rotor(c, 1, -16, 33, t, power, '#2a2a36');
   }
+  c.shadowBlur = 0;
+  deco(c, look, t);
   c.restore();
+}
+
+// Détails qui donnent son caractère à chaque modèle (bec, antennes, défenses, casque...).
+function deco(c, look, t) {
+  const line = (pts, col, w = 1.4) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
+  const dot = (x, y, r, col) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); };
+  const star = (x, y, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, q = k % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } c.fill(); };
+  switch (look.deco) {
+    case 'moineau': // petit bec et ventre clair
+      poly(c, [16.5, -1, 22.5, 1.2, 16.5, 3.4], '#ffc23a');
+      c.fillStyle = 'rgba(255,255,255,.28)'; c.beginPath(); c.ellipse(1, 5, 9, 3.4, 0, 0, 7); c.fill();
+      poly(c, [-33, -6, -39, -9, -37, -5, -39, -2, -33, -4], look.c2);
+      break;
+    case 'colibri': // long bec fin, gorge rubis
+      line([17, 0.5, 29, 2.5], '#20303a', 1.5);
+      dot(11, 5, 3, '#e0407a');
+      c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(-4, -9, 9, 2.4, -0.35, 0, 7); c.fill();
+      break;
+    case 'mistral': // volutes de vent
+      c.strokeStyle = '#ffffff'; c.lineWidth = 1.3; c.lineCap = 'round';
+      for (const [x, y, r] of [[-2, -2, 3.2], [-12, -0.5, 2.4]]) { c.beginPath(); c.arc(x, y, r, 0.6, 5.2); c.lineTo(x - 9, y + r); c.stroke(); }
+      line([19, 1, 25, 1], '#ffffff', 1);
+      break;
+    case 'bourdon': // antennes, dard et ailes
+      line([13, -9, 17, -15, 20, -15], look.c2, 1.3); line([10, -10, 12, -17, 15, -18], look.c2, 1.3);
+      dot(20, -15, 1.5, look.c2); dot(15, -18, 1.5, look.c2);
+      poly(c, [-32, -6.5, -40, -4, -32, -1.5], look.c2);
+      c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(-8, -12, 11, 3, -0.3, 0, 7); c.fill();
+      break;
+    case 'aurore': // semis d'étoiles
+      star(-2, -3, 2.8, '#ffffff'); star(-12, -3.5, 1.9, '#fff3b0'); star(-21, -3.5, 1.4, '#ffffff'); star(6, 3.5, 1.6, '#fff3b0');
+      break;
+    case 'libellule': // deux paires d'ailes translucides, gros œil
+      c.fillStyle = 'rgba(220,255,250,.45)';
+      c.beginPath(); c.ellipse(-12, -11, 15, 2.6, 0.12, 0, 7); c.fill(); c.beginPath(); c.ellipse(-11, -7, 13, 2.2, -0.1, 0, 7); c.fill();
+      dot(11, -5, 3.2, '#2f6b45'); dot(12, -6, 1, '#ffffff');
+      break;
+    case 'frelon': // mandibules, œil mauvais, dard
+      line([19, 1, 24, 3, 21, 5], look.c2, 1.6); line([18, 3, 22, 7, 19, 7], look.c2, 1.6);
+      poly(c, [-29, -2.5, -39, -0.5, -29, 1.5], '#ff6a00');
+      line([9, -7, 16, -4], '#1f2933', 1.8);
+      break;
+    case 'albatros': // croix rouge et treuil
+      dot(14, 4, 4.2, '#ffffff'); c.fillStyle = look.stripe; c.fillRect(13, 1.3, 2, 5.4); c.fillRect(11.3, 3, 5.4, 2);
+      line([2, 8, 2, 15], '#555c66', 1); line([2, 15, 4, 16.5, 2, 18], '#555c66', 1.2);
+      dot(-31, -15, 1.6, Math.sin(t * 8) > 0 ? '#ff4d4d' : '#ffb3b3');
+      break;
+    case 'mammouth': // défenses et caisse suspendue
+      c.strokeStyle = '#fff4d6'; c.lineWidth = 2.4; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(18, 4); c.quadraticCurveTo(27, 6, 27, -2); c.stroke();
+      c.beginPath(); c.moveTo(15, 5); c.quadraticCurveTo(23, 9, 24, 2); c.stroke();
+      line([-9, 6, -8, 10], '#555c66', 1); line([-3, 6, -4, 10], '#555c66', 1);
+      c.fillStyle = '#8a5a2b'; c.fillRect(-11, 10, 10, 6); line([-11, 13, -1, 13], '#5f3d1c', 1);
+      break;
+    case 'orage': // éclair
+      poly(c, [-2, -6, -9, 0.5, -4.5, 0.5, -8, 6, 1, -1.5, -3.5, -1.5], '#ffe14d');
+      break;
+    case 'faucon': // bec crochu et regard
+      poly(c, [20, 0, 26, 3.5, 23, 6, 21.5, 3.5, 18, 4], '#ffc23a');
+      line([8, -7.5, 15, -3.5], '#1b1b26', 2);
+      for (let k = 0; k < 3; k++) poly(c, [-36 - k * 0, -12 + k * 3, -41, -11 + k * 3.4, -35, -9.5 + k * 3], look.c2);
+      break;
+    case 'titan': // camouflage et cocarde
+      c.fillStyle = 'rgba(30,60,35,.55)';
+      for (const [x, y, rx, ry] of [[-22, 3, 6, 2.6], [-6, -3.5, 5, 2.2], [9, 4, 6, 2.4]]) { c.beginPath(); c.ellipse(x, y, rx, ry, 0.3, 0, 7); c.fill(); }
+      dot(-13, 3.5, 3.4, '#ffffff'); star(-13, 3.5, 2.6, '#c0392b');
+      break;
+    case 'spectre': // capteur rouge
+      dot(19, 0.6, 2, '#ff2e4d'); dot(19, 0.6, 4.5, 'rgba(255,46,77,.3)');
+      line([-30, -4, -37, -14], '#22d3ee', 1);
+      break;
+    case 'vortex': // antennes et feux
+      line([-6, -6, -9, -13], look.c1, 1.2); line([4, -6, 7, -13], look.c1, 1.2);
+      dot(-9, -13, 1.4, Math.sin(t * 10) > 0 ? '#7dff9a' : '#1f6b3a'); dot(7, -13, 1.4, Math.sin(t * 10) > 0 ? '#ff4d6d' : '#6b1f2c');
+      dot(9, -0.5, 1.6, '#ff2e4d');
+      break;
+    case 'samourai': // cimier de casque, soleil rouge, sabre
+      c.strokeStyle = look.c2; c.lineWidth = 2; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(4, -8.5); c.quadraticCurveTo(-2, -17, -9, -18); c.stroke();
+      c.beginPath(); c.moveTo(6, -8); c.quadraticCurveTo(12, -17, 19, -17); c.stroke();
+      dot(-31, -10, 3, '#ffffff'); dot(-31, -10, 2, '#d0021b');
+      line([-12, 8.5, 20, 9.5], '#e5e7eb', 1.4); line([-12, 8.5, -16, 8.3], look.c2, 2.2);
+      break;
+    case 'comete': // étoile et poussière de comète
+      star(-4, -2, 3.4, look.c2);
+      for (let k = 0; k < 4; k++) dot(-36 - k * 4, -2 + (k % 2 ? 2 : -2), 1.6 - k * 0.3, 'rgba(253,230,138,.8)');
+      break;
+    case 'nebuleuse': // anneau
+      c.strokeStyle = 'rgba(255,122,217,.85)'; c.lineWidth = 1.4; c.beginPath(); c.ellipse(-8, -1.5, 13, 3.4, -0.25, 0, 7); c.stroke();
+      break;
+    case 'phenix': // plumes de feu et aigrette
+      for (const [dy, col] of [[-6, '#ffb703'], [-1, '#ff5a1f'], [4, '#ffb703']]) poly(c, [-28, dy - 1.5, -41, dy + (dy < 0 ? -4 : dy > 0 ? 4 : 0), -28, dy + 1.5], col);
+      poly(c, [6, -9, 3, -16, 9, -10.5], '#ffb703'); poly(c, [10, -8.5, 9, -14, 13, -9], '#ff5a1f');
+      break;
+  }
 }
