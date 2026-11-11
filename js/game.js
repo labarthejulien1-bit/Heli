@@ -58,6 +58,7 @@ export class Game {
       this.taken = new Uint8Array(L.items.length);
       this.seen = new Uint8Array(L.pads.length);
       this.padIdx = 0; // dernier héliport atteint (point de reprise)
+      this.trafficT = new Float32Array(L.traffic.length).fill(-1); // instant de départ de chaque appareil croisé
       this.stats = { orbs: 0, rings: 0, stars: 0, hits: 0, respawns: 0, padImpact: 0, dist: 0, lands: 0 };
       let k = 0;
       L.items.forEach((it, i) => { if (it.type === 'star') { if (this.owned & (1 << k)) { this.taken[i] = 1; this.stats.stars++; } k++; } });
@@ -127,6 +128,14 @@ export class Game {
       const d = Math.hypot(dx, it.y - h.y);
       if (it.type === 'orb' && d < 27) { this.taken[i] = 1; this.stats.orbs++; this.ev.push({ type: 'orb', x: it.x, y: it.y }); }
       else if (it.type === 'star' && d < 28) { this.taken[i] = 1; this.stats.stars++; this.ev.push({ type: 'star', x: it.x, y: it.y }); }
+    }
+
+    // Trafic à contresens : déclenché au passage, dangereux au contact.
+    for (let i = 0; i < L.traffic.length; i++) {
+      const q = L.traffic[i];
+      if (this.trafficT[i] < 0) { if (h.x > q.trig) this.trafficT[i] = this.t; continue; }
+      const x = this.trafficX(i);
+      if (x > q.trig - 500 && Math.hypot(x - h.x, L.trafficY(x) - h.y) < 25) { this.damage(3, x, h.y); h.vx -= 120; h.vy += 90; }
     }
 
     // Héliports : posé (ou quasi immobile au ras de la plateforme) = ravitaillement, reprise, arrivée.
@@ -222,8 +231,12 @@ export class Game {
     if (ny < -0.75 && soft) {
       h.grounded = true;
       h.vx -= h.vx * Math.min(1, 7 * dt);
+      if (h.power < 0.15 && Math.abs(nx) < 0.4) h.vx = 0; // rotor à l'arrêt : l'appareil tient en place, même sur une légère pente
     }
   }
+
+  // Position d'un appareil du trafic (NaN s'il n'est pas encore parti).
+  trafficX(i) { const q = this.L.traffic[i], t0 = this.trafficT[i]; return t0 < 0 ? NaN : q.trig + 540 - q.v * (this.t - t0); }
 
   // Résultat d'un objectif à la fin du niveau.
   objectiveDone(o) {
@@ -275,6 +288,7 @@ export function autopilot(g) {
     }
     if (!safe) { vdes = dist < 80 ? -25 : 25; break; }
   }
+  for (let i = 0; i < L.traffic.length; i++) { const x = g.trafficX(i), q = L.traffic[i]; const qy = L.trafficY((x + h.x) / 2); if (x > h.x - 40 && x < h.x + 330 && ty < qy + 54) ty = qy + 54; }
   const err = Math.abs(h.y - ty);
   if (err > 70) vdes = Math.min(vdes, 90);
   inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3 - (mod.windX || 0) * 0.16, -24, 32); // compense le vent du niveau

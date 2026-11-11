@@ -57,6 +57,7 @@ export const HELIS = [
 
 // Types d'objectifs : finish, orbs (% des 100 pièces), time (s), hits (max), soft (vitesse max à l'arrivée), stars.
 // fuel : arrêts de ravitaillement dans l'ordre (easy, roof, peak = principaux ; trees, cave = bonus difficiles avec une étoile).
+// traffic : appareils qui croisent à contresens ('plane', 'heli', 'ufo').
 // mod : particularités de niveau (grav, windX, dark) ; wcol : couleur de la météo.
 // price : coût d'achat au hangar, en pièces (coins) ou en étoiles (stars). 3 étoiles et 100 pièces par niveau.
 export const LEVELS = [
@@ -124,7 +125,7 @@ export const LEVELS = [
     music: { root: 48, scale: 'min', bpm: 80 },
     sections: 'open:1 cave:3 geysers:3 peaks:4 cave:4 movers:3 geysers:3 gates:4 cave:4 towers:4 geysers:4 peaks:4 cave:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'orbs', v: 70 }, { t: 'stars' }] },
-  { id: 9, fuel: 'roof cave roof trees roof', seed: 9973,
+  { id: 9, traffic: 'heli', fuel: 'roof cave roof trees roof', seed: 9973,
     sky: [['#0a0722', '#2c1050'], ['#05051a', '#40105f']], mid: '#24165a', ground: '#090516', obs: '#140b2c', rim: '#ff2bd6', accent: '#22e6ff',
     sun: { c: '#e9d5ff', x: 0.75, y: [0.2, 0.25], r: 26 },
     layers: ['city', 'city', 'city'], extras: ['stars', 'neon'], weather: 'rain',
@@ -132,7 +133,7 @@ export const LEVELS = [
     music: { root: 49, scale: 'min', bpm: 96 },
     sections: 'open:1 towers:4 gates:4 geysers:3 movers:4 mills:3 cave:4 towers:4 geysers:4 gates:5 movers:4 mills:4 towers:4 gates:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'hits', v: 1 }, { t: 'time', v: 230 }] },
-  { id: 10, fuel: 'peak trees roof cave peak', seed: 10007,
+  { id: 10, traffic: 'plane', fuel: 'peak trees roof cave peak', seed: 10007,
     sky: [['#1c2a52', '#7a69a6'], ['#22346e', '#f4a95e']], mid: '#5d5b93', ground: '#1e1e38', obs: '#2a2a4c', rim: '#d9d0ff', accent: '#ffe9a8',
     sun: { c: '#fff2cf', x: 0.5, y: [0.95, 0.5], r: 60 },
     layers: ['isle', 'isle', 'jag'], extras: ['clouds', 'lightning', 'birds'], weather: 'rain',
@@ -141,7 +142,7 @@ export const LEVELS = [
     sections: 'open:1 peaks:4 wind:4 mills:4 gates:5 geysers:4 cave:5 movers:4 towers:5 wind:4 peaks:5 mills:4 gates:5 geysers:4 cave:5 open:1',
     objectives: [{ t: 'finish' }, { t: 'hits', v: 0 }, { t: 'stars' }] },
   // --- Niveaux 11 à 30 : chacun a une particularité (mod : grav = gravité, windX = vent constant, dark = obscurité).
-  { id: 11, fuel: 'easy cave peak trees roof', seed: 11117, lenScale: 0.85, mod: { windX: -30 }, // vent de face permanent
+  { id: 11, traffic: 'plane', fuel: 'easy cave peak trees roof', seed: 11117, lenScale: 0.85, mod: { windX: -30 }, // vent de face permanent
     sky: [['#e8a54b', '#fbe3b0'], ['#c9603a', '#f6c98a']], mid: '#d9a05a', ground: '#6b3f1d', obs: '#7d4a22', rim: '#ffe1a6', accent: '#fff3c4',
     sun: { c: '#fff7dc', x: 0.7, y: [0.15, 0.4], r: 54 },
     layers: ['dunes', 'dunes', 'dunes'], extras: ['birds'], weather: 'dust',
@@ -165,7 +166,7 @@ export const LEVELS = [
     music: { root: 55, scale: 'maj', bpm: 68 },
     sections: 'open:1 forest:3 peaks:3 forest:4 hills:3 forest:4 gates:3 peaks:3 forest:4 wind:3 forest:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'stars' }, { t: 'orbs', v: 60 }] },
-  { id: 14, fuel: 'roof cave roof cave roof', seed: 14159, // grues et conteneurs
+  { id: 14, traffic: 'heli', fuel: 'roof cave roof cave roof', seed: 14159, // grues et conteneurs
     sky: [['#5c7c8a', '#f3d9b8'], ['#3d5a70', '#f0b98a']], mid: '#6c8794', ground: '#1c2a33', obs: '#263944', rim: '#ffcf9a', accent: '#ffb84d',
     sun: { c: '#ffe9c9', x: 0.2, y: [0.55, 0.35], r: 36 },
     layers: ['city', 'city', 'hill'], extras: ['clouds', 'smoke', 'sea', 'birds'], weather: null,
@@ -181,7 +182,7 @@ export const LEVELS = [
     music: { root: 45, scale: 'pent', bpm: 54 },
     sections: 'open:1 peaks:3 towers:3 movers:3 cave:3 peaks:4 gates:3 movers:4 towers:4 peaks:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'orbs', v: 60 }, { t: 'hits', v: 1 }] },
-  { id: 16, fuel: 'easy trees peak cave roof', seed: 16183, // bancs de méduses
+  { id: 16, traffic: 'plane', fuel: 'easy trees peak cave roof', seed: 16183, // bancs de méduses
     sky: [['#3a2f7a', '#f29fb0'], ['#1f2a66', '#7fd6d0']], mid: '#5a6fb0', ground: '#12233f', obs: '#1a3355', rim: '#aef3ff', accent: '#ffb3e6',
     sun: { c: '#ffe3f0', x: 0.65, y: [0.5, 0.3], r: 44 },
     layers: ['hill', 'isle', 'hill'], extras: ['sea', 'clouds', 'stars'], weather: 'bubbles',
@@ -197,7 +198,7 @@ export const LEVELS = [
     music: { root: 50, scale: 'min', bpm: 72 },
     sections: 'open:1 gates:3 towers:4 gates:4 movers:3 gates:4 cave:3 gates:4 towers:4 gates:5 wind:3 gates:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'orbs', v: 60 }, { t: 'time', v: 205 }] },
-  { id: 18, fuel: 'peak trees easy cave peak', seed: 18199, // thermiques puissants
+  { id: 18, traffic: 'plane', fuel: 'peak trees easy cave peak', seed: 18199, // thermiques puissants
     sky: [['#f2793a', '#ffd27a'], ['#8c2f3a', '#f59a4a']], mid: '#b5562e', ground: '#2e1509', obs: '#40200f', rim: '#ffc27a', accent: '#fff0b0',
     sun: { c: '#ffdf8a', x: 0.5, y: [0.45, 0.7], r: 72 },
     layers: ['hill', 'mesa', 'hill'], extras: ['birds'], weather: 'dust',
@@ -213,7 +214,7 @@ export const LEVELS = [
     music: { root: 46, scale: 'min', bpm: 66 },
     sections: 'open:1 cave:3 cave:4 gates:3 cave:4 forest:3 cave:4 movers:3 cave:5 peaks:4 cave:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'hits', v: 1 }, { t: 'stars' }] },
-  { id: 20, fuel: 'roof trees peak trees roof', seed: 20219, // rafales et foudre
+  { id: 20, traffic: 'plane', fuel: 'roof trees peak trees roof', seed: 20219, // rafales et foudre
     sky: [['#1f3140', '#5f7f7a'], ['#16242f', '#86a08a']], mid: '#3f5f5a', ground: '#0d1a1a', obs: '#152827', rim: '#b8f0d8', accent: '#fff6a8',
     sun: { c: '#dfeee6', x: 0.4, y: [0.2, 0.25], r: 26 },
     layers: ['hill', 'pines', 'hill'], extras: ['clouds', 'lightning', 'sea'], weather: 'rain',
@@ -229,7 +230,7 @@ export const LEVELS = [
     music: { root: 56, scale: 'maj', bpm: 60 },
     sections: 'open:1 peaks:4 cave:3 peaks:4 gates:3 towers:3 peaks:4 wind:3 gates:4 peaks:5 hills:3 open:1',
     objectives: [{ t: 'finish' }, { t: 'stars' }, { t: 'hits', v: 1 }] },
-  { id: 22, fuel: 'roof trees roof cave peak', seed: 22229, // moulins à vent
+  { id: 22, traffic: 'plane', fuel: 'roof trees roof cave peak', seed: 22229, // moulins à vent
     sky: [['#7fc8c0', '#fff0d8'], ['#f4a6b0', '#ffe2b8']], mid: '#7fb59a', ground: '#23423a', obs: '#2f574b', rim: '#eaffd8', accent: '#ffd6ec',
     sun: { c: '#fffbe8', x: 0.3, y: [0.25, 0.4], r: 38 },
     layers: ['isle', 'isle', 'hill'], extras: ['clouds', 'birds', 'godrays'], weather: 'petals',
@@ -261,7 +262,7 @@ export const LEVELS = [
     music: { root: 59, scale: 'maj', bpm: 58 },
     sections: 'open:1 cave:4 wind:4 cave:4 peaks:4 cave:5 gates:4 cave:4 wind:4 cave:5 peaks:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'hits', v: 1 }, { t: 'stars' }] },
-  { id: 26, fuel: 'roof cave roof cave roof', seed: 26309, // lasers et drones
+  { id: 26, traffic: 'heli', fuel: 'roof cave roof cave roof', seed: 26309, // lasers et drones
     sky: [['#bfe6ff', '#ffffff'], ['#7fb8f0', '#ffe9f4']], mid: '#9fc4e8', ground: '#27304a', obs: '#333e60', rim: '#ff6fb0', accent: '#ffd84d',
     sun: { c: '#ffffff', x: 0.7, y: [0.2, 0.3], r: 34 },
     layers: ['city', 'city', 'city'], extras: ['clouds', 'neon'], weather: null,
@@ -277,7 +278,7 @@ export const LEVELS = [
     music: { root: 51, scale: 'pent', bpm: 72 },
     sections: 'open:1 forest:4 gates:4 movers:4 towers:4 cave:4 gates:5 forest:4 mills:3 gates:4 movers:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'orbs', v: 70 }, { t: 'stars' }] },
-  { id: 28, fuel: 'peak trees peak cave peak', seed: 28349, // montgolfières
+  { id: 28, traffic: 'plane', fuel: 'peak trees peak cave peak', seed: 28349, // montgolfières
     sky: [['#4a6fd0', '#ffd9c0'], ['#7fb0f0', '#fff4e0']], mid: '#b8c8f0', ground: '#3a4a7a', obs: '#4a5c94', rim: '#ffffff', accent: '#ffe08a',
     sun: { c: '#fff6d8', x: 0.5, y: [0.7, 0.35], r: 56 },
     layers: ['isle', 'isle', 'isle'], extras: ['clouds', 'birds'], weather: null,
@@ -293,7 +294,7 @@ export const LEVELS = [
     music: { root: 48, scale: 'dor', bpm: 80 },
     sections: 'open:1 peaks:4 geysers:4 towers:4 wind:4 cave:4 geysers:4 peaks:5 gates:4 towers:4 geysers:4 open:1',
     objectives: [{ t: 'finish' }, { t: 'orbs', v: 80 }, { t: 'stars' }] },
-  { id: 30, fuel: 'peak cave roof trees peak', seed: 30389, lenScale: 0.9, mod: { grav: 0.8, dark: 1 }, // tout à la fois, dans le noir
+  { id: 30, traffic: 'ufo', fuel: 'peak cave roof trees peak', seed: 30389, lenScale: 0.9, mod: { grav: 0.8, dark: 1 }, // tout à la fois, dans le noir
     sky: [['#0a0420', '#5a1a6a'], ['#1a0630', '#c0407a']], mid: '#4a1f70', ground: '#0a0618', obs: '#160d2c', rim: '#ff8ad8', accent: '#8ff6ff',
     sun: { c: '#ffd0f0', x: 0.5, y: [0.3, 0.3], r: 30 },
     layers: ['spires', 'isle', 'jag'], extras: ['stars', 'planet', 'aurora'], weather: 'fireflies', wcol: '#ffffff',

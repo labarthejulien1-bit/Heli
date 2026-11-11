@@ -2,6 +2,7 @@
 import { clamp, lerp, hash, noise1, fbm, mix, rgba, TAU, DEG } from './util.js';
 import { WORLD_H, STEP, moverY, millAngle, geyserState } from './levelgen.js';
 import { drawHeli } from './helidraw.js';
+import { HELIS } from './data.js';
 
 export const VW = 400; // largeur visible en unités de jeu
 const GEYSER_COL = { steam: '#ffffff', water: '#c9f6ff', lava: '#ff8a2a', laser: '#22e6ff', bolt: '#fff7c9', sand: '#e8c890', acid: '#a8ff5a', plasma: '#c58bff' };
@@ -39,7 +40,8 @@ export class Renderer {
     const p = clamp(h.x / L.length, 0, 1);
     // caméra
     const tx = clamp(h.x - VW * 0.3 + clamp(h.vx * 0.22, -40, 70), 0, L.length - VW);
-    const ty = vh >= WORLD_H ? WORLD_H - vh : clamp(h.y - vh * 0.45, 0, WORLD_H - vh);
+    // Sur les écrans hauts, on montre jusqu'à 110 unités de terre sous le monde : le sol paraît plus haut et le bas de l'écran reste libre pour le pouce.
+    const ty = vh >= WORLD_H - 10 ? WORLD_H - vh + clamp(vh - 790, 0, 110) : clamp(h.y - vh * 0.45, 0, WORLD_H - vh);
     const ocx = this.camX;
     if (this.snap) { this.camX = tx; this.camY = ty; this.snap = false; }
     else { this.camX += (tx - this.camX) * Math.min(1, dt * 5); this.camY += (ty - this.camY) * Math.min(1, dt * 4); }
@@ -158,6 +160,7 @@ export class Renderer {
     this.terrain(c, L, def, x0, x1, camY, vh);
     this.pads(c, L, def, g, time, x0, x1);
     this.items(c, L, def, g, time, x0, x1);
+    this.traffic(c, L, def, g, time, camX);
 
     // particules monde
     const P = this.parts;
@@ -283,6 +286,23 @@ export class Renderer {
     c.beginPath();
     for (let i = i0; i <= i1; i++) c.lineTo(i * STEP, L.ground[i] + 1);
     c.strokeStyle = rgba(def.rim, 0.75); c.lineWidth = 2.2; c.lineJoin = 'round'; c.stroke();
+    // passages secrets : pénombre du tunnel, puis la voûte dans la matière du sol
+    for (const q of L.tunnels) {
+      if (q.x1 < x0 || q.x0 > x1) continue;
+      c.beginPath(); // pénombre limitée à l'intérieur de la colline
+      q.top.forEach((y, i) => c.lineTo(q.x0 + i * STEP, Math.max(y, q.roof)));
+      c.lineTo(q.x1, q.floor); c.lineTo(q.x0, q.floor); c.closePath();
+      c.fillStyle = 'rgba(0,0,10,.34)'; c.fill();
+      c.beginPath();
+      q.top.forEach((y, i) => c.lineTo(q.x0 + i * STEP, y));
+      for (let i = q.top.length - 1; i >= 0; i--) c.lineTo(q.x0 + i * STEP, Math.max(q.top[i], q.top[i] < q.roof - 10 ? q.roof : q.top[i]));
+      c.closePath(); c.fillStyle = gr; c.fill();
+      c.beginPath(); q.top.forEach((y, i) => c.lineTo(q.x0 + i * STEP, y + 1));
+      c.strokeStyle = rgba(def.rim, 0.75); c.lineWidth = 2.2; c.stroke();
+      c.beginPath(); let pen = false;
+      q.top.forEach((y, i) => { if (y < q.roof - 10) { c[pen ? 'lineTo' : 'moveTo'](q.x0 + i * STEP, q.roof); pen = true; } else pen = false; });
+      c.strokeStyle = rgba(def.rim, 0.3); c.lineWidth = 1.5; c.stroke();
+    }
     // plafond (grottes)
     let open = false;
     c.fillStyle = def.groundDeep ? def.obs : mix(def.ground, '#000000', 0.2);
@@ -340,6 +360,34 @@ export class Renderer {
     }
   }
 
+  // Trafic à contresens : avion, hélicoptère ou soucoupe, avec un chevron d'alerte tant qu'il est hors champ.
+  traffic(c, L, def, g, time, camX) {
+    for (let i = 0; i < L.traffic.length; i++) {
+      const q = L.traffic[i], x = g.trafficX(i);
+      if (!(x > camX - 70)) continue;
+      if (x > camX + VW + 30) {
+        if (Math.sin(time * 14) > -0.2) {
+          const wy = L.trafficY(camX + VW), wx = camX + VW - 14;
+          c.fillStyle = '#ff5a5a'; c.beginPath(); c.moveTo(wx - 9, wy); c.lineTo(wx + 5, wy - 10); c.lineTo(wx + 5, wy + 10); c.fill();
+          c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(wx - 4, wy); c.lineTo(wx + 2.5, wy - 5); c.lineTo(wx + 2.5, wy + 5); c.fill();
+        }
+        continue;
+      }
+      const y = L.trafficY(x) + Math.sin(time * 2 + q.seed * 9) * 2;
+      c.save(); c.translate(x, y); c.scale(-1, 1);
+      if (q.kind === 'plane') {
+        const col = mix(def.obs, def.rim, 0.22);
+        c.fillStyle = col;
+        c.beginPath(); c.moveTo(22, 1); c.quadraticCurveTo(18, -6, 6, -6); c.lineTo(-22, -3); c.lineTo(-30, -14); c.lineTo(-26, -1); c.lineTo(-8, 5); c.quadraticCurveTo(14, 7, 22, 1); c.fill();
+        c.beginPath(); c.moveTo(6, 0); c.lineTo(-10, 9); c.lineTo(-14, 9); c.lineTo(-6, 0); c.fill();
+        c.fillStyle = rgba(def.accent, 0.85); c.beginPath(); c.moveTo(18, -1); c.quadraticCurveTo(15, -5, 8, -5); c.lineTo(8, -1); c.fill();
+        c.fillStyle = rgba('#ffffff', 0.25); c.beginPath(); c.ellipse(23, 0.5, 1.5, 10, 0, 0, TAU); c.fill();
+        c.fillStyle = Math.sin(time * 9) > 0 ? '#ff4d6d' : rgba('#ff4d6d', 0.3); c.beginPath(); c.arc(-28, -13, 1.6, 0, TAU); c.fill();
+      } else drawHeli(c, q.kind === 'ufo' ? HELIS[HELIS.length - 1].look : HELIS[2 + Math.floor(q.seed * 12)].look, time, 0.8);
+      c.restore();
+    }
+  }
+
   items(c, L, def, g, time, x0, x1) {
     for (let i = 0; i < L.items.length; i++) {
       const it = L.items[i];
@@ -368,6 +416,7 @@ export class Renderer {
   obstacle(c, o, t, time, def, hi) {
     const col = def.obs, x = o.x;
     c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
+    if (o.kind === 'tunnel') return; // dessiné avec le relief
     if (o.kind === 'tree') {
       const top = o.y, b = o.g + 30, w = o.w, h = o.h;
       switch (TREE_ALIAS[o.st] || o.st) {
@@ -575,12 +624,22 @@ export class Renderer {
           c.fillStyle = mix(col, def.rim, 0.3);
           for (let y = 30; y < bot; y += 46) { const sg = ((y / 46) & 1) ? 1 : -1; c.beginPath(); c.ellipse(x + sg * 7, y, 7, 3.4, sg * 0.6, 0, 7); c.fill(); }
           break;
-        case 'cloud': { // nuage d'orage : colonne de volutes, sans arêtes droites
-          const r = w * 0.3, cc = mix(def.ground, '#39394d', 0.5), puff = (px, py, pr) => { c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill(); };
+        case 'cloud': { // cumulonimbus : masse qui s'élargit vers le haut, volutes éclairées, base sombre et rideau de pluie
+          const r = w * 0.3, cc = mix(def.ground, '#5d6478', 0.6), hl = mix(cc, '#ffffff', 0.3), dk = mix(cc, '#000000', 0.3);
+          const puff = (px, py, pr) => { c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill(); };
+          // pluie sous la base
+          c.strokeStyle = rgba('#dfe8ff', 0.28); c.lineWidth = 1; c.beginPath();
+          for (let k = 0; k < 9; k++) { const rx = x - w * 0.36 + (k / 8) * w * 0.72, ph = ((time * 1.6 + hash(k, o.v * 7)) % 1); c.moveTo(rx, bot + ph * 60); c.lineTo(rx - 3, bot + ph * 60 + 12); }
+          c.stroke();
           c.fillStyle = cc; c.fillRect(x - w * 0.36, -80, w * 0.72, bot - r + 80);
-          for (let y = bot - r * 2.2, k = 0; y > -40; y -= r * 0.95, k++) { puff(x - w * 0.36, y, r * (0.5 + 0.2 * hash(k, o.v * 31))); puff(x + w * 0.36, y - r * 0.4, r * (0.5 + 0.2 * hash(k + 9, o.v * 31))); }
-          puff(x - w * 0.24, bot - r, r); puff(x + w * 0.24, bot - r, r); puff(x, bot - r * 1.05, r * 1.05);
-          c.fillStyle = rgba('#ffffff', 0.07); puff(x - w * 0.2, bot - r * 1.5, r * 0.6);
+          for (let y = bot - r * 1.6, k = 0; y > -60; y -= r * 0.85, k++) {
+            const grow = 1 + 0.5 * Math.min(1, (bot - y) / 260), pr = r * (0.62 + 0.2 * hash(k, o.v * 31)) * grow;
+            c.fillStyle = cc; puff(x - w * 0.34 * grow, y, pr); puff(x + w * 0.34 * grow, y - r * 0.4, pr);
+            c.fillStyle = hl; puff(x - w * 0.34 * grow - pr * 0.2, y - pr * 0.25, pr * 0.62);
+          }
+          c.fillStyle = cc; puff(x - w * 0.24, bot - r, r); puff(x + w * 0.24, bot - r, r); puff(x, bot - r * 1.05, r * 1.05);
+          c.fillStyle = hl; puff(x - w * 0.3, bot - r * 1.35, r * 0.55); puff(x + w * 0.12, bot - r * 1.7, r * 0.5);
+          c.fillStyle = dk; c.beginPath(); c.ellipse(x, bot - r * 0.28, w * 0.46, r * 0.42, 0, 0, Math.PI); c.fill(); // base plate et sombre
           break;
         }
         default: { // grue, enseigne

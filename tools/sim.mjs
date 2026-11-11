@@ -21,7 +21,7 @@ for (const def of LEVELS) {
   if (!good) ok = false;
   console.log(
     `N${String(def.id).padStart(2)} ${good ? 'OK ' : 'KO '} long=${Math.round(L.length)} temps=${g.t.toFixed(0)}s chocs=${s.hits} ` +
-    `pieces=${s.orbs}/${L.orbTotal} etoiles=${s.stars}/${L.starTotal} obstacles=${L.obs.length} x=${Math.round(g.heli.x)} pv=${Math.round(g.heli.hp)} essenceMin=${(minFuel * 100).toFixed(0)}% poses=${s.lands} degagementEtoiles=${starGap.toFixed(0)} pose=${s.padImpact.toFixed(0)} ${won ? '' : L.secs.find((q) => q.x1 > g.heli.x).type + ' y=' + Math.round(g.heli.y) + ' path=' + Math.round(L.pathAt(g.heli.x))}`
+    `pieces=${s.orbs}/${L.orbTotal} etoiles=${s.stars}/${L.starTotal} obstacles=${L.obs.length} x=${Math.round(g.heli.x)} pv=${Math.round(g.heli.hp)} essenceMin=${(minFuel * 100).toFixed(0)}% poses=${s.lands} degagementEtoiles=${starGap.toFixed(0)} tunnels=${L.tunnels.length} trafic=${L.traffic.length} pose=${s.padImpact.toFixed(0)} ${won ? '' : L.secs.find((q) => q.x1 > g.heli.x).type + ' y=' + Math.round(g.heli.y) + ' path=' + Math.round(L.pathAt(g.heli.x))}`
   );
 }
 process.exit(ok ? 0 : 1);
