@@ -14,9 +14,9 @@ svg{width:1.5em;height:1.5em;fill:currentColor;flex:none}
 .hp{flex:1;height:12px;border-radius:8px;background:rgba(0,0,0,.35);overflow:hidden;border:1.5px solid rgba(255,255,255,.55)}
 .hp i{display:block;height:100%;width:100%;border-radius:6px;background:#6ee7a0;transition:width .15s,background .3s}
 #pauseBtn{pointer-events:auto;width:46px;height:46px;border-radius:50%;background:var(--panel);display:grid;place-items:center;backdrop-filter:blur(6px)}
-.fuel{display:flex;align-items:center;gap:6px;margin:8px 58px 0 0}
-.fuel svg{width:15px;height:15px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
-.fuel div{flex:1;height:8px;border-radius:5px;background:rgba(0,0,0,.35);overflow:hidden;border:1.5px solid rgba(255,255,255,.45)}
+.fuel{flex:1;display:flex;align-items:center;gap:8px}
+.fuel svg{width:20px;height:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.fuel div{flex:1;height:12px;border-radius:5px;background:rgba(0,0,0,.35);overflow:hidden;border:1.5px solid rgba(255,255,255,.45)}
 .fuel i{display:block;height:100%;border-radius:4px;background:#7cc4ff}
 .fuel.low{animation:blink .5s infinite alternate}.fuel.low i{background:#ff6b6b}
 @keyframes blink{to{opacity:.35}}
@@ -24,7 +24,7 @@ svg{width:1.5em;height:1.5em;fill:currentColor;flex:none}
 .prog i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
 .prog span b{position:absolute;top:-3px;width:3px;height:10px;border-radius:2px;background:#6ee7a0}
 .prog span b.bonus{background:#ffd34d;height:6px;top:-1px}
-.hud-info{display:flex;gap:12px;margin-top:8px;font-weight:700;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.5);font-variant-numeric:tabular-nums}
+.hud-info{display:flex;gap:12px;margin-top:6px;font-weight:800;font-size:20px;letter-spacing:3px;color:#ffd34d;text-shadow:0 1px 4px rgba(0,0,0,.5);font-variant-numeric:tabular-nums}
 .hud-info span:last-child{margin-left:auto;margin-right:58px}
 #hint{position:absolute;left:20px;right:20px;top:24%;text-align:center;font-weight:600;font-size:16px;line-height:1.35;
   padding:12px 16px;border-radius:16px;background:var(--panel);backdrop-filter:blur(6px);opacity:0;transition:opacity .4s}
@@ -63,8 +63,14 @@ h3{margin:18px 4px 8px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-
 .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#1a1530;font-weight:900;font-size:19px}
 .chip b{display:block;font-size:15px}.chip small{font-size:12px;opacity:.8}
 .title{text-align:center;margin-top:-18vh;text-shadow:0 4px 30px rgba(0,0,0,.35)}
-.title h1{margin:0;font-size:76px;font-weight:200;letter-spacing:20px;margin-right:-20px}
-.title p{margin:2px 0 0;font-size:14px;letter-spacing:4px;text-transform:uppercase;opacity:.85}
+.title h1{margin:0;font-size:76px;font-weight:200;letter-spacing:20px;margin-right:-20px;line-height:1}
+.title h1 span{display:block;font-size:25px;letter-spacing:13px;margin:6px -13px 0 0;font-weight:400}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.wallet{display:flex;gap:12px;align-items:center;padding:10px 14px;border-radius:30px;background:var(--panel);backdrop-filter:blur(8px);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+.wallet b{color:#ffd34d}
+.coin{display:inline-block;width:.85em;height:.85em;border-radius:50%;background:#ffd34d;border:.14em solid #f2a900;vertical-align:-.08em;margin-right:.3em}
+h2.top{align-items:center}
+.title p{margin:14px 0 0;font-size:14px;letter-spacing:4px;text-transform:uppercase;opacity:.85}
 
 /* Barre de navigation */
 .nav{display:flex;background:rgba(8,8,24,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:6px 6px calc(env(safe-area-inset-bottom) + 6px);border-top:1px solid rgba(255,255,255,.08)}
@@ -111,7 +117,8 @@ h3{margin:18px 4px 8px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-
 .hcard{flex:0 0 80%;scroll-snap-align:center;text-align:center}
 .hcard canvas{width:100%;aspect-ratio:1.7;display:block;border-radius:16px;margin-bottom:12px;background:linear-gradient(var(--c1),var(--c2))}
 .hcard h4{margin:0 0 10px;font-size:24px;font-weight:800}
-.hcard.locked canvas{filter:grayscale(1) brightness(.45) contrast(1.4)}
+.hcard.locked canvas{filter:grayscale(.7) brightness(.7)}
+.btn.cant{opacity:.55}
 .bar{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;margin:7px 0;text-align:left}
 .bar span{width:92px;opacity:.8}.bar i{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden}
 .bar i b{display:block;height:100%;border-radius:4px;background:var(--accent)}

@@ -1,6 +1,7 @@
 // Rendu Canvas 2D : ciel, parallaxe, relief, obstacles, objets, particules.
 import { clamp, lerp, hash, noise1, fbm, mix, rgba, TAU, DEG } from './util.js';
 import { WORLD_H, STEP, moverY, millAngle, geyserState } from './levelgen.js';
+import { maxHp } from './game.js';
 import { drawHeli } from './helidraw.js';
 
 export const VW = 400; // largeur visible en unités de jeu
@@ -165,7 +166,14 @@ export class Renderer {
       const gy = L.groundAt(h.x);
       if (h.power > 0.3 && gy - h.y < 70 && Math.random() < 0.5) this.spawn(h.x + (Math.random() - 0.5) * 40, gy - 2, 1, { a: -Math.PI / 2, spread: 2.4, v: 50, col: rgba(def.rim, 0.5), life: 0.5, size: 1.6 });
       if (look.trail && h.power > 0.4 && Math.random() < 0.6) this.spawn(h.x - 26, h.y, 1, { v: 8, vx: -30, col: look.flame ? (Math.random() < 0.5 ? '#ffb703' : '#ff5a1f') : look.trail, life: 0.6, size: 2.4 });
-      if (g.state !== 'win' && h.hp < g.H.armor * 0.35 && Math.random() < 0.4) this.spawn(h.x - 8, h.y - 8, 1, { a: -Math.PI / 2, spread: 0.8, v: 30, col: 'rgba(40,40,50,.6)', life: 0.9, size: 3, grow: 6 });
+      // État de l'appareil : intact, fumée légère (choc doux), fumée noire et étincelles (gros choc), flammes (dernier point).
+      const mh = maxHp(g.H), lost = mh - h.hp;
+      if (g.state === 'fly' && lost > 0) {
+        const heavy = lost >= 3;
+        if (Math.random() < (heavy ? 0.7 : 0.16 * lost)) this.spawn(h.x - 8, h.y - 8, 1, { a: -Math.PI / 2, spread: 0.8, v: 30, vx: -h.vx * 0.2, col: heavy ? 'rgba(25,25,32,.75)' : 'rgba(200,200,210,.45)', life: heavy ? 1.1 : 0.7, size: heavy ? 3.5 : 2.2, grow: heavy ? 8 : 4 });
+        if (heavy && Math.random() < 0.12) this.spawn(h.x - 6, h.y - 4, 2, { v: 110, col: '#ffd34d', life: 0.3, size: 1.2, g: 300 });
+        if (h.hp <= 1 && Math.random() < 0.6) this.spawn(h.x - 10, h.y - 6, 1, { a: -Math.PI / 2, spread: 1, v: 40, col: Math.random() < 0.5 ? '#ff5a1f' : '#ffb703', life: 0.4, size: 2.6 });
+      }
       c.save();
       c.translate(h.x, h.y);
       c.rotate(h.tilt * DEG + (g.state === 'dead' ? h.spin : 0));
@@ -304,9 +312,10 @@ export class Renderer {
       if (it.x < x0 || g.taken[i]) continue;
       const y = it.y + Math.sin(time * 3 + it.x * 0.05) * 2.5;
       if (it.type === 'orb') {
-        c.fillStyle = rgba(def.accent, 0.22); c.beginPath(); c.arc(it.x, y, 10, 0, 7); c.fill();
-        c.fillStyle = def.accent; c.beginPath(); c.arc(it.x, y, 4.6, 0, 7); c.fill();
-        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(it.x - 1.3, y - 1.3, 1.5, 0, 7); c.fill();
+        const sq = Math.abs(Math.cos(time * 2.4 + it.x * 0.03)) * 0.75 + 0.25;
+        c.fillStyle = 'rgba(255,200,60,.2)'; c.beginPath(); c.arc(it.x, y, 10, 0, 7); c.fill();
+        c.fillStyle = '#f2a900'; c.beginPath(); c.ellipse(it.x, y, 6.2 * sq, 6.2, 0, 0, 7); c.fill();
+        c.fillStyle = '#ffd34d'; c.beginPath(); c.ellipse(it.x, y, 4.4 * sq, 4.4, 0, 0, 7); c.fill();
       } else if (it.type === 'ring') {
         c.lineWidth = 7; c.strokeStyle = rgba(def.accent, 0.22); c.beginPath(); c.ellipse(it.x, it.y, 11, 32, 0, 0, 7); c.stroke();
         c.lineWidth = 3; c.strokeStyle = '#ffffff'; c.stroke();
@@ -433,6 +442,17 @@ export class Renderer {
       }
       return;
     }
+    if (o.kind === 'shelter' && o.st === 'building') {
+      const l = x - 100, top = o.y, neon = def.extras.includes('neon');
+      c.fillRect(l, top, 200, 62); c.fillRect(l + 176, top, 24, o.g + 24 - top); c.fillRect(l + 60, top - 12, 3, 12);
+      c.fillStyle = rgba('#000000', 0.25); c.fillRect(l, top + 62, 176, o.g - top - 62);
+      for (let r = 0; r < 3; r++) for (let k = 0; k < 9; k++) {
+        const hv = hash(r * 11 + k, o.v * 60);
+        if (hv > 0.4) { c.fillStyle = rgba(neon && hv > 0.75 ? def.rim : def.accent, 0.75); c.fillRect(l + 8 + k * 21, top + 9 + r * 17, 13, 7); }
+      }
+      c.fillStyle = neon ? def.rim : rgba(def.rim, 0.5); c.fillRect(l, top, 200, 2); c.fillRect(l, top + 60, 176, 2);
+      return;
+    }
     if (o.kind === 'shelter') {
       const l = x - 100, top = o.y, j = (k) => hash(k, o.v * 91) * 8;
       c.beginPath(); c.moveTo(l - 6, top + 50); c.lineTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.lineTo(l + 204, o.g + 24);
@@ -479,7 +499,6 @@ export class Renderer {
     }
     if (o.kind === 'mover') {
       const y = moverY(o, t);
-      c.strokeStyle = rgba('#ffffff', 0.14); c.lineWidth = 1.5; c.setLineDash([3, 8]); c.beginPath(); c.moveTo(x, o.y0 - o.amp); c.lineTo(x, o.y0 + o.amp); c.stroke(); c.setLineDash([]);
       switch (o.st) {
         case 'balloon':
           c.strokeStyle = col; c.lineWidth = 1; c.beginPath(); c.moveTo(x - 9, y + 16); c.lineTo(x - 4, y + 27); c.moveTo(x + 9, y + 16); c.lineTo(x + 4, y + 27); c.stroke();

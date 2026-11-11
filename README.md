@@ -1,4 +1,4 @@
-# Heli 🚁
+# Heli Adventure 🚁
 
 Jeu de pilotage d'hélicoptère **2D, vertical, à une main**, au style graphique épuré (silhouettes, dégradés, parallaxe).
 PWA Android **100 % locale** : aucune pub, aucun compte, aucune collecte de données, jouable hors ligne.
@@ -8,19 +8,20 @@ PWA Android **100 % locale** : aucune pub, aucun compte, aucune collecte de donn
 - **Maintenir** le pouce sur l'écran : le rotor pousse l'appareil le long de son axe.
 - **Relâcher** : la gravité reprend la main.
 - **Glisser** à droite / à gauche : incliner l'appareil (accélérer / freiner, reculer). L'inclinaison est conservée entre deux appuis.
-- **Carburant** : le rotor consomme de l'essence. Se poser sur un héliport vert refait le plein, répare un peu l'appareil et sert de point de reprise.
+- **Carburant** : le rotor consomme de l'essence. Se poser sur un héliport vert refait le plein et répare l'appareil. La panne sèche loin d'un héliport est fatale.
 - Se **poser en douceur** sur l'héliport d'arrivée pour terminer le niveau.
 - Clavier (PC) : Espace = rotor, ← → = inclinaison, Échap = pause.
 
-Les collisions retirent du blindage (proportionnellement à la vitesse d'impact) sans détruire l'appareil d'un coup ; un contact lent est sans dégât. Chaque niveau compte 3 à 5 héliports de ravitaillement : les principaux (au sol ou sur un toit) et des héliports bonus difficiles (clairière entre deux arbres, abri rocheux) gardés par des étoiles à récolter. Tomber en panne sèche loin d'un héliport détruit l'appareil.
+**État de l'appareil** : pas de barre de vie, on le lit sur l'hélicoptère. Un choc doux le fait fumer légèrement, un gros choc (à pleine vitesse, pale, geyser…) le fait fumer noir ; trois chocs doux valent un gros choc et deux gros chocs détruisent un appareil standard. Un échec renvoie au début du niveau.
 
 ## Contenu
 
-- **10 niveaux** de 2 à 3 minutes, chacun avec sa palette, ses décors animés, sa météo et sa musique : montagnes, forêt, canyon, côte, métropole, glaciers, temples, volcan, ville néon, archipel céleste.
-- Passages techniques : pics, forêts denses, immeubles, portes, grottes, obstacles mobiles, éoliennes, geysers / lasers, zones de vent.
-- **3 objectifs par niveau** (médailles) : orbes, étoiles, temps, blindage, collisions, anneaux, atterrissage en douceur…
-- **10 hélicoptères** aux caractéristiques différentes, débloqués par des objectifs précis.
-- Profil pilote (nom, rang, statistiques), 6 langues, réglages (audio, vibrations, sensibilité, qualité graphique, économie de batterie), export / import de la sauvegarde.
+- **10 niveaux**, chacun avec sa palette, ses décors animés, sa météo et sa musique : montagnes, forêt, canyon, côte, métropole, glaciers, temples, volcan, ville néon, archipel céleste.
+- **Héliports de ravitaillement** de plus en plus petits et difficiles : au sol, sur un toit ou un piton, au sommet d'une montagne, dans une clairière entre deux arbres, sous un abri rocheux ou dans un bâtiment.
+- **100 pièces par niveau**, placées hors de la trajectoire sûre (au ras du sol, des obstacles, du plafond) : aller les chercher coûte de l'essence. Elles s'accumulent et servent à **acheter les hélicoptères** au hangar (200 à 3000 pièces).
+- **3 étoiles par niveau**, aux endroits les plus difficiles. Elles achètent les deux hélicoptères les plus rares (10 et 20 étoiles).
+- **3 objectifs par niveau** (médailles, pour le rang du pilote) : pièces, étoiles, temps, collisions, atterrissage en douceur.
+- Profil pilote, 6 langues, réglages (audio, vibrations, sensibilité, qualité graphique, économie de batterie), export / import de la sauvegarde.
 
 ## Démarrage
 

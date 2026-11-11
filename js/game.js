@@ -8,7 +8,10 @@ export const TOP = 24; // plafond de vol
 export const DT = 1 / 120;
 export const BASE_TILT = 14, MIN_TILT = -28, MAX_TILT = 38;
 const HIT = [[2, 0, 11], [-19, -2, 6]]; // cercles de collision (repère de l'appareil)
-const SOFT = 50; // vitesse d'impact sous laquelle on ne subit aucun dégât
+const SOFT = 45; // vitesse d'impact sous laquelle on ne subit aucun dégât
+const HARD = 130; // au-delà : gros choc
+// État de l'appareil en points : choc doux = 1, gros choc = 3. Un appareil standard encaisse 6 points (2 gros chocs).
+export const maxHp = (H) => Math.max(4, Math.round((H.armor / 100) * 6));
 
 // Point le plus proche d'un polygone convexe (ou d'un segment) ; renvoie distance signée.
 function polyContact(pts, cx, cy, out) {
@@ -46,9 +49,9 @@ export class Game {
       this.seen = new Uint8Array(L.pads.length);
       this.padIdx = 0; // dernier héliport atteint (point de reprise)
       this.stats = { orbs: 0, rings: 0, stars: 0, hits: 0, respawns: 0, padImpact: 0, dist: 0, lands: 0 };
-    } else this.stats.respawns++;
+    }
     const p = L.pads[this.padIdx];
-    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: fromPad ? Math.round(this.H.armor * 0.6) : this.H.armor, inv: fromPad ? 2 : 0, grounded: true, spin: 0, air: 0 };
+    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: maxHp(this.H), inv: 0, grounded: true, spin: 0, air: 0 };
     this.fuel = 1; this.onPad = this.padIdx; this.dryT = 0; this.botDone = this.padIdx;
     this.state = 'fly';
     this.stateT = 0; this.padT = 0; this.o0 = 0;
@@ -59,7 +62,7 @@ export class Game {
     const h = this.heli;
     if (h.inv > 0 || this.state !== 'fly') return;
     h.hp -= d; h.inv = 1; this.stats.hits++;
-    this.ev.push({ type: 'hit', dmg: d, x, y });
+    this.ev.push({ type: 'hit', dmg: d, big: d >= 3, x, y });
     if (h.hp <= 0) { h.hp = 0; this.state = 'dead'; this.stateT = 0; this.ev.push({ type: 'crash', x: h.x, y: h.y }); }
   }
 
@@ -110,7 +113,6 @@ export class Game {
       if (dx < -40) continue;
       const d = Math.hypot(dx, it.y - h.y);
       if (it.type === 'orb' && d < 27) { this.taken[i] = 1; this.stats.orbs++; this.ev.push({ type: 'orb', x: it.x, y: it.y }); }
-      else if (it.type === 'ring' && d < 30) { this.taken[i] = 1; this.stats.rings++; this.ev.push({ type: 'ring', x: it.x, y: it.y }); }
       else if (it.type === 'star' && d < 28) { this.taken[i] = 1; this.stats.stars++; this.ev.push({ type: 'star', x: it.x, y: it.y }); }
     }
 
@@ -128,7 +130,7 @@ export class Game {
         if (p.kind === 'fuel') {
           this.stats.lands++;
           if (on > this.padIdx) this.padIdx = on;
-          if (!this.seen[on]) { this.seen[on] = 1; h.hp = Math.min(H.armor, h.hp + H.armor * 0.3); }
+          this.seen[on] = 1; h.hp = maxHp(H); // le ravitaillement répare l'appareil
           this.ev.push({ type: 'pad', x: p.x, y: p.y });
         }
       }
@@ -188,7 +190,7 @@ export class Game {
     h.x += nx * pen; h.y += ny * pen;
     const vn = h.vx * nx + h.vy * ny;
     if (hz) {
-      this.damage(hz * 1.5, px, py);
+      this.damage(hz >= 15 ? 3 : 1, px, py);
       if (vn < 150) { h.vx += (150 - vn) * nx; h.vy += (150 - vn) * ny; }
       return;
     }
@@ -196,7 +198,7 @@ export class Game {
     const impact = -vn, soft = impact < SOFT, e = soft ? 0 : 0.4;
     h.vx -= (1 + e) * vn * nx; h.vy -= (1 + e) * vn * ny;
     if (!soft) {
-      this.damage(10 + (impact - SOFT) * 0.22, px, py);
+      this.damage(impact >= HARD ? 3 : 1, px, py);
       this.ev.push({ type: 'bump', x: px, y: py });
     }
     if (Math.abs(h.x - L.pad.x) < L.pad.w / 2 + 12 && ny < -0.75 && impact > this.stats.padImpact && h.air > 0.15) this.stats.padImpact = impact;
@@ -213,11 +215,8 @@ export class Game {
       case 'finish': return true;
       case 'orbs': return s.orbs >= Math.ceil((L.orbTotal * o.v) / 100);
       case 'time': return this.t <= o.v;
-      case 'hp': return this.heli.hp >= (this.H.armor * o.v) / 100;
       case 'hits': return s.hits <= o.v;
-      case 'nocp': return s.respawns === 0;
       case 'soft': return s.padImpact <= o.v;
-      case 'rings': return s.rings >= L.ringTotal;
       case 'stars': return s.stars >= L.starTotal;
     }
     return false;
@@ -227,7 +226,7 @@ export class Game {
 // Pilote automatique : sert à valider les niveaux (tools/sim.mjs) et à animer le menu.
 export function autopilot(g) {
   const h = g.heli, L = g.L, inp = g.input;
-  let ty = L.pathAt(h.x + 55 + Math.max(0, h.vx) * 0.35), vdes = 150;
+  let ty = L.pathAt(h.x + 55 + Math.max(0, h.vx) * 0.35), vdes = 150 * clamp(L.gapAt(h.x + 80) / 185, 0.6, 1);
   // Prochain héliport à utiliser : ravitaillements principaux, puis l'arrivée.
   let P = L.pad;
   for (const p of L.pads) {
@@ -245,7 +244,8 @@ export function autopilot(g) {
   for (let i = g.o0; i < L.obs.length; i++) {
     const o = L.obs[i];
     if (o.minX > h.x + 260) break;
-    if (!o.dyn || o.kind === 'mill') continue;
+    if (o.kind === 'mill') { if (o.minX < h.x + 60 && o.maxX > h.x - 30) ty -= 28; continue; }
+    if (!o.dyn) continue;
     const dist = o.minX - (h.x + 16);
     if (dist < -4 || dist > 230) continue;
     const v = Math.max(120, h.vx), tA = dist / v, tB = (dist + (o.maxX - o.minX) + 44) / v;

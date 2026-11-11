@@ -61,6 +61,8 @@ export function generateLevel(def) {
   });
   add('end', 1, 780);
   const LEN = X, N = Math.ceil(LEN / STEP) + 2;
+  // Héliports : de plus en plus petits et haut perchés au fil des niveaux.
+  const lv = def.id - 1, shrink = 1 - 0.045 * lv, roofH = 120 + 18 * def.id, peakH = 170 + 12 * def.id;
   const gapOf = (s) => {
     const sp = SPEC[s.type];
     if (!sp) return 250;
@@ -77,7 +79,7 @@ export function generateLevel(def) {
       continue;
     }
     if (s.type === 'fuel') {
-      const x = (s.x0 + s.x1) / 2, want = s.variant === 'easy' ? 560 : s.variant === 'roof' ? 500 : 400;
+      const x = (s.x0 + s.x1) / 2, want = s.variant === 'easy' ? 560 : s.variant === 'roof' ? 640 - roofH : s.variant === 'peak' ? 640 - peakH : 400;
       const md = 0.62 * (x - px), y = clamp(want, py - md, py + md);
       kp.push({ x, y }); py = y; px = x;
       continue;
@@ -131,6 +133,14 @@ export function generateLevel(def) {
     ground[i] = Math.max(g, b + 6);
     const mc = 6 + 46 * fbm(x / 70, def.seed + 23) + 16 * fbm(x / 26, def.seed + 31, 2);
     ceil[i] = lerp(-320, t - mc, cw[i]);
+  }
+  // Sommets aménagés : une montagne à 45° avec un replat pour l'héliport.
+  for (const s of secs) {
+    if (s.type !== 'fuel' || s.variant !== 'peak') continue;
+    const cx = (s.x0 + s.x1) / 2, half = (80 * shrink) / 2 + 6;
+    for (let i = Math.floor(s.x0 / STEP); i <= Math.ceil(s.x1 / STEP); i++) {
+      ground[i] = Math.min(ground[i], 700 - peakH + Math.max(0, Math.abs(i * STEP - cx) - half));
+    }
   }
 
   const samp = (arr) => (x) => {
@@ -196,22 +206,26 @@ export function generateLevel(def) {
         const x = (s.x0 + s.x1) / 2, gy = groundAt(x), v = s.variant;
         let pad;
         if (v === 'roof') {
-          const w = 92, top = gy - 140;
+          const pw = 86 * shrink, w = pw + 6, top = gy - roofH;
           push({ kind: 'pillar', st: pick(th.pillar), x, y: top, w, h: gy + 24 - top, shapes: [{ p: rectPoly(x - w / 2, top, w, gy + 24 - top) }], minX: x - w / 2, maxX: x + w / 2 });
-          pad = { x, y: top, w: 86 };
-        } else if (v === 'trees') {
+          pad = { x, y: top, w: pw };
+        } else if (v === 'peak') pad = { x, y: gy, w: 80 * shrink };
+        else if (v === 'trees') {
           // clairière étroite entre deux grands arbres : descente verticale
-          tree(x - 70, 3, 0); tree(x + 70, 3, 0);
-          for (let k = 0; k < 3; k++) items.push({ type: 'star', x, y: gy - 50 - k * 58 });
-          pad = { x, y: gy, w: 66 };
+          const off = Math.max(52, 70 - 2 * lv);
+          tree(x - off, 3, 0); tree(x + off, 3, 0);
+          items.push({ type: 'star', x, y: gy - 30 });
+          pad = { x, y: gy, w: Math.max(50, 66 * shrink) };
         } else if (v === 'cave') {
-          // abri rocheux ouvert à gauche : entrer sous la dalle, se poser, ressortir en marche arrière
-          push({ kind: 'shelter', x, y: gy - 150, w: 200, g: gy, minX: x - 100, maxX: x + 100,
-            shapes: [{ p: rectPoly(x - 100, gy - 150, 200, 62) }, { p: rectPoly(x + 76, gy - 150, 24, 174) }] });
-          for (let k = 0; k < 3; k++) items.push({ type: 'star', x: x - 84 + k * 46, y: gy - 40 });
-          pad = { x: x + 12, y: gy, w: 84 };
-        } else pad = { x, y: gy, w: 130 };
-        pads.push({ ...pad, kind: 'fuel', variant: v, main: v === 'easy' || v === 'roof' });
+          // abri ouvert à gauche : entrer sous la dalle, se poser, ressortir en marche arrière
+          const clr = 88 - 2 * def.id, top = gy - clr - 62;
+          const built = ['building', 'neon', 'pagoda', 'lighthouse'].includes(th.pillar[0]);
+          push({ kind: 'shelter', st: built ? 'building' : 'rock', x, y: top, clr, w: 200, g: gy, minX: x - 100, maxX: x + 100,
+            shapes: [{ p: rectPoly(x - 100, top, 200, 62) }, { p: rectPoly(x + 76, top, 24, gy + 24 - top) }] });
+          items.push({ type: 'star', x: x + 48, y: gy - 30 });
+          pad = { x: x + 4, y: gy, w: 84 * shrink };
+        } else pad = { x, y: gy, w: 130 * shrink };
+        pads.push({ ...pad, kind: 'fuel', variant: v, main: v === 'easy' || v === 'roof' || v === 'peak' });
         break;
       }
       case 'hills':
@@ -267,27 +281,54 @@ export function generateLevel(def) {
       }
     }
   }
+  // --- 4. Étoiles : 3 par niveau, une par héliport bonus, le reste au fond de recoins entre deux arbres.
+  const nooks = secs.filter((q) => ['hills', 'forest', 'towers', 'gates', 'open', 'wind', 'movers', 'mills'].includes(q.type));
+  const need = 3 - items.filter((i) => i.type === 'star').length;
+  for (let k = 0; k < need; k++) {
+    const q = nooks[Math.floor(((k + 0.5) * nooks.length) / need)];
+    let bx = (q.x0 + q.x1) / 2, bd = -1;
+    for (let x = q.x0 + 120; x < q.x1 - 120; x += 20) { const dp = groundAt(x) - bAt(x); if (dp > bd) { bd = dp; bx = x; } }
+    tree(bx - 46, 3, 0); tree(bx + 46, 3, 0);
+    items.push({ type: 'star', x: bx, y: groundAt(bx) - 24 });
+  }
   obs.sort((p, q) => p.minX - q.minX);
 
-  // --- 4. Orbes, anneaux
-  const geys = obs.filter((o) => o.kind === 'geyser');
-  let x = 620;
-  while (x < LEN - 760) {
-    const n = 5 + ((R() * 5) | 0), m = R(), off = m < 0.45 ? 0 : m < 0.75 ? 0.75 : -0.75;
-    for (let i = 0; i < n && x < LEN - 760; i++, x += 62) {
-      if (geys.some((g) => Math.abs(g.x - x) < 46)) continue;
-      const e = Math.sin((Math.PI * (i + 0.5)) / n);
-      items.push({ type: 'orb', x, y: pathAt(x) + off * e * (gapAt(x) / 2 - 40) });
+  // --- 5. Pièces : exactement 100, hors de la trajectoire sûre (au ras du sol, des obstacles ou du plafond).
+  const ptDist = (sh, x, y) => {
+    if (sh.c) return Math.hypot(x - sh.c[0], y - sh.c[1]) - sh.c[2];
+    const P = sh.p, n = P.length / 2;
+    let best = 1e9, inside = n > 2;
+    for (let i = 0; i < n; i++) {
+      const x1 = P[i * 2], y1 = P[i * 2 + 1], k = ((i + 1) % n) * 2, ex = P[k] - x1, ey = P[k + 1] - y1;
+      const t = clamp(((x - x1) * ex + (y - y1) * ey) / (ex * ex + ey * ey || 1), 0, 1);
+      best = Math.min(best, Math.hypot(x - x1 - ex * t, y - y1 - ey * t));
+      if (inside && ex * (y - y1) - ey * (x - x1) < 0) inside = false;
     }
-    x += rand(170, 380);
+    return inside ? -best : best;
+  };
+  const inFuel = (x) => secs.some((q) => q.type === 'fuel' && x > q.x0 - 40 && x < q.x1 + 40);
+  const free = (x, y) => {
+    if (y < 44 || y > groundAt(x) - 15 || y < ceilAt(x) + 15 || inFuel(x)) return false;
+    for (const o of obs) {
+      if (o.minX > x + 110) break;
+      if (o.maxX < x - 110) continue;
+      if (o.dyn) { if (Math.abs(o.x - x) < (o.kind === 'mill' ? o.len + 14 : 44)) return false; continue; }
+      for (const sh of o.shapes) if (ptDist(sh, x, y) < 17) return false;
+    }
+    return true;
+  };
+  let coins = [];
+  for (let pass = 0; pass < 4 && coins.length < 100; pass++) {
+    coins = [];
+    for (let x = 600 + pass * 17; x < LEN - 820; x += rand(90, 200) / (1 + pass * 0.5)) {
+      const m = R(), deep = groundAt(x) - bAt(x) > 50;
+      for (let i = 0; i < 5; i++, x += 34) {
+        const y = deep && m < 0.6 ? groundAt(x) - 21 : m < 0.8 || tAt(x) < 80 ? bAt(x) - 10 : tAt(x) + 10;
+        if (x < LEN - 820 && free(x, y)) coins.push({ type: 'orb', x, y });
+      }
+    }
   }
-  for (const s of secs) {
-    if (!['hills', 'peaks', 'forest', 'towers', 'cave', 'wind', 'gates'].includes(s.type) || s.kp.length < 2) continue;
-    if (R() < 0.3) continue;
-    const k = s.kp[(s.kp.length / 2) | 0];
-    const rx = s.type === 'gates' ? k.x + 140 : k.x;
-    items.push({ type: 'ring', x: rx, y: pathAt(rx) });
-  }
+  for (let i = 0; i < 100 && coins.length; i++) items.push(coins[Math.floor((i * coins.length) / Math.max(100, coins.length))] );
   items.sort((p, q) => p.x - q.x);
   const endPad = { x: LEN - 300, y: groundAt(LEN - 300), w: 150, kind: 'end' };
   pads.push(endPad);
@@ -295,14 +336,13 @@ export function generateLevel(def) {
   // Réservoir : dimensionné sur le plus long trajet entre deux ravitaillements principaux.
   let maxGap = 0, lastX = 170;
   for (const p of pads) if (p.kind !== 'fuel' || p.main) { maxGap = Math.max(maxGap, p.x - lastX); lastX = p.x; }
-  const tank = (maxGap / 200) * (def.id <= 2 ? 2 : 1.75); // secondes de rotor à pleine puissance
+  const tank = (maxGap / 200) * (def.id <= 2 ? 1.8 : 1.6); // secondes de rotor à pleine puissance
 
   return {
     def, length: LEN, secs, obs, items, zones, pads, tank,
     ground, ceil, groundAt, ceilAt, pathAt, gapAt, groundSlope: slope(ground), ceilSlope: slope(ceil),
     startX: 170, pad: endPad,
     orbTotal: items.filter((i) => i.type === 'orb').length,
-    ringTotal: items.filter((i) => i.type === 'ring').length,
     starTotal: items.filter((i) => i.type === 'star').length,
   };
 }

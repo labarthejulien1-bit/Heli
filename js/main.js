@@ -6,10 +6,10 @@ import { Renderer } from './render.js';
 import { drawHeli } from './helidraw.js';
 import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
-import { load, store, defaults, importSave, medalCount, starCount, levelUnlocked, refreshUnlocks } from './save.js';
+import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -37,7 +37,8 @@ const ICON = {
 const persist = () => store(save);
 const rankIdx = (n) => { let r = 0; RANKS.forEach((m, i) => { if (n >= m) r = i; }); return r; };
 const objLabel = (o) => t('o_' + o.t, o.t === 'time' ? fmtTime(o.v) : o.v);
-const unlockLabel = (u) => (u.medals ? t('u_medals', u.medals) : `${t('level')} ${u.l} · ${objLabel(LEVELS[u.l - 1].objectives[u.o])}`);
+const priceLabel = (p) => (p.stars ? `★ ${p.stars}` : `<i class="coin"></i>${p.coins}`);
+const wallet = () => `<span class="wallet"><span><i class="coin"></i>${save.coins}</span><b>★ ${starWallet(save)}</b></span>`;
 const nextLevelId = () => { for (const l of LEVELS) if (levelUnlocked(save, l.id) && !save.levels[l.id]?.done) return l.id; return save.lastLevel; };
 function vibe(p) { if (save.settings.vibe && navigator.vibrate) try { navigator.vibrate(p); } catch { /* non pris en charge */ } }
 let toastT = 0;
@@ -69,7 +70,6 @@ function startLevel(id) {
   S.game = new Game(S.level, heliOf(save.heli));
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
-  $('#cpMarks').innerHTML = S.level.pads.filter((p) => p.kind === 'fuel').map((p) => `<b class="${p.main ? '' : 'bonus'}" style="left:${(p.x / S.level.pad.x) * 100}%"></b>`).join('');
   lowBeep = 0;
   $('#fps').hidden = !save.settings.fps;
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart();
@@ -102,8 +102,8 @@ function home() {
   const m = medalCount(save), id = nextLevelId();
   if (S.levelId !== id) setDemo(id);
   ui.innerHTML = `<section class="screen home">
-    <button class="chip" data-go="profile"><span class="avatar">${esc(save.pilot[0].toUpperCase())}</span><span><b>${esc(save.pilot)}</b><small>${t('rank' + rankIdx(m))} · ★ ${m}/${TOTAL_MEDALS}</small></span></button>
-    <div class="title"><h1>HELI</h1><p>${t('tagline')}</p></div>
+    <div class="top"><button class="chip" data-go="profile"><span class="avatar">${esc(save.pilot[0].toUpperCase())}</span><span><b>${esc(save.pilot)}</b><small>${t('rank' + rankIdx(m))} · ${m}/${TOTAL_MEDALS}</small></span></button>${wallet()}</div>
+    <div class="title"><h1>HELI<span>ADVENTURE</span></h1><p>${t('tagline')}</p></div>
     <button class="btn primary big" data-play="${id}">${ICON.play}<span>${t('play')}<small>${t('level')} ${id} · ${t('lvl' + id)}</small></span></button>
   </section>${nav('home')}`;
 }
@@ -122,7 +122,7 @@ function levels() {
     const open = levelUnlocked(save, l.id), rec = save.levels[l.id];
     return `<button class="lvl ${open ? '' : 'locked'}" data-level="${l.id}" style="--a:${l.sky[0][0]};--b:${l.sky[0][1]};--gr:${l.ground}">
       <span class="n">${l.id}</span>
-      <span class="name">${t('lvl' + l.id)}<small>${open ? `★ ${rec?.stars || 0}/${getLevel(l.id).starTotal}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', l.id - 1)}</small></span>
+      <span class="name">${t('lvl' + l.id)}<small>${open ? `★ ${levelStars(save, l.id)}/3${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', l.id - 1)}</small></span>
       ${open ? `<span class="medals">${[0, 1, 2].map((i) => `<i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
     </button>`;
   }).join('')}</div></section>${nav('levels')}`;
@@ -132,7 +132,7 @@ function levelSheet(id) {
   if (!levelUnlocked(save, id)) return toast(t('lockedLevel', id - 1));
   setDemo(id);
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
-    <h2>${id} · ${t('lvl' + id)}</h2><p class="sub">★ ${rec?.stars || 0}/${getLevel(id).starTotal} ${t('stars').toLowerCase()}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
+    <h2>${id} · ${t('lvl' + id)}</h2><p class="sub">★ ${levelStars(save, id)}/3 ${t('stars').toLowerCase()}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
     ${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
     <button class="btn primary" style="width:100%;margin-top:14px" data-play="${id}">${ICON.play}${t('play')}</button>
   </div></div>`);
@@ -140,14 +140,14 @@ function levelSheet(id) {
 
 function hangar() {
   const max = { power: 2.35, agility: 260, armor: 190 };
-  ui.innerHTML = `<section class="screen scrim"><h2>${t('hangar')}</h2><div class="cards">${HELIS.map((h) => {
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('hangar')}${wallet()}</h2><div class="cards">${HELIS.map((h) => {
     const own = save.helis.includes(h.id), sel = save.heli === h.id;
     const bar = (k, v) => `<div class="bar"><span>${t('stat_' + k)}</span><i><b style="width:${Math.round(v * 100)}%"></b></i></div>`;
     return `<div class="hcard panel ${own ? '' : 'locked'}" id="h-${h.id}">
-      <canvas data-heli="${h.id}"></canvas><h4>${own ? h.name : '???'}</h4>
+      <canvas data-heli="${h.id}"></canvas><h4>${h.name}</h4>
       ${bar('power', (h.power - 1.6) / (max.power - 1.6))}${bar('agility', h.agility / max.agility)}${bar('armor', h.armor / max.armor)}${bar('speed', (1.25 - h.drag) / 0.5)}
       ${own ? `<button class="btn ${sel ? 'ghost' : 'primary'}" data-heli-sel="${h.id}" ${sel ? 'disabled' : ''}>${sel ? '✓ ' + t('selected') : t('select')}</button>`
-        : `<div class="req"><small>${ICON.lock.replace('<svg', '<svg style="width:12px;height:12px"')} ${t('toUnlock')}</small>${unlockLabel(h.unlock)}</div>`}
+        : `<button class="btn primary ${canBuy(save, h) ? '' : 'cant'}" data-buy="${h.id}">${t('buy')} · ${priceLabel(h.price)}</button>`}
     </div>`;
   }).join('')}</div></section>${nav('hangar')}`;
   ui.querySelectorAll('canvas[data-heli]').forEach((c) => heliCanvas(c, heliOf(c.dataset.heli).look, 0.95));
@@ -214,7 +214,7 @@ function pause() {
   const l = S.level.def, g = S.game;
   ui.innerHTML = `<div class="overlay center"><div class="sheet col">
     <h2>${t('pause')}</h2><p class="sub">${l.id} · ${t('lvl' + l.id)}</p>
-    <div>${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${save.levels[l.id]?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}${o.t === 'orbs' ? `<small>${g.stats.orbs}/${Math.ceil((S.level.orbTotal * o.v) / 100)}</small>` : o.t === 'rings' ? `<small>${g.stats.rings}/${S.level.ringTotal}</small>` : o.t === 'hits' ? `<small>${g.stats.hits}/${o.v}</small>` : o.t === 'stars' ? `<small>${g.stats.stars}/${S.level.starTotal}</small>` : ''}</div>`).join('')}</div>
+    <div>${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${save.levels[l.id]?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}${o.t === 'orbs' ? `<small>${g.stats.orbs}/${Math.ceil((S.level.orbTotal * o.v) / 100)}</small>` : o.t === 'hits' ? `<small>${g.stats.hits}/${o.v}</small>` : o.t === 'stars' ? `<small>${g.stats.stars}/${S.level.starTotal}</small>` : ''}</div>`).join('')}</div>
     <button class="btn primary" data-act="resume">${ICON.play}${t('resume')}</button>
     <button class="btn" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button>
@@ -223,10 +223,9 @@ function pause() {
 function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorStart(); guardBack(); }
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
-  const hasCp = S.game.padIdx > 0, dry = S.game.fuel <= 0;
+  const dry = S.game.fuel <= 0;
   ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${S.level.def.id} · ${t('lvl' + S.level.def.id)}</p>
-    ${hasCp ? `<button class="btn primary" data-act="respawn">${t('fromPad')}</button>` : ''}
-    <button class="btn ${hasCp ? '' : 'primary'}" data-act="restart">${t('restart')}</button>
+    <button class="btn primary" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button></div></div>`;
 }
 function showResult() {
@@ -238,16 +237,17 @@ function showResult() {
   const fresh = done.map((d, i) => d && !rec.obj[i]);
   rec.done = true; rec.obj = rec.obj.map((o, i) => o || done[i]);
   if (rec.time == null || g.t < rec.time) rec.time = g.t;
-  rec.orbs = Math.max(rec.orbs, g.stats.orbs); rec.stars = Math.max(rec.stars || 0, g.stats.stars);
+  rec.orbs = Math.max(rec.orbs, g.stats.orbs);
+  // Les pièces du vol s'ajoutent au porte-monnaie ; chaque étoile ne compte qu'une fois.
+  save.coins += g.stats.orbs;
+  let k = 0; L.items.forEach((it, i) => { if (it.type === 'star') { if (g.taken[i]) rec.sm = (rec.sm || 0) | (1 << k); k++; } });
   save.stats.landings++; save.tut = true;
-  const newHelis = refreshUnlocks(save);
   commitRun(); persist();
   const hasNext = id < LEVELS.length;
   ui.innerHTML = `<div class="overlay"><div class="sheet">
     <h2>${t('levelDone')}</h2><p class="sub">${id} · ${t('lvl' + id)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
-    ${newHelis.map((h) => `<div class="banner"><canvas data-heli="${h.id}"></canvas><span>${t('newHeli')}<br>${h.name}</span></div>`).join('')}
     ${def.objectives.map((o, i) => `<div class="obj ${fresh[i] ? 'new' : ''}"><i class="medal ${done[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
-    <div class="stats3"><div><b>${fmtTime(g.t)}</b><small>${t('time')}</small></div><div><b>${g.stats.orbs}/${L.orbTotal}</b><small>${t('orbs')}</small></div><div><b>★ ${g.stats.stars}/${L.starTotal}</b><small>${t('stars')}</small></div><div><b>${g.stats.hits}</b><small>${t('hits')}</small></div></div>
+    <div class="stats3"><div><b>${fmtTime(g.t)}</b><small>${t('time')}</small></div><div><b><i class="coin"></i>+${g.stats.orbs}</b><small>${t('orbs')} · ${save.coins}</small></div><div><b>★ ${g.stats.stars}/3</b><small>${t('stars')}</small></div><div><b>${g.stats.hits}</b><small>${t('hits')}</small></div></div>
     <div class="col">
       ${hasNext ? `<button class="btn primary" data-play="${id + 1}">${ICON.play}${t('next')}</button>` : ''}
       <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
@@ -268,6 +268,11 @@ ui.addEventListener('click', (e) => {
   if (d.go) return go(d.go);
   if (d.play) return startLevel(+d.play);
   if (d.level) return levelSheet(+d.level);
+  if (d.buy) {
+    const h = heliOf(d.buy);
+    if (!buy(save, h)) return toast(t('notEnough'));
+    save.heli = h.id; persist(); snd.sfx('win'); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
+  }
   if (d.heliSel) { save.heli = d.heliSel; persist(); setDemo(S.levelId); return hangar(); }
   if (d.quality) { save.settings.quality = d.quality; persist(); R.resize(d.quality); R.setLevel(S.level); return settings(); }
   switch (d.act) {
@@ -279,7 +284,6 @@ ui.addEventListener('click', (e) => {
     }
     case 'resume': resume(); break;
     case 'restart': commitRun(); startLevel(S.levelId); break;
-    case 'respawn': S.game.reset(true); S.ended = false; S.mode = 'play'; ui.innerHTML = ''; snd.rotorStart(); R.snap = true; break;
     case 'quit': commitRun(); setDemo(); go('home'); break;
     case 'install': installEvt?.prompt(); installEvt = null; settings(); break;
     case 'export': {
@@ -370,9 +374,8 @@ function events() {
   const g = S.game, play = S.mode === 'play', def = S.level.def;
   for (const e of g.ev) {
     switch (e.type) {
-      case 'orb': R.spawn(e.x, e.y, 6, { v: 70, col: def.accent, life: 0.4, size: 1.6 }); if (play) snd.sfx('orb'); break;
-      case 'ring': R.spawn(e.x, e.y, 18, { v: 130, col: '#ffffff', life: 0.6, size: 1.8 }); if (play) { snd.sfx('ring'); vibe(15); } break;
-      case 'hit': R.spawn(e.x, e.y, 14, { v: 150, col: def.accent, life: 0.5, g: 300 }); R.flash = 1; R.shake = 14; if (play) { snd.sfx('hit'); vibe(60); } break;
+      case 'orb': R.spawn(e.x, e.y, 6, { v: 70, col: '#ffd34d', life: 0.4, size: 1.6 }); if (play) snd.sfx('orb'); break;
+      case 'hit': R.spawn(e.x, e.y, 14, { v: 150, col: def.accent, life: 0.5, g: 300 }); R.flash = e.big ? 1 : 0.5; R.shake = e.big ? 22 : 9; if (play) { snd.sfx(e.big ? 'hit' : 'bump'); if (e.big) snd.sfx('bump'); vibe(e.big ? 120 : 40); } break;
       case 'bump': if (play) snd.sfx('bump'); break;
       case 'land': R.spawn(g.heli.x, g.heli.y + 11, 8, { a: -Math.PI / 2, spread: 3, v: 60, col: 'rgba(255,255,255,.5)', life: 0.5 }); break;
       case 'crash': R.spawn(e.x, e.y, 46, { v: 230, col: '#ff8a3a', life: 1, g: 220, size: 3 }); R.spawn(e.x, e.y, 16, { v: 60, col: 'rgba(30,30,40,.7)', life: 1.4, size: 5, grow: 8 }); R.shake = 26; if (play) { snd.sfx('crash'); snd.rotorStop(); vibe([80, 40, 180]); } break;
@@ -386,21 +389,15 @@ function events() {
   g.ev.length = 0;
 }
 let lowBeep = 0;
-const fuelFill = $('#fuelFill'), fuelBar = $('#fuelBar'), starTxt = $('#starTxt'), hpFill = $('#hpFill'), progFill = $('#progFill'), orbTxt = $('#orbTxt'), ringTxt = $('#ringTxt'), timeTxt = $('#timeTxt'), hint = $('#hint'), fpsEl = $('#fps');
+const fuelFill = $('#fuelFill'), fuelBar = $('#fuelBar'), starTxt = $('#starTxt'), hint = $('#hint'), fpsEl = $('#fps');
 let hintKey = '';
 function updateHud() {
-  const g = S.game, L = S.level, h = g.heli, k = h.hp / g.H.armor;
-  hpFill.style.width = k * 100 + '%';
-  hpFill.style.background = k > 0.5 ? '#6ee7a0' : k > 0.25 ? '#ffd166' : '#ff6b6b';
-  progFill.style.width = clamp(h.x / L.pad.x, 0, 1) * 100 + '%';
+  const g = S.game, L = S.level, h = g.heli;
   fuelFill.style.width = g.fuel * 100 + '%';
   const low = g.fuel < 0.22 && g.state === 'fly';
   fuelBar.classList.toggle('low', low);
   if (low && g.fuel > 0 && time > lowBeep) { lowBeep = time + 1.1; snd.tone(520, 0.09, 'square', 0.1); snd.tone(520, 0.09, 'square', 0.1, 0.16); }
-  starTxt.textContent = L.starTotal ? `★ ${g.stats.stars}/${L.starTotal}` : '';
-  orbTxt.textContent = `● ${g.stats.orbs}/${L.orbTotal}`;
-  ringTxt.textContent = L.ringTotal ? `◯ ${g.stats.rings}/${L.ringTotal}` : '';
-  timeTxt.textContent = fmtTime(g.t);
+  starTxt.textContent = '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars);
   let key = '';
   const fp = L.pads[1];
   if (g.fuel < 0.22 && g.fuel > 0 && g.state === 'fly') key = 'lowFuel';
@@ -430,7 +427,7 @@ function loop(ts) {
     events();
     if (S.mode === 'demo') {
       if (g.state === 'win' && g.stateT > 2.5) { S.game = new Game(S.level, g.H); R.snap = true; }
-      else if (g.state === 'dead' && g.stateT > 1.5) { g.reset(true); R.snap = true; }
+      else if (g.state === 'dead' && g.stateT > 1.5) { S.game = new Game(S.level, g.H); R.snap = true; }
     } else {
       snd.rotorSet(g.heli.power);
       if (!S.ended && g.state === 'win' && g.stateT > 1.3) showResult();
