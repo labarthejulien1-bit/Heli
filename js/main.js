@@ -9,7 +9,7 @@ import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -67,12 +67,12 @@ function setDemo(id = nextLevelId()) {
 }
 function startLevel(id) {
   S.mode = 'play'; S.levelId = id; S.level = getLevel(id); S.ended = false;
-  S.game = new Game(S.level, heliOf(save.heli));
+  S.game = new Game(S.level, heliOf(save.heli), save.levels[id]?.sm || 0);
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
   lowBeep = 0; timeShown = -1;
   $('#fps').hidden = !save.settings.fps;
-  snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart();
+  snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
   save.lastLevel = id; save.stats.flights++; persist();
   requestWake(); guardBack();
 }
@@ -220,7 +220,7 @@ function pause() {
     <button class="btn ghost" data-act="quit">${t('quit')}</button>
   </div></div>`;
 }
-function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorStart(); guardBack(); }
+function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorStart(S.game.H); guardBack(); }
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
   const dry = S.game.fuel <= 0;
@@ -271,9 +271,9 @@ ui.addEventListener('click', (e) => {
   if (d.buy) {
     const h = heliOf(d.buy);
     if (!buy(save, h)) return toast(t('notEnough'));
-    save.heli = h.id; persist(); snd.sfx('win'); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
+    save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
-  if (d.heliSel) { save.heli = d.heliSel; persist(); setDemo(S.levelId); return hangar(); }
+  if (d.heliSel) { save.heli = d.heliSel; persist(); snd.preview(heliOf(d.heliSel)); setDemo(S.levelId); return hangar(); }
   if (d.quality) { save.settings.quality = d.quality; persist(); R.resize(d.quality); R.setLevel(S.level); return settings(); }
   switch (d.act) {
     case 'closeSheet': b.remove(); break;

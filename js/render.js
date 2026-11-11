@@ -247,12 +247,13 @@ export class Renderer {
     }
     c.beginPath(); c.moveTo(0, vh);
     const step = st === 'mesa' || st === 'pines' || st === 'spires' ? 4 : 8;
-    for (let x = 0; x <= VW + step; x += step) {
+    // Les points sont calés sur des positions fixes du décor : la silhouette glisse sans se déformer.
+    for (let x = -(((u0 % step) + step) % step); x <= VW + step; x += step) {
       const u = u0 + x;
       let hh;
       if (st === 'jag') hh = amp * (0.35 * fbm(u / 230, seed) + 0.75 * (1 - Math.abs(2 * noise1(u / 170, seed + 3) - 1)));
       else if (st === 'hill') hh = amp * fbm(u / 260, seed, 2);
-      else if (st === 'pines') hh = amp * 0.7 * fbm(u / 240, seed, 2) + 12 * Math.abs(((u / 12) % 2) - 1) + 8 * hash(Math.floor(u / 12), seed);
+      else if (st === 'pines') { const k = Math.round(u / 4), tooth = [0, 0.55, 1, 0.45][((k % 4) + 4) % 4]; hh = amp * 0.7 * fbm(u / 240, seed, 2) + tooth * (9 + 9 * hash(Math.floor((k + 1) / 4), seed)); }
       else if (st === 'dunes') hh = amp * (0.12 + 0.8 * Math.abs(Math.sin(u / 200 + seed * 1.3)) * (0.45 + 0.55 * noise1(u / 520, seed)));
       else if (st === 'spires') hh = amp * (0.25 * fbm(u / 200, seed) + 1.15 * Math.pow(noise1(u / 46, seed + 3), 3));
       else { const n = fbm(u / 210, seed, 2); hh = amp * (Math.floor(n * 6) / 6 * 1.1 + 0.15 * n); }

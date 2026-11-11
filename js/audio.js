@@ -38,30 +38,73 @@ export class Sound {
   suspend() { if (this.ac && this.ac.state === 'running') this.ac.suspend(); }
   resume() { if (this.ac && this.ac.state === 'suspended') this.ac.resume(); }
 
-  // --- Rotor : bruit filtré, haché à la fréquence des pales
-  rotorStart() {
+  // --- Rotor : bruit filtré haché à la fréquence des pales, avec une signature par appareil.
+  // f : couleur du souffle (Hz), chop : cadence des pales, q : résonance, wave : forme du hachage,
+  // whine : sifflement de turbine [fréquence, volume, forme], dual : deux rotors qui battent entre eux.
+  profile(heli) {
+    const P = {
+      bubble: { f: 170, chop: 13 }, sleek: { f: 215, chop: 15, whine: [620, 0.02] }, heavy: { f: 120, chop: 9, wave: 'square' },
+      attack: { f: 150, chop: 12, q: 1.4, whine: [480, 0.03] }, twin: { f: 105, chop: 8, dual: 1 },
+      stealth: { f: 270, chop: 18, q: 0.5, vol: 0.65, whine: [900, 0.012] }, future: { f: 300, chop: 20, whine: [760, 0.035] },
+      retro: { f: 190, chop: 10.5, q: 2.2, wave: 'square' }, coax: { f: 160, chop: 14, dual: 1 }, rescue: { f: 130, chop: 10, whine: [380, 0.015] },
+      crane: { f: 95, chop: 7.5, wave: 'square', q: 1.2 }, tilt: { f: 185, chop: 16, dual: 1, whine: [540, 0.03] },
+      drone: { f: 520, chop: 34, q: 3, vol: 0.8, whine: [330, 0.05, 'sawtooth'] }, manta: { f: 285, chop: 19, q: 0.6, whine: [840, 0.03] },
+      dragon: { f: 135, chop: 10, q: 1.6, whine: [110, 0.06, 'sawtooth'] }, ufo: { ufo: 1 },
+    }[heli?.look?.body] || { f: 170, chop: 13 };
+    // les appareils agiles tournent plus vite, les blindés sonnent plus grave
+    const k = heli ? Math.sqrt(heli.agility / 180) : 1, low = heli ? Math.pow(120 / heli.armor, 0.35) : 1;
+    return { q: 0.8, wave: 'sawtooth', vol: 1, ...P, f: (P.f || 0) * low, chop: (P.chop || 0) * k };
+  }
+  rotorStart(heli) {
     if (!this.ac || this.rot) return;
-    const ac = this.ac, src = ac.createBufferSource(); src.buffer = this.noise; src.loop = true;
-    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
-    const am = ac.createGain(), out = ac.createGain(), lfo = ac.createOscillator(), depth = ac.createGain();
-    lfo.type = 'sawtooth'; depth.gain.value = 0.5; am.gain.value = 0.5; out.gain.value = 0;
-    lfo.connect(depth); depth.connect(am.gain);
-    src.connect(bp); bp.connect(am); am.connect(out); out.connect(this.sg);
-    src.start(); lfo.start();
-    this.rot = { src, bp, lfo, out };
+    const ac = this.ac, p = this.profile(heli), out = ac.createGain(), nodes = [];
+    out.gain.value = 0; out.connect(this.sg);
+    const osc = (type, freq, dest) => { const o = ac.createOscillator(); o.type = type; o.frequency.value = freq; o.connect(dest); o.start(); nodes.push(o); return o; };
+    const r = { p, out, nodes };
+    if (p.ufo) { // soucoupe : deux ondes pures qui battent, avec un vibrato
+      const g = ac.createGain(); g.gain.value = 0.5; g.connect(out);
+      r.hum = [osc('sine', 150, g), osc('sine', 153, g), osc('triangle', 600, g)];
+      const vib = ac.createGain(); vib.gain.value = 9; osc('sine', 6, vib);
+      r.hum.forEach((o) => vib.connect(o.frequency));
+    } else {
+      const src = ac.createBufferSource(); src.buffer = this.noise; src.loop = true;
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = p.q;
+      const am = ac.createGain(), depth = ac.createGain();
+      am.gain.value = 0.5; depth.gain.value = p.dual ? 0.28 : 0.5;
+      r.lfo = [osc(p.wave, p.chop, depth)]; depth.connect(am.gain);
+      if (p.dual) r.lfo.push(osc(p.wave, p.chop * 1.09, depth));
+      src.connect(bp); bp.connect(am); am.connect(out); src.start(); nodes.push(src);
+      r.bp = bp;
+      if (p.whine) { r.wg = ac.createGain(); r.wg.gain.value = 0; r.wg.connect(out); r.whine = osc(p.whine[2] || 'sine', p.whine[0], r.wg); }
+    }
+    this.rot = r;
   }
   rotorSet(power) {
     if (!this.rot) return;
-    const t = this.ac.currentTime, r = this.rot;
-    r.bp.frequency.setTargetAtTime(150 + 300 * power, t, 0.05);
-    r.lfo.frequency.setTargetAtTime(11 + 10 * power, t, 0.05);
-    r.out.gain.setTargetAtTime(0.03 + 0.26 * power, t, 0.05);
+    const t = this.ac.currentTime, r = this.rot, p = r.p, set = (prm, v) => prm.setTargetAtTime(v, t, 0.05);
+    if (p.ufo) {
+      set(r.hum[0].frequency, 150 + 90 * power); set(r.hum[1].frequency, 153 + 96 * power); set(r.hum[2].frequency, 600 + 380 * power);
+      set(r.out.gain, 0.04 + 0.2 * power);
+      return;
+    }
+    set(r.bp.frequency, p.f * (0.9 + 1.8 * power));
+    r.lfo.forEach((o, i) => set(o.frequency, p.chop * (0.8 + 0.75 * power) * (i ? 1.09 : 1)));
+    set(r.out.gain, (0.03 + 0.26 * power) * p.vol);
+    if (r.whine) { set(r.whine.frequency, p.whine[0] * (0.6 + 0.5 * power)); set(r.wg.gain, p.whine[1] * (0.25 + power)); }
   }
   rotorStop() {
     if (!this.rot) return;
     const r = this.rot; this.rot = null;
     r.out.gain.setTargetAtTime(0, this.ac.currentTime, 0.08);
-    setTimeout(() => { try { r.src.stop(); r.lfo.stop(); } catch { /* déjà arrêté */ } }, 400);
+    setTimeout(() => { for (const n of r.nodes) { try { n.stop(); } catch { /* déjà arrêté */ } } r.out.disconnect(); }, 400);
+  }
+  // Bref aperçu du moteur (au hangar).
+  preview(heli) {
+    if (!this.ac) return;
+    this.rotorStop(); this.rotorStart(heli); this.rotorSet(0.2);
+    const mine = this.rot;
+    setTimeout(() => { if (this.rot === mine) this.rotorSet(1); }, 60);
+    setTimeout(() => { if (this.rot === mine) this.rotorStop(); }, 1100);
   }
 
   tone(f, dur, type = 'sine', vol = 0.3, when = 0, slide = 0) {

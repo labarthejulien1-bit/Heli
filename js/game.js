@@ -34,8 +34,9 @@ function polyContact(pts, cx, cy, out) {
 }
 
 export class Game {
-  constructor(level, heli) {
-    this.L = level; this.H = heli;
+  // owned : masque des étoiles déjà acquises sur ce niveau (elles n'apparaissent plus).
+  constructor(level, heli, owned = 0) {
+    this.L = level; this.H = heli; this.owned = owned;
     this.ev = [];
     this.input = { thrust: false, tilt: BASE_TILT };
     this.reset(false);
@@ -49,6 +50,8 @@ export class Game {
       this.seen = new Uint8Array(L.pads.length);
       this.padIdx = 0; // dernier héliport atteint (point de reprise)
       this.stats = { orbs: 0, rings: 0, stars: 0, hits: 0, respawns: 0, padImpact: 0, dist: 0, lands: 0 };
+      let k = 0;
+      L.items.forEach((it, i) => { if (it.type === 'star') { if (this.owned & (1 << k)) { this.taken[i] = 1; this.stats.stars++; } k++; } });
     }
     const p = L.pads[this.padIdx];
     this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: maxHp(this.H), inv: 0, grounded: true, spin: 0, air: 0 };
