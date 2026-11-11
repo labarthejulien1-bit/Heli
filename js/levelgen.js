@@ -167,10 +167,13 @@ export function generateLevel(def) {
   const th = def.theme, slow = 1 / Math.sqrt((def.mod || {}).grav || 1); // en faible gravité, tout bouge plus lentement
   const push = (o) => { o.v = R(); obs.push(o); return o; };
 
-  function tree(x, scale = 1, extra = 30) {
-    const st = pick(th.tree), T = TREE[st], g = groundAt(x);
+  // side/clear : arbre placé à côté de x en laissant un passage libre de `clear` (demi-largeur garantie de chaque côté).
+  function tree(x, scale = 1, extra = 30, side = 0, clear = 0) {
+    const st = pick(th.tree), T = TREE[st];
     let h = rand(T.h[0], T.h[1]) * scale;
     let w = clamp(h * T.wr, T.wmin || 10, T.wmax || 90);
+    if (side) x += side * (clear / 2 + w / 2);
+    const g = groundAt(x);
     const top = Math.max(g - h, bMin(x, w) + 5 + rand(0, extra));
     h = g - top;
     if (h < 30) return;
@@ -218,8 +221,8 @@ export function generateLevel(def) {
         } else if (v === 'peak') pad = { x, y: gy, w: 80 * shrink };
         else if (v === 'trees') {
           // clairière étroite entre deux grands arbres : descente verticale
-          const off = Math.max(52, 70 - 2 * lv);
-          tree(x - off, 3, 0); tree(x + off, 3, 0);
+          const off = Math.max(84, 104 - 2 * lv); // largeur libre entre les deux arbres
+          tree(x, 3, 0, -1, off); tree(x, 3, 0, 1, off);
           items.push({ type: 'star', x, y: gy - 30 });
           pad = { x, y: gy, w: Math.max(50, 66 * shrink) };
         } else if (v === 'cave') {
@@ -228,7 +231,7 @@ export function generateLevel(def) {
           const built = ['building', 'neon', 'pagoda', 'lighthouse', 'castle', 'container', 'chimney', 'monolith'].includes(th.pillar[0]);
           push({ kind: 'shelter', st: built ? 'building' : 'rock', x, y: top, clr, w: 200, g: gy, minX: x - 100, maxX: x + 100,
             shapes: [{ p: rectPoly(x - 100, top, 200, 62) }, { p: rectPoly(x + 76, top, 24, gy + 24 - top) }] });
-          items.push({ type: 'star', x: x + 48, y: gy - 30 });
+          items.push({ type: 'star', x: x + 22, y: gy - 24 }); // au fond de l'abri : se poser suffit à la prendre
           pad = { x: x + 4, y: gy, w: 84 * shrink };
         } else pad = { x, y: gy, w: 130 * shrink };
         pads.push({ ...pad, kind: 'fuel', variant: v, main: v === 'easy' || v === 'roof' || v === 'peak' });
@@ -288,13 +291,23 @@ export function generateLevel(def) {
     }
   }
   // --- 4. Étoiles : 3 par niveau, une par héliport bonus, le reste au fond de recoins entre deux arbres.
-  const nooks = secs.filter((q) => ['hills', 'forest', 'towers', 'gates', 'open', 'wind', 'movers', 'mills'].includes(q.type));
+  // Emplacements candidats : le point le plus creux de chaque moitié des sections sans piliers.
+  const spots = [];
+  for (const q of secs) {
+    if (!['hills', 'forest', 'open', 'wind', 'movers'].includes(q.type)) continue;
+    const mid = (q.x0 + q.x1) / 2;
+    for (const [a, b] of [[q.x0 + 130, mid - 60], [mid + 60, q.x1 - 130]]) {
+      let bx = a, bd = -1;
+      for (let x = a; x < b; x += 20) { const dp = groundAt(x) - bAt(x); if (dp > bd) { bd = dp; bx = x; } }
+      spots.push(bx);
+    }
+  }
   const need = 3 - items.filter((i) => i.type === 'star').length;
   for (let k = 0; k < need; k++) {
-    const q = nooks[Math.floor(((k + 0.5) * nooks.length) / need)];
-    let bx = (q.x0 + q.x1) / 2, bd = -1;
-    for (let x = q.x0 + 120; x < q.x1 - 120; x += 20) { const dp = groundAt(x) - bAt(x); if (dp > bd) { bd = dp; bx = x; } }
-    tree(bx - 46, 3, 0); tree(bx + 46, 3, 0);
+    const bx = spots[Math.floor(((k + 0.5) * spots.length) / need)];
+    // dégage le couloir de descente : aucun autre arbre ni obstacle suspendu au-dessus de l'étoile
+    for (let i = obs.length - 1; i >= 0; i--) { const o = obs[i]; if ((o.kind === 'tree' || o.kind === 'hang' || o.dyn) && o.maxX > bx - 60 && o.minX < bx + 60) obs.splice(i, 1); }
+    tree(bx, 3, 0, -1, 84); tree(bx, 3, 0, 1, 84);
     items.push({ type: 'star', x: bx, y: groundAt(bx) - 24 });
   }
   obs.sort((p, q) => p.minX - q.minX);
@@ -343,12 +356,14 @@ export function generateLevel(def) {
   let maxGap = 0, lastX = 170;
   for (const p of pads) if (p.kind !== 'fuel' || p.main) { maxGap = Math.max(maxGap, p.x - lastX); lastX = p.x; }
   const mod = def.mod || {};
-  const tank = ((maxGap / 200) * (def.id <= 2 ? 1.8 : 1.6)) / Math.sqrt(mod.grav || 1) * (mod.windX < 0 ? 1.25 : 1); // secondes de rotor à pleine puissance
+  const tank = ((maxGap / 200) * (def.id <= 2 ? 1.55 : 1.4)) / Math.sqrt(mod.grav || 1) * (mod.windX < 0 ? 1.25 : 1); // secondes de rotor à pleine puissance
 
   return {
     def, length: LEN, secs, obs, items, zones, pads, tank,
     ground, ceil, groundAt, ceilAt, pathAt, gapAt, groundSlope: slope(ground), ceilSlope: slope(ceil),
     startX: 170, pad: endPad,
+    // largeur libre minimale au-dessus d'un point (sert à vérifier que les étoiles sont atteignables)
+    clearAbove: (x, y) => { let m = 1e9; const sh0 = obs.some((o) => o.kind === 'shelter' && o.minX < x && o.maxX > x); for (let yy = sh0 ? y : y - 20; yy > (sh0 ? y - 5 : Math.max(60, y - 130)); yy -= 10) for (const o of obs) { if (o.dyn || o.maxX < x - 120 || o.minX > x + 120) continue; for (const sh of o.shapes) m = Math.min(m, ptDist(sh, x, yy)); } return m; },
     orbTotal: items.filter((i) => i.type === 'orb').length,
     starTotal: items.filter((i) => i.type === 'star').length,
   };

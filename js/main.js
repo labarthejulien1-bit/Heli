@@ -9,7 +9,7 @@ import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -70,7 +70,7 @@ function startLevel(id) {
   S.game = new Game(S.level, heliOf(save.heli));
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
-  lowBeep = 0;
+  lowBeep = 0; timeShown = -1;
   $('#fps').hidden = !save.settings.fps;
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart();
   save.lastLevel = id; save.stats.flights++; persist();
@@ -389,6 +389,7 @@ function events() {
   g.ev.length = 0;
 }
 let lowBeep = 0;
+const timeTxt = $('#timeTxt'); let timeShown = -1;
 const fuelFill = $('#fuelFill'), fuelBar = $('#fuelBar'), starTxt = $('#starTxt'), hint = $('#hint'), fpsEl = $('#fps');
 let hintKey = '';
 function updateHud() {
@@ -398,6 +399,14 @@ function updateHud() {
   fuelBar.classList.toggle('low', low);
   if (low && g.fuel > 0 && time > lowBeep) { lowBeep = time + 1.1; snd.tone(520, 0.09, 'square', 0.1); snd.tone(520, 0.09, 'square', 0.1, 0.16); }
   starTxt.textContent = '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars);
+  // Chrono : temps du vol, et temps à battre (record personnel, sinon l'objectif de temps du niveau).
+  const sec = Math.floor(g.t);
+  if (sec !== timeShown) {
+    timeShown = sec;
+    const best = save.levels[L.def.id]?.time, goal = L.def.objectives.find((o) => o.t === 'time')?.v, target = best ?? goal;
+    timeTxt.innerHTML = `⏱ ${fmtTime(g.t)}${target != null ? `<small>${best != null ? t('best') : '◎'} ${fmtTime(target)}</small>` : ''}`;
+    timeTxt.classList.toggle('late', target != null && g.t > target);
+  }
   let key = '';
   const fp = L.pads[1];
   if (g.fuel < 0.22 && g.fuel > 0 && g.state === 'fly') key = 'lowFuel';

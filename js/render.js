@@ -560,11 +560,12 @@ export class Renderer {
           c.fillStyle = mix(col, def.rim, 0.3);
           for (let y = 30; y < bot; y += 46) { const sg = ((y / 46) & 1) ? 1 : -1; c.beginPath(); c.ellipse(x + sg * 7, y, 7, 3.4, sg * 0.6, 0, 7); c.fill(); }
           break;
-        case 'cloud': {
-          const r = w * 0.3, cc = mix(def.ground, '#39394d', 0.5);
-          c.fillStyle = cc; c.fillRect(x - w * 0.42, -80, w * 0.84, bot - r + 80);
-          c.beginPath(); c.arc(x - w * 0.24, bot - r, r, 0, 7); c.arc(x + w * 0.24, bot - r, r, 0, 7); c.arc(x, bot - r * 1.05, r * 1.05, 0, 7); c.arc(x - w * 0.42, bot - r * 2.2, r * 0.7, 0, 7); c.arc(x + w * 0.42, bot - r * 2.4, r * 0.8, 0, 7); c.fill();
-          if (Math.sin(time * 3 + o.v * 40) > 0.86) { c.strokeStyle = '#fff7c9'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - 4, bot - r * 1.4); c.lineTo(x + 3, bot - r * 0.8); c.lineTo(x - 3, bot - r * 0.6); c.lineTo(x + 2, bot - 2); c.stroke(); }
+        case 'cloud': { // nuage d'orage : colonne de volutes, sans arêtes droites
+          const r = w * 0.3, cc = mix(def.ground, '#39394d', 0.5), puff = (px, py, pr) => { c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill(); };
+          c.fillStyle = cc; c.fillRect(x - w * 0.36, -80, w * 0.72, bot - r + 80);
+          for (let y = bot - r * 2.2, k = 0; y > -40; y -= r * 0.95, k++) { puff(x - w * 0.36, y, r * (0.5 + 0.2 * hash(k, o.v * 31))); puff(x + w * 0.36, y - r * 0.4, r * (0.5 + 0.2 * hash(k + 9, o.v * 31))); }
+          puff(x - w * 0.24, bot - r, r); puff(x + w * 0.24, bot - r, r); puff(x, bot - r * 1.05, r * 1.05);
+          c.fillStyle = rgba('#ffffff', 0.07); puff(x - w * 0.2, bot - r * 1.5, r * 0.6);
           break;
         }
         default: { // grue, enseigne
