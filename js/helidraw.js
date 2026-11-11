@@ -39,6 +39,15 @@ function skids(c, col) {
   c.moveTo(-3, 7); c.lineTo(-5, 11.5); c.moveTo(9, 7); c.lineTo(11, 11.5); c.stroke();
 }
 
+// Petits outils de tracé (chemins SVG) pour les silhouettes inspirées d'appareils réels.
+function kit(c) {
+  const F = (d, col) => { c.fillStyle = col; c.fill(new Path2D(d)); };
+  const S = (d, col, w = 1.5) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(new Path2D(d)); };
+  const E = (x, y, rx, ry, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); };
+  const wheel = (x, y, r, sx, sy) => { S(`M${sx},${sy} L${x},${y}`, '#1b1b26', 1.4); E(x, y, r, r, '#1b1b26'); };
+  return { F, S, E, wheel };
+}
+
 export function drawHeli(c, look, t = 0, power = 0.6) {
   const { c1, c2, glass } = look, dark = '#1b1b26';
   c.save();
@@ -210,6 +219,53 @@ export function drawHeli(c, look, t = 0, power = 0.6) {
         c.fillStyle = on ? '#ffffff' : c2; c.beginPath(); c.arc(lx, 0.5 + Math.abs(k - 3) * -0.35 + 1, 1.7, 0, 7); c.fill();
       }
       c.strokeStyle = '#6b7484'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-12, 6); c.lineTo(-16, 11.4); c.moveTo(12, 6); c.lineTo(16, 11.4); c.moveTo(-19, 11.4); c.lineTo(-13, 11.4); c.moveTo(13, 11.4); c.lineTo(19, 11.4); c.stroke();
+      break;
+    }
+    case 'floats': { // hydravion : cabine classique posée sur deux grands flotteurs
+      const { F, S } = kit(c);
+      F('M21,1 Q15,-3 9,-9 Q4,-11 -4,-11 L-10,-9 L-12,-3 L-34,-6 L-34,-4 L-12,3 Q0,7 12,6 Q19,5 21,1Z', c1);
+      F('M-29,-6 L-36,-17 L-33,-17 L-27,-6Z', c2); F('M-25,-5.6 L-19,-5 L-19,-3.800 L-25,-4.400Z', c2);
+      F('M20,0.5 Q15,-3 9.5,-8.500 L4,-9 L4,-1Z', glass); F('M2,-9 L-4,-9 L-4,-2 L2,-1.500Z', glass); F('M-11,-0.5 L20,1.600 L19,3.200 L-11.500,1Z', c2);
+      S('M-5,5 L-7,9 M9,5.5 L11,9 M-5,5 L11,9', dark, 1.3);
+      F('M-15,8.5 L20,8.500 Q23,8.500 22,10.500 Q20,13.500 14,13.500 L-9,13.500 Q-15,13.500 -15,8.500Z', '#f8f9fa'); F('M-14,11.3 L21.500,11.300 Q20,13.500 14,13.500 L-9,13.500 Q-13.500,13.500 -14,11.300Z', c2);
+      tailRotor(c, -34, -6.5, t, power, dark);
+      rotor(c, 0, -16, 32, t, power, dark);
+      break;
+    }
+    case 'amphib': { // amphibie : coque de bateau, ballonnets sous des moignons d'aile, queue en T
+      const { F, S, E, wheel } = kit(c);
+      F('M23,-1 Q20,-8 10,-9 L-8,-9 L-13,-5 L-30,-7 L-30,-4 L-14,1 L-13,5 Q2,11 16,7 Q22,4 23,-1Z', c1);
+      F('M-13,5 Q2,11 16,7 Q21,4.5 23,-0.500 Q10,4 -14,2Z', c2);
+      F('M-26,-7 L-34,-19 L-30,-19 L-22,-7Z', c2); S('M-39,-19 L-27,-19', c2, 2.2);
+      F('M-8,-9 L-7,-13 L4,-13 L6,-9Z', c2);
+      F('M22,-1.5 Q19.500,-7 11,-8 L8,-1.500Z', glass); for (const x of [-8, -2, 4]) E(x, -4, 1.9, 1.9, glass);
+      F('M-7,-1 L8,-1 L8,1.200 L-7,1.200Z', c2); S('M0.5,1.2 L0.500,6', dark, 1.3); E(0.5, 7.5, 6.5, 2.3, look.c3 || c2);
+      wheel(-9, 10.5, 1.7, -9, 7); wheel(12, 10.5, 1.7, 12, 7);
+      tailRotor(c, -33, -12, t, power, dark);
+      rotor(c, -1, -17, 34, t, power, dark);
+      break;
+    }
+    case 'seaking': { // sauvetage en mer : coque, flotteur latéral, radôme
+      const { F, S, E } = kit(c);
+      F('M22,0 Q20,-7 10,-8 L-10,-8 L-14,-5 L-33,-7 L-37,-17 L-33,-17 L-30,-4 L-14,2 L-12,6 Q4,11 18,6 Q22,4 22,0Z', c1);
+      F('M-12,6 Q4,11 18,6 Q21,4.5 22,1 Q10,5 -13,3Z', c2); E(-5, -9.5, 5, 3, c2); F('M-8,-8 L-7,-12 L4,-12 L6,-8Z', '#c9c5b0');
+      F('M21,-0.5 Q19.500,-6 11,-7 L8,-1Z', glass); for (const x of [-9, -3, 3]) E(x, -3, 1.8, 1.8, glass);
+      S('M-6,4 L-6,8', dark, 1.4); F('M-12,7.5 Q-12,10.500 -8,10.500 L2,10.500 Q5,10.500 5,7.500Z', c2);
+      S('M-10,11.4 L6,11.400', dark, 1.4);
+      tailRotor(c, -35, -15, t, power, dark);
+      rotor(c, -1, -16, 35, t, power, dark);
+      break;
+    }
+    case 'mi8': { // gros porteur : nez vitré, hublots, roues
+      const { F, S, E, wheel } = kit(c);
+      F('M22,1 Q22,-8 12,-9 L-12,-9 L-16,-5 L-34,-7 L-34,-4.5 L-16,4 L-10,7 L12,7 Q21,6 22,1Z', c1);
+      F('M-29,-7 L-37,-18 L-33,-18 L-26,-7Z', c2); F('M-10,-9 Q-9,-14 -2,-14 L6,-14 L9,-9Z', c2);
+      F('M21.5,0.5 Q21.500,-7.500 12,-8.200 L10,1Z', glass); S('M16,-7.5 L15,0.500 M11,-3.500 L21.500,-3', c1, 1);
+      for (const x of [-10, -4.5, 1, 6]) E(x, -3.5, 1.9, 1.9, glass);
+      F('M-16,1.5 L21.500,2.500 L20,4.500 L-15.500,3.500Z', c2);
+      wheel(14, 10, 2.2, 14, 7); wheel(-6, 10.5, 2.6, -6, 7);
+      tailRotor(c, -34, -6, t, power, dark);
+      rotor(c, -1, -18, 35, t, power, dark);
       break;
     }
     case 'shark': { // requin : aileron, queue en croissant, ventre blanc, dents
