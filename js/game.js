@@ -9,6 +9,7 @@ export const DT = 1 / 120;
 export const BASE_TILT = 14, MIN_TILT = -28, MAX_TILT = 38;
 const HIT = [[2, 0, 11], [-19, -2, 6]]; // cercles de collision (repère de l'appareil)
 const SOFT = 45; // vitesse d'impact sous laquelle on ne subit aucun dégât
+const LAND = 64; // même seuil pour un posé à plat (plus tolérant)
 const HARD = 130; // au-delà : gros choc
 // État de l'appareil en points : choc doux = 1, gros choc = 3. Un appareil standard encaisse 6 points (2 gros chocs).
 export const maxHp = (H) => Math.max(4, Math.round((H.armor / 100) * 6));
@@ -82,7 +83,7 @@ export class Game {
       h.tilt += clamp(tt - h.tilt, -H.agility * dt, H.agility * dt);
     } else { h.spin += dt * 9; }
     if (h.inv > 0) h.inv -= dt;
-    if (fly && this.fuel > 0) { this.fuel -= (h.power * dt) / L.tank; if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
+    if (fly && this.fuel > 0 && !this.freeFuel) { this.fuel -= (h.power * dt) / L.tank; if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
 
     // Forces : poussée du rotor le long de l'axe de l'appareil, gravité, traînée, vent.
     const mod = L.def.mod || {}, Gl = G * (mod.grav || 1);
@@ -200,10 +201,11 @@ export class Game {
       return;
     }
     if (vn >= 0) { if (ny < -0.75 && vn < 20) h.grounded = true; return; }
-    const impact = -vn, soft = impact < SOFT, e = soft ? 0 : 0.4;
+    // Sur une surface portante (sol, toit, héliport) le train encaisse davantage : atterrir est plus tolérant.
+    const up = ny < -0.75, impact = -vn, soft = impact < (up ? LAND : SOFT), e = soft ? 0 : 0.4;
     h.vx -= (1 + e) * vn * nx; h.vy -= (1 + e) * vn * ny;
     if (!soft) {
-      this.damage(impact >= HARD ? 3 : 1, px, py);
+      this.damage(impact >= (up ? HARD + 25 : HARD) ? 3 : 1, px, py);
       this.ev.push({ type: 'bump', x: px, y: py });
     }
     if (Math.abs(h.x - L.pad.x) < L.pad.w / 2 + 12 && ny < -0.75 && impact > this.stats.padImpact && h.air > 0.15) this.stats.padImpact = impact;

@@ -320,6 +320,13 @@ export class Renderer {
         c.fillStyle = def.obs; c.fillRect(bx - 5, y - 20, 10, 22);
         c.fillStyle = here && g.fuel < 1 ? '#ffffff' : GREEN; c.fillRect(bx - 3.5, y - 18, 7, 6);
         c.strokeStyle = def.obs; c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx - 5, y - 8); c.quadraticCurveTo(bx - 12, y - 6, bx - 11, y - 14); c.stroke();
+        // panneau atelier : une clé, pour montrer que l'arrêt répare aussi
+        const sx = pad.x - hw - 10, sy = y - 24;
+        c.fillStyle = def.obs; c.fillRect(sx - 1.5, sy, 3, 26);
+        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(sx, sy, 9, 0, TAU); c.fill();
+        c.strokeStyle = GREEN; c.lineWidth = 2; c.beginPath(); c.arc(sx, sy, 9, 0, TAU); c.stroke();
+        c.strokeStyle = '#1f8a55'; c.lineWidth = 2.6; c.lineCap = 'round'; c.beginPath(); c.moveTo(sx - 4, sy + 4); c.lineTo(sx + 1.5, sy - 1.5); c.stroke();
+        c.lineWidth = 2; c.beginPath(); c.arc(sx + 3, sy - 3, 2.8, 0.2, 4.2); c.stroke();
       } else {
         c.fillStyle = col; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText('H', pad.x, y + 14);
       }

@@ -9,7 +9,7 @@ import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.3.2';
+const VERSION = '1.4.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -71,10 +71,45 @@ function startLevel(id) {
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
   lowBeep = 0; timeShown = -1;
+  $('#cpMarks').innerHTML = S.level.pads.filter((p) => p.kind === 'fuel').map((p) => `<b class="${p.main ? '' : 'bonus'}" style="left:${(p.x / S.level.pad.x) * 100}%"></b>`).join('');
+  S.tut = null;
   $('#fps').hidden = !save.settings.fps;
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
   save.lastLevel = id; save.stats.flights++; persist();
   requestWake(); guardBack();
+  if (id === 1 && !save.tut) tutorialCard();
+}
+// Tutoriel du premier vol : une carte sur l'état de l'appareil, puis quatre gestes à réussir.
+function tutorialCard() {
+  S.tut = { step: 0, hold: 0 }; S.game.freeFuel = true;
+  S.mode = 'pause'; snd.rotorStop();
+  ui.innerHTML = `<div class="overlay center"><div class="sheet">
+    <h2>${t('dmgTitle')}</h2>
+    ${[1, 2, 3].map((k) => `<div class="tutrow"><canvas data-dmg="${k}"></canvas><span>${t('dmg' + k)}</span></div>`).join('')}
+    <p class="sub" style="margin:10px 0 14px">${t('dmg4')}</p>
+    <button class="btn primary" style="width:100%" data-act="resume">${ICON.play}${t('go')}</button>
+  </div></div>`;
+  ui.querySelectorAll('canvas[data-dmg]').forEach((cv2) => {
+    const k = +cv2.dataset.dmg, dpr = Math.min(2, window.devicePixelRatio || 1), w = 92, h = 58;
+    cv2.width = w * dpr; cv2.height = h * dpr;
+    const c = cv2.getContext('2d'), z = 1.15 * dpr;
+    c.setTransform(z, 0, 0, z, 46 * dpr, 40 * dpr);
+    const puffs = k === 1 ? [[-8, -16, 4, 'rgba(210,210,220,.6)'], [-13, -23, 5.5, 'rgba(210,210,220,.4)']]
+      : [[-8, -16, 5, 'rgba(25,25,32,.85)'], [-14, -23, 7, 'rgba(25,25,32,.7)'], [-22, -28, 9, 'rgba(25,25,32,.5)']];
+    for (const [x, y, r, col] of puffs) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+    drawHeli(c, HELIS[0].look, 0.31, 0.9);
+    if (k === 3) for (const [x, y, r, col] of [[-10, -9, 6, '#ff5a1f'], [-7, -12, 4, '#ffb703'], [-13, -5, 3.5, '#ffb703']]) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+  });
+}
+function tutorialStep(g, dt) {
+  const T = S.tut, h = g.heli, inp = g.input, air = S.level.groundAt(h.x) - h.y > 60;
+  let done = false;
+  if (T.step === 0) done = S.level.groundAt(h.x) - h.y > 110;
+  else if (T.step === 1) { if (!inp.thrust && air) T.hold += dt; done = T.hold > 0.45; }
+  else if (T.step === 2) done = inp.thrust && inp.tilt > 25;
+  else if (T.step === 3) done = inp.thrust && inp.tilt < 3;
+  if (done) { T.step++; T.hold = 0; snd.sfx('cp'); vibe(20); }
+  if (T.step > 3) { S.tut = null; g.freeFuel = false; save.tut = true; persist(); toast('✔ ' + t('tutOk')); }
 }
 function commitRun() {
   const g = S.game;
@@ -193,6 +228,7 @@ function settings() {
     <h3>${t('s_data')}</h3><div class="col">
       <button class="btn" data-act="export">${t('export')}</button>
       <button class="btn" data-act="import">${t('import')}</button>
+      <button class="btn" data-act="replayTut">${t('replayTut')}</button>
       <button class="btn ghost danger" data-act="reset">${t('reset')}</button>
     </div>
     <p class="about">HELI v${VERSION}<br>${t('s_about')}</p>
@@ -300,6 +336,7 @@ ui.addEventListener('click', (e) => {
       };
       inp.click(); break;
     }
+    case 'replayTut': save.tut = false; persist(); startLevel(1); break;
     case 'reset':
       confirmBox(t('resetConfirm'), () => { const keep = { lang: save.lang, settings: save.settings }; save = { ...defaults(), ...keep }; persist(); setDemo(); go('home'); });
       break;
@@ -389,7 +426,7 @@ function events() {
   g.ev.length = 0;
 }
 let lowBeep = 0;
-const timeTxt = $('#timeTxt'); let timeShown = -1;
+const timeTxt = $('#timeTxt'), progFill = $('#progFill'), progDot = $('#progDot'); let timeShown = -1;
 const fuelFill = $('#fuelFill'), fuelBar = $('#fuelBar'), starTxt = $('#starTxt'), hint = $('#hint'), fpsEl = $('#fps');
 let hintKey = '';
 function updateHud() {
@@ -399,22 +436,18 @@ function updateHud() {
   fuelBar.classList.toggle('low', low);
   if (low && g.fuel > 0 && time > lowBeep) { lowBeep = time + 1.1; snd.tone(520, 0.09, 'square', 0.1); snd.tone(520, 0.09, 'square', 0.1, 0.16); }
   starTxt.textContent = '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars);
-  // Chrono : temps du vol, et temps à battre (record personnel, sinon l'objectif de temps du niveau).
+  // Bas de l'écran : temps depuis le départ et avancement, avec les ravitaillements sur la route.
+  const pr = clamp(h.x / L.pad.x, 0, 1) * 100 + '%';
+  progFill.style.width = pr; progDot.style.left = pr;
   const sec = Math.floor(g.t);
-  if (sec !== timeShown) {
-    timeShown = sec;
-    const best = save.levels[L.def.id]?.time, goal = L.def.objectives.find((o) => o.t === 'time')?.v, target = best ?? goal;
-    timeTxt.innerHTML = `⏱ ${fmtTime(g.t)}${target != null ? `<small>${best != null ? t('best') : '◎'} ${fmtTime(target)}</small>` : ''}`;
-    timeTxt.classList.toggle('late', target != null && g.t > target);
-  }
+  if (sec !== timeShown) { timeShown = sec; timeTxt.textContent = fmtTime(g.t); }
   let key = '';
   const fp = L.pads[1];
   if (g.fuel < 0.22 && g.fuel > 0 && g.state === 'fly') key = 'lowFuel';
-  else if (g.state === 'fly' && L.def.id === 1 && !save.tut) {
-    if (h.x < 260) key = 'tut1'; else if (h.x < 900) key = 'tut2'; else if (h.x > 1300 && h.x < 2300) key = 'tut3'; else if (h.x > fp.x - 700 && h.x < fp.x + 100 && g.padIdx < 1) key = 'tut5';
-  }
+  else if (S.tut && g.state === 'fly') key = ['tut1', 'tut2', 'tutC', 'tutD'][S.tut.step];
+  else if (g.state === 'fly' && L.def.id === 1 && !save.levels[1]?.done && h.x > fp.x - 700 && h.x < fp.x + 100 && g.padIdx < 1) key = 'tut5';
   if (g.state === 'fly' && L.def.id === 1 && h.x > L.pad.x - 700) key = 'tut4';
-  if (key !== hintKey) { hintKey = key; if (key) hint.textContent = t(key); hint.classList.toggle('on', !!key); }
+  if (key !== hintKey) { hintKey = key; if (key) hint.textContent = (S.tut ? `${S.tut.step + 1}/4 · ` : '') + t(key); hint.classList.toggle('on', !!key); }
 }
 let last = 0, acc = 0, frame = 0, drawAcc = 0, fpsN = 0, fpsT = 0;
 function loop(ts) {
@@ -434,6 +467,7 @@ function loop(ts) {
       g.step(DT); acc -= DT;
     }
     events();
+    if (S.mode === 'play' && S.tut) tutorialStep(g, dt);
     if (S.mode === 'demo') {
       if (g.state === 'win' && g.stateT > 2.5) { S.game = new Game(S.level, g.H); R.snap = true; }
       else if (g.state === 'dead' && g.stateT > 1.5) { S.game = new Game(S.level, g.H); R.snap = true; }

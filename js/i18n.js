@@ -13,7 +13,8 @@ rank rank0 rank1 rank2 rank3 rank4 rank5 rank6 medals nextRank maxRank
 st_flights st_dist st_orbs st_crashes st_time st_landings cancel confirm rings
 o_stars stars refuel fueled lowFuel noFuel fromPad tut5 st_refuels
 buy notEnough bought
-lvl11 lvl12 lvl13 lvl14 lvl15 lvl16 lvl17 lvl18 lvl19 lvl20 lvl21 lvl22 lvl23 lvl24 lvl25 lvl26 lvl27 lvl28 lvl29 lvl30`.split(/\s+/);
+lvl11 lvl12 lvl13 lvl14 lvl15 lvl16 lvl17 lvl18 lvl19 lvl20 lvl21 lvl22 lvl23 lvl24 lvl25 lvl26 lvl27 lvl28 lvl29 lvl30
+tutC tutD tutOk dmgTitle dmg1 dmg2 dmg3 dmg4 go replayTut`.split(/\s+/);
 
 const T = {
   fr: `Jouer|Niveaux|Hangar|Profil|Réglages|Niveau|Pilote|Maîtrise la gravité|Bienvenue, pilote|Choisis ton nom de pilote. Ta progression est enregistrée uniquement sur cet appareil.|Ton nom de pilote|Décoller
@@ -27,9 +28,10 @@ Général|Audio|Commandes|Affichage|Données|Langue|Musique|Effets sonores|Vibra
 Sensibilité d'inclinaison|Inverser l'inclinaison|Tremblement d'écran|Afficher les FPS|Économie de batterie (30 FPS)|Exporter la sauvegarde|Importer une sauvegarde|Réinitialiser la progression|Effacer toute la progression ? Cette action est irréversible.|Installer l'application|100 % hors ligne · aucune pub · aucune collecte de données|Sauvegarde importée|Fichier invalide
 Rang|Cadet|Pilote|Lieutenant|Capitaine|Commandant|As|Légende|Médailles|Prochain rang : {v} médailles|Rang maximal atteint
 Vols|Distance parcourue|Pièces récoltées|Crashs|Temps de vol|Atterrissages réussis|Annuler|Confirmer|Anneaux
-Récolter toutes les étoiles|Étoiles|Ravitaillement|Plein fait|Carburant faible|Panne sèche|Reprendre au dernier ravitaillement|Pose-toi sur les héliports verts pour refaire le plein|Ravitaillements
+Récolter toutes les étoiles|Étoiles|Plein et réparation|Plein fait|Carburant faible|Panne sèche|Reprendre au dernier ravitaillement|Pose-toi sur les héliports verts pour refaire le plein|Ravitaillements
 Acheter|Pas assez pour l'acheter|Hélicoptère acheté !
-Dunes dorées|Marais des lucioles|Falaises d'automne|Port industriel|Mer de la Tranquillité|Lagune des méduses|Château des brumes|Savane au couchant|Mine de cristal|Orage tropical|Fjords de minuit|Jardins suspendus|Fonderie|Forêt de champignons|Crevasse de glace|Mégalopole 2099|Temple perdu|Mer de nuages|Planète rouge|Nébuleuse`,
+Dunes dorées|Marais des lucioles|Falaises d'automne|Port industriel|Mer de la Tranquillité|Lagune des méduses|Château des brumes|Savane au couchant|Mine de cristal|Orage tropical|Fjords de minuit|Jardins suspendus|Fonderie|Forêt de champignons|Crevasse de glace|Mégalopole 2099|Temple perdu|Mer de nuages|Planète rouge|Nébuleuse
+Glisse le pouce vers la droite pour avancer|Glisse vers la gauche pour freiner|Bien joué, bon vol !|État de l'appareil|Fumée grise : choc léger|Fumée noire : gros dégâts|Flammes : dernier avertissement|Au choc suivant, c'est le crash. Pose-toi sur un héliport vert pour réparer et refaire le plein.|C'est parti|Revoir le tutoriel`,
   en: `Play|Levels|Hangar|Profile|Settings|Level|Pilot|Master gravity|Welcome, pilot|Choose your pilot name. Your progress is saved on this device only.|Your pilot name|Take off
 Alpine Dawn|Misty Forest|Ochre Canyon|Turquoise Coast|Dusk Metropolis|Frozen Peaks|Temple Valley|Heart of the Volcano|Neon Night|Sky Archipelago
 Finish the level|Collect {v}% of the coins|Finish in under {v}|Finish with at least {v}% armour|{v} collisions at most|Finish without crashing|Soft landing|Fly through every ring|Earn {v} medals
@@ -41,9 +43,10 @@ General|Audio|Controls|Display|Data|Language|Music|Sound effects|Vibration|Graph
 Tilt sensitivity|Invert tilt|Screen shake|Show FPS|Battery saver (30 FPS)|Export save|Import save|Reset progress|Erase all progress? This cannot be undone.|Install the app|100% offline · no ads · no data collection|Save imported|Invalid file
 Rank|Cadet|Pilot|Lieutenant|Captain|Commander|Ace|Legend|Medals|Next rank: {v} medals|Highest rank reached
 Flights|Distance flown|Coins collected|Crashes|Flight time|Successful landings|Cancel|Confirm|Rings
-Collect every star|Stars|Refuelling|Tank full|Low fuel|Out of fuel|Resume from last refuel stop|Land on the green helipads to refuel|Refuel stops
+Collect every star|Stars|Refuel and repair|Tank full|Low fuel|Out of fuel|Resume from last refuel stop|Land on the green helipads to refuel|Refuel stops
 Buy|Not enough to buy it|Helicopter purchased!
-Golden Dunes|Firefly Marsh|Autumn Cliffs|Industrial Harbour|Sea of Tranquility|Jellyfish Lagoon|Castle in the Mist|Sunset Savanna|Crystal Mine|Tropical Storm|Midnight Fjords|Hanging Gardens|The Foundry|Mushroom Forest|Ice Crevasse|Megacity 2099|Lost Temple|Sea of Clouds|Red Planet|The Nebula`,
+Golden Dunes|Firefly Marsh|Autumn Cliffs|Industrial Harbour|Sea of Tranquility|Jellyfish Lagoon|Castle in the Mist|Sunset Savanna|Crystal Mine|Tropical Storm|Midnight Fjords|Hanging Gardens|The Foundry|Mushroom Forest|Ice Crevasse|Megacity 2099|Lost Temple|Sea of Clouds|Red Planet|The Nebula
+Slide your thumb right to move forward|Slide left to brake|Well done, enjoy the flight!|Aircraft condition|Grey smoke: light knock|Black smoke: heavy damage|Flames: last warning|One more hit and you crash. Land on a green helipad to repair and refuel.|Let's go|Replay the tutorial`,
   es: `Jugar|Niveles|Hangar|Perfil|Ajustes|Nivel|Piloto|Domina la gravedad|Bienvenido, piloto|Elige tu nombre de piloto. Tu progreso se guarda solo en este dispositivo.|Tu nombre de piloto|Despegar
 Amanecer alpino|Bosque de niebla|Cañón ocre|Costa turquesa|Metrópolis al atardecer|Picos helados|Valle de los templos|Corazón del volcán|Noche de neón|Archipiélago celeste
 Terminar el nivel|Recoger el {v} % de las monedas|Terminar en menos de {v}|Terminar con al menos {v} % de blindaje|{v} colisiones como máximo|Terminar sin estrellarse|Aterrizaje suave|Atravesar todos los anillos|Conseguir {v} medallas
@@ -55,9 +58,10 @@ General|Audio|Controles|Pantalla|Datos|Idioma|Música|Efectos de sonido|Vibraci�
 Sensibilidad de inclinación|Invertir inclinación|Temblor de pantalla|Mostrar FPS|Ahorro de batería (30 FPS)|Exportar partida|Importar partida|Reiniciar progreso|¿Borrar todo el progreso? Esta acción es irreversible.|Instalar la aplicación|100 % sin conexión · sin anuncios · sin recopilación de datos|Partida importada|Archivo no válido
 Rango|Cadete|Piloto|Teniente|Capitán|Comandante|As|Leyenda|Medallas|Siguiente rango: {v} medallas|Rango máximo alcanzado
 Vuelos|Distancia recorrida|Monedas recogidas|Accidentes|Tiempo de vuelo|Aterrizajes logrados|Cancelar|Confirmar|Anillos
-Recoger todas las estrellas|Estrellas|Repostaje|Depósito lleno|Poco combustible|Sin combustible|Reanudar desde el último repostaje|Aterriza en los helipuertos verdes para repostar|Repostajes
+Recoger todas las estrellas|Estrellas|Repostaje y reparación|Depósito lleno|Poco combustible|Sin combustible|Reanudar desde el último repostaje|Aterriza en los helipuertos verdes para repostar|Repostajes
 Comprar|No tienes suficiente|¡Helicóptero comprado!
-Dunas doradas|Pantano de luciérnagas|Acantilados de otoño|Puerto industrial|Mar de la Tranquilidad|Laguna de medusas|Castillo de la bruma|Sabana al ocaso|Mina de cristal|Tormenta tropical|Fiordos de medianoche|Jardines colgantes|La fundición|Bosque de hongos|Grieta de hielo|Megalópolis 2099|Templo perdido|Mar de nubes|Planeta rojo|La nebulosa`,
+Dunas doradas|Pantano de luciérnagas|Acantilados de otoño|Puerto industrial|Mar de la Tranquilidad|Laguna de medusas|Castillo de la bruma|Sabana al ocaso|Mina de cristal|Tormenta tropical|Fiordos de medianoche|Jardines colgantes|La fundición|Bosque de hongos|Grieta de hielo|Megalópolis 2099|Templo perdido|Mar de nubes|Planeta rojo|La nebulosa
+Desliza el pulgar a la derecha para avanzar|Desliza a la izquierda para frenar|¡Bien hecho, buen vuelo!|Estado del aparato|Humo gris: golpe leve|Humo negro: daños graves|Llamas: último aviso|Al siguiente golpe te estrellas. Aterriza en un helipuerto verde para reparar y repostar.|Vamos|Repetir el tutorial`,
   pt: `Jogar|Níveis|Hangar|Perfil|Definições|Nível|Piloto|Domina a gravidade|Bem-vindo, piloto|Escolhe o teu nome de piloto. O teu progresso é guardado apenas neste dispositivo.|O teu nome de piloto|Descolar
 Aurora alpina|Floresta da névoa|Desfiladeiro ocre|Costa turquesa|Metrópole ao entardecer|Picos gelados|Vale dos templos|Coração do vulcão|Noite de néon|Arquipélago celeste
 Terminar o nível|Recolher {v} % das moedas|Terminar em menos de {v}|Terminar com pelo menos {v} % de blindagem|{v} colisões no máximo|Terminar sem se despenhar|Aterragem suave|Atravessar todos os anéis|Obter {v} medalhas
@@ -69,9 +73,10 @@ Geral|Áudio|Controlos|Ecrã|Dados|Idioma|Música|Efeitos sonoros|Vibração|Qua
 Sensibilidade de inclinação|Inverter inclinação|Tremor do ecrã|Mostrar FPS|Poupança de bateria (30 FPS)|Exportar gravação|Importar gravação|Repor progresso|Apagar todo o progresso? Esta ação é irreversível.|Instalar a aplicação|100 % offline · sem anúncios · sem recolha de dados|Gravação importada|Ficheiro inválido
 Patente|Cadete|Piloto|Tenente|Capitão|Comandante|Ás|Lenda|Medalhas|Próxima patente: {v} medalhas|Patente máxima atingida
 Voos|Distância percorrida|Moedas recolhidas|Acidentes|Tempo de voo|Aterragens bem-sucedidas|Cancelar|Confirmar|Anéis
-Recolher todas as estrelas|Estrelas|Reabastecimento|Depósito cheio|Pouco combustível|Sem combustível|Retomar no último reabastecimento|Aterra nos heliportos verdes para reabastecer|Reabastecimentos
+Recolher todas as estrelas|Estrelas|Reabastecimento e reparação|Depósito cheio|Pouco combustível|Sem combustível|Retomar no último reabastecimento|Aterra nos heliportos verdes para reabastecer|Reabastecimentos
 Comprar|Não tens o suficiente|Helicóptero comprado!
-Dunas douradas|Pântano dos pirilampos|Falésias de outono|Porto industrial|Mar da Tranquilidade|Lagoa das medusas|Castelo da bruma|Savana ao pôr do sol|Mina de cristal|Tempestade tropical|Fiordes da meia-noite|Jardins suspensos|A fundição|Floresta de cogumelos|Fenda de gelo|Megalópole 2099|Templo perdido|Mar de nuvens|Planeta vermelho|A nebulosa`,
+Dunas douradas|Pântano dos pirilampos|Falésias de outono|Porto industrial|Mar da Tranquilidade|Lagoa das medusas|Castelo da bruma|Savana ao pôr do sol|Mina de cristal|Tempestade tropical|Fiordes da meia-noite|Jardins suspensos|A fundição|Floresta de cogumelos|Fenda de gelo|Megalópole 2099|Templo perdido|Mar de nuvens|Planeta vermelho|A nebulosa
+Desliza o polegar para a direita para avançar|Desliza para a esquerda para travar|Boa, bom voo!|Estado do aparelho|Fumo cinzento: choque leve|Fumo preto: danos graves|Chamas: último aviso|No próximo choque despenhas-te. Aterra num heliporto verde para reparar e reabastecer.|Vamos|Rever o tutorial`,
   de: `Spielen|Level|Hangar|Profil|Einstellungen|Level|Pilot|Meistere die Schwerkraft|Willkommen, Pilot|Wähle deinen Pilotennamen. Dein Fortschritt wird nur auf diesem Gerät gespeichert.|Dein Pilotenname|Abheben
 Alpenmorgen|Nebelwald|Ockercanyon|Türkisküste|Metropole in der Dämmerung|Eisgipfel|Tal der Tempel|Herz des Vulkans|Neonnacht|Himmelsarchipel
 Level abschließen|{v} % der Münzen einsammeln|In unter {v} abschließen|Mit mindestens {v} % Panzerung abschließen|Höchstens {v} Kollisionen|Ohne Absturz abschließen|Sanfte Landung|Durch alle Ringe fliegen|{v} Medaillen verdienen
@@ -83,9 +88,10 @@ Allgemein|Audio|Steuerung|Anzeige|Daten|Sprache|Musik|Soundeffekte|Vibration|Gra
 Neigungsempfindlichkeit|Neigung umkehren|Bildschirmwackeln|FPS anzeigen|Energiesparmodus (30 FPS)|Spielstand exportieren|Spielstand importieren|Fortschritt zurücksetzen|Gesamten Fortschritt löschen? Das kann nicht rückgängig gemacht werden.|App installieren|100 % offline · keine Werbung · keine Datenerfassung|Spielstand importiert|Ungültige Datei
 Rang|Kadett|Pilot|Leutnant|Kapitän|Kommandant|Ass|Legende|Medaillen|Nächster Rang: {v} Medaillen|Höchster Rang erreicht
 Flüge|Geflogene Strecke|Gesammelte Münzen|Abstürze|Flugzeit|Geglückte Landungen|Abbrechen|Bestätigen|Ringe
-Alle Sterne einsammeln|Sterne|Betankung|Vollgetankt|Wenig Treibstoff|Kein Treibstoff|Am letzten Tankstopp fortsetzen|Lande auf den grünen Heliports, um zu tanken|Tankstopps
+Alle Sterne einsammeln|Sterne|Tanken und Reparatur|Vollgetankt|Wenig Treibstoff|Kein Treibstoff|Am letzten Tankstopp fortsetzen|Lande auf den grünen Heliports, um zu tanken|Tankstopps
 Kaufen|Nicht genug zum Kaufen|Helikopter gekauft!
-Goldene Dünen|Glühwürmchensumpf|Herbstklippen|Industriehafen|Meer der Ruhe|Quallenlagune|Nebelschloss|Savanne im Abendrot|Kristallmine|Tropensturm|Mitternachtsfjorde|Hängende Gärten|Die Gießerei|Pilzwald|Eisspalte|Megacity 2099|Verlorener Tempel|Wolkenmeer|Roter Planet|Der Nebel`,
+Goldene Dünen|Glühwürmchensumpf|Herbstklippen|Industriehafen|Meer der Ruhe|Quallenlagune|Nebelschloss|Savanne im Abendrot|Kristallmine|Tropensturm|Mitternachtsfjorde|Hängende Gärten|Die Gießerei|Pilzwald|Eisspalte|Megacity 2099|Verlorener Tempel|Wolkenmeer|Roter Planet|Der Nebel
+Wische nach rechts, um vorwärts zu fliegen|Wische nach links zum Bremsen|Gut gemacht, guten Flug!|Zustand der Maschine|Grauer Rauch: leichter Stoß|Schwarzer Rauch: schwerer Schaden|Flammen: letzte Warnung|Beim nächsten Treffer stürzt du ab. Lande auf einem grünen Heliport, um zu reparieren und zu tanken.|Los geht's|Tutorial wiederholen`,
   it: `Gioca|Livelli|Hangar|Profilo|Impostazioni|Livello|Pilota|Domina la gravità|Benvenuto, pilota|Scegli il tuo nome da pilota. I tuoi progressi sono salvati solo su questo dispositivo.|Il tuo nome da pilota|Decolla
 Alba alpina|Foresta delle nebbie|Canyon ocra|Costa turchese|Metropoli al tramonto|Vette ghiacciate|Valle dei templi|Cuore del vulcano|Notte al neon|Arcipelago celeste
 Completa il livello|Raccogli il {v} % delle monete|Finisci in meno di {v}|Finisci con almeno il {v} % di corazza|Massimo {v} collisioni|Finisci senza schiantarti|Atterraggio morbido|Attraversa tutti gli anelli|Ottieni {v} medaglie
@@ -97,9 +103,10 @@ Generale|Audio|Comandi|Schermo|Dati|Lingua|Musica|Effetti sonori|Vibrazione|Qual
 Sensibilità di inclinazione|Inverti inclinazione|Tremolio dello schermo|Mostra FPS|Risparmio batteria (30 FPS)|Esporta salvataggio|Importa salvataggio|Azzera i progressi|Cancellare tutti i progressi? L'azione è irreversibile.|Installa l'app|100 % offline · niente pubblicità · nessuna raccolta di dati|Salvataggio importato|File non valido
 Grado|Cadetto|Pilota|Tenente|Capitano|Comandante|Asso|Leggenda|Medaglie|Prossimo grado: {v} medaglie|Grado massimo raggiunto
 Voli|Distanza percorsa|Monete raccolte|Schianti|Tempo di volo|Atterraggi riusciti|Annulla|Conferma|Anelli
-Raccogli tutte le stelle|Stelle|Rifornimento|Pieno fatto|Carburante scarso|Carburante esaurito|Riprendi dall'ultimo rifornimento|Atterra sugli eliporti verdi per fare rifornimento|Rifornimenti
+Raccogli tutte le stelle|Stelle|Rifornimento e riparazione|Pieno fatto|Carburante scarso|Carburante esaurito|Riprendi dall'ultimo rifornimento|Atterra sugli eliporti verdi per fare rifornimento|Rifornimenti
 Compra|Non hai abbastanza|Elicottero acquistato!
-Dune dorate|Palude delle lucciole|Scogliere d'autunno|Porto industriale|Mare della Tranquillità|Laguna delle meduse|Castello delle brume|Savana al tramonto|Miniera di cristallo|Tempesta tropicale|Fiordi di mezzanotte|Giardini pensili|La fonderia|Foresta di funghi|Crepaccio di ghiaccio|Megalopoli 2099|Tempio perduto|Mare di nuvole|Pianeta rosso|La nebulosa`,
+Dune dorate|Palude delle lucciole|Scogliere d'autunno|Porto industriale|Mare della Tranquillità|Laguna delle meduse|Castello delle brume|Savana al tramonto|Miniera di cristallo|Tempesta tropicale|Fiordi di mezzanotte|Giardini pensili|La fonderia|Foresta di funghi|Crepaccio di ghiaccio|Megalopoli 2099|Tempio perduto|Mare di nuvole|Pianeta rosso|La nebulosa
+Scorri il pollice a destra per avanzare|Scorri a sinistra per frenare|Ben fatto, buon volo!|Stato del velivolo|Fumo grigio: urto leggero|Fumo nero: danni gravi|Fiamme: ultimo avviso|Al prossimo urto ti schianti. Atterra su un eliporto verde per riparare e fare rifornimento.|Si parte|Rivedi il tutorial`,
 };
 
 export const KEYS = K;

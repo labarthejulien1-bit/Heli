@@ -6,7 +6,8 @@
 - **Niveaux** : générés par `js/levelgen.js` à partir de `js/data.js` (graine fixe). Après toute modification de la physique, du générateur ou des niveaux, `node tools/sim.mjs` doit passer (chaque niveau faisable, durée 95–240 s au pilote automatique). Un niveau peut avoir des particularités (`mod` : `grav`, `windX`, `dark`) ; le pilote automatique et le réservoir en tiennent compte.
 - **Carburant** : le réservoir (`level.tank`) est dimensionné par le générateur sur le plus long trajet entre deux héliports principaux ; le pilote automatique doit finir chaque niveau sans tomber sous ~5 % (`essenceMin` dans la sortie de `tools/sim.mjs`).
 - **Contenu fixe par niveau** : exactement 100 pièces (hors de la trajectoire sûre) et 3 étoiles (points difficiles) ; `tools/sim.mjs` le vérifie, ainsi que le dégagement au-dessus de chaque étoile (≥ 22 autour du point, ≥ 40 de chaque côté dans les couloirs entre arbres, `degagementEtoiles`). Les pièces et étoiles ne sont créditées qu'à l'arrivée ; un échec renvoie au début du niveau.
-- **État de l'appareil** : pas de barre de vie ; points de dégâts (`maxHp`, choc doux = 1, gros choc = 3) rendus par la fumée. Se ravitailler répare.
+- **État de l'appareil** : pas de barre de vie ; points de dégâts (`maxHp`, choc doux = 1, gros choc = 3) rendus par la fumée. Se ravitailler répare. Un posé à plat est sans dégât jusqu'à 64 de vitesse d'impact (45 contre un mur ou un obstacle).
+- **Tutoriel** : au premier vol du niveau 1 (`save.tut`), carte sur l'état de l'appareil puis quatre gestes à réussir ; rejouable depuis les Réglages.
 - `js/game.js`, `js/levelgen.js`, `js/data.js`, `js/util.js` ne doivent pas dépendre du DOM (ils tournent sous Node).
 - À chaque mise en ligne : incrémenter `VERSION` dans `sw.js` (et `js/main.js`), et ajouter tout nouveau fichier à la liste `FILES` du service worker.
 - Jeu vertical à une main : toute nouvelle commande doit rester utilisable au pouce ; les boutons font au moins 46 px.

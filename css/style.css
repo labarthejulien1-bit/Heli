@@ -20,16 +20,18 @@ svg{width:1.5em;height:1.5em;fill:currentColor;flex:none}
 .fuel i{display:block;height:100%;border-radius:4px;background:#7cc4ff}
 .fuel.low{animation:blink .5s infinite alternate}.fuel.low i{background:#ff6b6b}
 @keyframes blink{to{opacity:.35}}
-.prog{position:relative;height:4px;margin:10px 58px 0 0;border-radius:3px;background:rgba(255,255,255,.25)}
-.prog i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
-.prog span b{position:absolute;top:-3px;width:3px;height:10px;border-radius:2px;background:#6ee7a0}
-.prog span b.bonus{background:#ffd34d;height:6px;top:-1px}
+.prog{position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 12px);display:flex;align-items:center;gap:10px}
+.prog .track{position:relative;flex:1;height:4px;border-radius:3px;background:rgba(255,255,255,.28)}
+.prog .track i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#fff}
+.prog .track span b{position:absolute;top:-3px;width:4px;height:10px;margin-left:-2px;border-radius:2px;background:#6ee7a0}
+.prog .track span b.bonus{background:#ffd34d;height:6px;top:-1px}
+#progDot{position:absolute;top:-4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 .hud-info{display:flex;gap:12px;margin-top:6px;font-weight:800;font-size:20px;letter-spacing:3px;color:#ffd34d;text-shadow:0 1px 4px rgba(0,0,0,.5);font-variant-numeric:tabular-nums}
 .hud-info span:last-child{margin-left:auto;margin-right:58px}
-#timeTxt{color:#fff;font-size:17px;letter-spacing:.5px;font-variant-numeric:tabular-nums}
-#timeTxt small{font-size:12px;font-weight:600;opacity:.8;margin-left:8px}
-#timeTxt.late small{color:#ff9c9c}
-#hint{position:absolute;left:20px;right:20px;top:24%;text-align:center;font-weight:600;font-size:16px;line-height:1.35;
+#timeTxt{font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.6);min-width:38px}
+.tutrow{display:flex;align-items:center;gap:12px;padding:6px 0;font-weight:600;font-size:15px}
+.tutrow canvas{width:92px;height:58px;flex:none;border-radius:12px;background:linear-gradient(var(--c1),var(--c2))}
+#hint{position:absolute;left:20px;right:20px;top:20%;text-align:center;font-weight:600;font-size:16px;line-height:1.35;
   padding:12px 16px;border-radius:16px;background:var(--panel);backdrop-filter:blur(6px);opacity:0;transition:opacity .4s}
 #hint.on{opacity:1}
 #fps{position:absolute;left:14px;bottom:10px;font-size:11px;opacity:.7}
