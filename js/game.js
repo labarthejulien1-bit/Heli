@@ -82,8 +82,9 @@ export class Game {
     if (fly && this.fuel > 0) { this.fuel -= (h.power * dt) / L.tank; if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
 
     // Forces : poussée du rotor le long de l'axe de l'appareil, gravité, traînée, vent.
-    const T = H.power * G * h.power, a = h.tilt * DEG;
-    let ax = T * Math.sin(a) - H.drag * h.vx, ay = -T * Math.cos(a) + G - 0.9 * h.vy;
+    const mod = L.def.mod || {}, Gl = G * (mod.grav || 1);
+    const T = H.power * Gl * h.power, a = h.tilt * DEG;
+    let ax = T * Math.sin(a) - H.drag * h.vx + (h.grounded ? 0 : mod.windX || 0), ay = -T * Math.cos(a) + Gl - 0.9 * h.vy;
     for (const z of L.zones) {
       if (h.x > z.x && h.x < z.x + z.w && h.y > z.y0 && h.y < z.y1) {
         const e = Math.min(1, (h.x - z.x) / 40, (z.x + z.w - h.x) / 40);
@@ -137,14 +138,15 @@ export class Game {
       if (p.kind === 'end') {
         this.padT += dt;
         if (this.padT > 0.3) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
-      } else if (this.fuel < 1) {
+      } else if (this.fuel < 1 && h.power < 0.15) { // rotor à l'arrêt pour faire le plein
+        if (this.refuelFrom == null) this.refuelFrom = this.fuel;
         this.fuel = Math.min(1, this.fuel + dt / 1.6);
-        if (this.fuel === 1) this.ev.push({ type: 'fueled' });
+        if (this.fuel === 1) { if (this.refuelFrom < 0.95) this.ev.push({ type: 'fueled' }); this.refuelFrom = null; }
       }
       this.dryT = 0;
     } else {
       this.padT = 0;
-      if (on < 0) this.onPad = -1;
+      if (on < 0) { this.onPad = -1; this.refuelFrom = null; }
       // Panne sèche au sol, loin d'un héliport : l'appareil est perdu.
       if (this.fuel <= 0 && Math.abs(h.vx) + Math.abs(h.vy) < 40 && h.air < 0.3) {
         this.dryT += dt;
@@ -234,11 +236,12 @@ export function autopilot(g) {
     if (g.onPad === p.i && g.fuel >= 0.995) g.botDone = p.i;
     if (p.i > (g.botDone || 0)) { P = p; break; }
   }
-  const dxp = P.x - h.x;
+  const mod = L.def.mod || {};
+  const dxp = P.x - h.x - (mod.windX || 0) * 0.12; // viser un peu au vent
   let landing = false;
   if (dxp < 430) {
     vdes = clamp(dxp * 0.9, -70, 140);
-    if (Math.abs(dxp) < P.w * 0.3 && Math.abs(h.vx) < 45) landing = true;
+    if (Math.abs(dxp) < P.w * 0.22 && Math.abs(h.vx) < 45) landing = true;
     else ty = Math.min(ty, P.y - 12 - 55);
   }
   for (let i = g.o0; i < L.obs.length; i++) {
@@ -248,7 +251,7 @@ export function autopilot(g) {
     if (!o.dyn) continue;
     const dist = o.minX - (h.x + 16);
     if (dist < -4 || dist > 230) continue;
-    const v = Math.max(120, h.vx), tA = dist / v, tB = (dist + (o.maxX - o.minX) + 44) / v;
+    const v = Math.max(120 * Math.sqrt(mod.grav || 1), h.vx), tA = dist / v, tB = (dist + (o.maxX - o.minX) + 44) / v;
     let safe = true;
     if (o.kind === 'geyser') {
       for (let t = tA - 0.1; t <= tB + 0.1; t += 0.08) if (geyserState(o, g.t + t).h > 0.05) safe = false;
@@ -259,6 +262,6 @@ export function autopilot(g) {
   }
   const err = Math.abs(h.y - ty);
   if (err > 70) vdes = Math.min(vdes, 90);
-  inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3, -24, 32);
+  inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3 - (mod.windX || 0) * 0.16, -24, 32); // compense le vent du niveau
   inp.thrust = landing ? h.vy > 36 : h.grounded || h.y + h.vy * 0.26 > ty;
 }

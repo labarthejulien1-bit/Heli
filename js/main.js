@@ -9,7 +9,7 @@ import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -139,7 +139,7 @@ function levelSheet(id) {
 }
 
 function hangar() {
-  const max = { power: 2.35, agility: 260, armor: 190 };
+  const max = { power: 2.45, agility: 280, armor: 200 };
   ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('hangar')}${wallet()}</h2><div class="cards">${HELIS.map((h) => {
     const own = save.helis.includes(h.id), sel = save.heli === h.id;
     const bar = (k, v) => `<div class="bar"><span>${t('stat_' + k)}</span><i><b style="width:${Math.round(v * 100)}%"></b></i></div>`;

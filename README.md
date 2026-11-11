@@ -16,10 +16,10 @@ PWA Android **100 % locale** : aucune pub, aucun compte, aucune collecte de donn
 
 ## Contenu
 
-- **10 niveaux**, chacun avec sa palette, ses décors animés, sa météo et sa musique : montagnes, forêt, canyon, côte, métropole, glaciers, temples, volcan, ville néon, archipel céleste.
+- **30 niveaux**, chacun avec sa palette, ses décors animés, sa météo, sa musique et une particularité : montagnes, forêt, canyon, côte, métropole, glaciers, temples, volcan, ville néon, archipel céleste, puis dunes (vent de face), marais (gaz acide), automne, port industriel, Lune (faible gravité), lagune aux méduses, château, savane (thermiques), mine de cristal (obscurité), orage tropical, fjords (vent arrière), jardins suspendus (moulins), fonderie (torchères), champignons géants, crevasse de glace, mégalopole 2099 (lasers), temple perdu, mer de nuages (montgolfières), planète rouge, nébuleuse.
 - **Héliports de ravitaillement** de plus en plus petits et difficiles : au sol, sur un toit ou un piton, au sommet d'une montagne, dans une clairière entre deux arbres, sous un abri rocheux ou dans un bâtiment.
-- **100 pièces par niveau**, placées hors de la trajectoire sûre (au ras du sol, des obstacles, du plafond) : aller les chercher coûte de l'essence. Elles s'accumulent et servent à **acheter les hélicoptères** au hangar (200 à 3000 pièces).
-- **3 étoiles par niveau**, aux endroits les plus difficiles. Elles achètent les deux hélicoptères les plus rares (10 et 20 étoiles).
+- **100 pièces par niveau**, placées hors de la trajectoire sûre (au ras du sol, des obstacles, du plafond) : aller les chercher coûte de l'essence. Elles s'accumulent et servent à **acheter les hélicoptères** au hangar (15 appareils, de 200 à 8000 pièces).
+- **3 étoiles par niveau**, aux endroits les plus difficiles. Elles achètent les cinq appareils les plus rares (10 à 22 étoiles), dont la soucoupe volante.
 - **3 objectifs par niveau** (médailles, pour le rang du pilote) : pièces, étoiles, temps, collisions, atterrissage en douceur.
 - Profil pilote, 6 langues, réglages (audio, vibrations, sensibilité, qualité graphique, économie de batterie), export / import de la sauvegarde.
 
@@ -29,7 +29,7 @@ Aucune dépendance, aucune étape de build : ce sont des fichiers statiques.
 
 ```bash
 npm run serve     # http://localhost:8080
-npm run check     # valide les 10 niveaux (pilote automatique) et les traductions
+npm run check     # valide les 30 niveaux (pilote automatique) et les traductions
 ```
 
 ## Installation sur Android (PWA)

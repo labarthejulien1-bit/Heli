@@ -5,7 +5,8 @@ import { maxHp } from './game.js';
 import { drawHeli } from './helidraw.js';
 
 export const VW = 400; // largeur visible en unités de jeu
-const GEYSER_COL = { steam: '#ffffff', water: '#c9f6ff', lava: '#ff8a2a', laser: '#22e6ff', bolt: '#fff7c9' };
+const GEYSER_COL = { steam: '#ffffff', water: '#c9f6ff', lava: '#ff8a2a', laser: '#22e6ff', bolt: '#fff7c9', sand: '#e8c890', acid: '#a8ff5a', plasma: '#c58bff' };
+const TREE_ALIAS = { cypress: 'pine', coral: 'dead' };
 
 export class Renderer {
   constructor(canvas) {
@@ -79,6 +80,17 @@ export class Renderer {
     c.fillStyle = gr; c.fillRect(sx - sun.r * 5, sy - sun.r * 5, sun.r * 10, sun.r * 10);
     c.fillStyle = sun.c; c.beginPath(); c.arc(sx, sy, sun.r, 0, 7); c.fill();
 
+    if (ex.includes('planet')) {
+      const px = VW * 0.74 - camX * 0.004, py = vh * 0.2, pc = mix(skyB, def.rim, 0.45);
+      c.fillStyle = pc; c.beginPath(); c.arc(px, py, 44, 0, 7); c.fill();
+      c.fillStyle = rgba('#000000', 0.18); c.beginPath(); c.arc(px + 12, py + 8, 44, 0, 7); c.arc(px, py, 44, 0, 7, true); c.fill('evenodd');
+      c.fillStyle = rgba(def.accent, 0.25); c.fillRect(px - 40, py - 12, 76, 5); c.fillRect(px - 36, py + 10, 70, 4);
+      c.strokeStyle = rgba(def.rim, 0.6); c.lineWidth = 3; c.beginPath(); c.ellipse(px, py, 74, 13, -0.35, 0, 7); c.stroke();
+    }
+    if (ex.includes('godrays')) {
+      c.fillStyle = rgba('#ffffff', 0.07);
+      for (let i = 0; i < 4; i++) { const gx = 40 + i * 105 + Math.sin(time * 0.2 + i) * 14; c.beginPath(); c.moveTo(gx, 0); c.lineTo(gx + 46, 0); c.lineTo(gx - 90, vh); c.lineTo(gx - 190, vh); c.fill(); }
+    }
     if (ex.includes('lightning')) {
       this.nextBolt -= dt;
       if (this.nextBolt < 0) { this.nextBolt = 3 + Math.random() * 6; this.bolt = 0.35; this.boltX = 40 + Math.random() * 320; opts.onThunder?.(); }
@@ -188,6 +200,12 @@ export class Renderer {
     gr = c.createRadialGradient(VW / 2, vh / 2, vh * 0.35, VW / 2, vh / 2, vh * 0.75);
     gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,10,.28)');
     c.fillStyle = gr; c.fillRect(0, 0, VW, vh);
+    if ((def.mod || {}).dark && !opts.hideHeli) {
+      const hx = h.x - camX, hy = h.y - camY;
+      gr = c.createRadialGradient(hx + 40, hy, 80, hx + 40, hy, 300);
+      gr.addColorStop(0, 'rgba(0,0,8,0)'); gr.addColorStop(1, 'rgba(0,0,8,.78)');
+      c.fillStyle = gr; c.fillRect(0, 0, VW, vh);
+    }
     if (this.flash > 0) { c.fillStyle = `rgba(255,60,60,${this.flash * 0.35})`; c.fillRect(0, 0, VW, vh); this.flash -= dt * 2.5; }
     const t = opts.touch;
     if (t) {
@@ -228,13 +246,15 @@ export class Renderer {
       return;
     }
     c.beginPath(); c.moveTo(0, vh);
-    const step = st === 'mesa' || st === 'pines' ? 4 : 8;
+    const step = st === 'mesa' || st === 'pines' || st === 'spires' ? 4 : 8;
     for (let x = 0; x <= VW + step; x += step) {
       const u = u0 + x;
       let hh;
       if (st === 'jag') hh = amp * (0.35 * fbm(u / 230, seed) + 0.75 * (1 - Math.abs(2 * noise1(u / 170, seed + 3) - 1)));
       else if (st === 'hill') hh = amp * fbm(u / 260, seed, 2);
       else if (st === 'pines') hh = amp * 0.7 * fbm(u / 240, seed, 2) + 12 * Math.abs(((u / 12) % 2) - 1) + 8 * hash(Math.floor(u / 12), seed);
+      else if (st === 'dunes') hh = amp * (0.12 + 0.8 * Math.abs(Math.sin(u / 200 + seed * 1.3)) * (0.45 + 0.55 * noise1(u / 520, seed)));
+      else if (st === 'spires') hh = amp * (0.25 * fbm(u / 200, seed) + 1.15 * Math.pow(noise1(u / 46, seed + 3), 3));
       else { const n = fbm(u / 210, seed, 2); hh = amp * (Math.floor(n * 6) / 6 * 1.1 + 0.15 * n); }
       c.lineTo(x, base - hh + amp * 0.3);
     }
@@ -335,7 +355,7 @@ export class Renderer {
     c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
     if (o.kind === 'tree') {
       const top = o.y, b = o.g + 30, w = o.w, h = o.h;
-      switch (o.st) {
+      switch (TREE_ALIAS[o.st] || o.st) {
         case 'pine':
           for (let i = 0; i < 3; i++) {
             const ay = top + i * h * 0.22, by = top + (i + 1) * h * 0.36 + (i === 2 ? h : 0), hw = ((w / 2) * (Math.min(by, b) - top)) / (b - top) * 1.2;
@@ -382,6 +402,35 @@ export class Renderer {
           c.beginPath(); c.moveTo(x - w / 2, b); c.lineTo(x, top); c.lineTo(x + w / 2, b); c.fill();
           c.fillStyle = rgba(def.accent, 0.35); c.beginPath(); c.moveTo(x, top); c.lineTo(x + w / 2, b); c.lineTo(x + w * 0.12, b); c.fill();
           break;
+        case 'mushroom': {
+          const r = w / 2;
+          c.fillStyle = mix(col, def.rim, 0.25); c.fillRect(x - Math.max(4, r * 0.16), top + r * 0.5, Math.max(8, r * 0.32), h + 30);
+          c.fillStyle = col; c.beginPath(); c.arc(x, top + r, r, Math.PI, 0); c.quadraticCurveTo(x, top + r * 1.35, x - r, top + r); c.fill();
+          c.fillStyle = rgba(def.accent, 0.75);
+          for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(x + (hash(i, o.v * 9) - 0.5) * r * 1.3, top + r * (0.35 + 0.4 * hash(i, o.v * 5)), r * 0.11 + 1, 0, 7); c.fill(); }
+          c.fillStyle = rgba(def.accent, 0.12); c.beginPath(); c.arc(x, top + r, r * 1.5, 0, 7); c.fill();
+          break;
+        }
+        case 'baobab': {
+          const r = w / 2, tw = Math.max(9, w * 0.3);
+          c.beginPath(); c.moveTo(x - tw * 0.8, b); c.quadraticCurveTo(x - tw * 0.4, top + h * 0.5, x - tw * 0.5, top + r); c.lineTo(x + tw * 0.5, top + r); c.quadraticCurveTo(x + tw * 0.4, top + h * 0.5, x + tw * 0.8, b); c.fill();
+          c.beginPath(); c.ellipse(x, top + r * 0.7, r, r * 0.55, 0, 0, 7); c.ellipse(x - r * 0.5, top + r * 1.0, r * 0.5, r * 0.3, 0, 0, 7); c.ellipse(x + r * 0.55, top + r * 1.05, r * 0.45, r * 0.28, 0, 0, 7); c.fill();
+          break;
+        }
+        case 'totem':
+          c.fillRect(x - w / 2, top, w, h + 30);
+          c.fillStyle = rgba(def.accent, 0.7);
+          for (let y = top + 8; y < top + h - 10; y += 26) { c.fillRect(x - w / 2 + 3, y, 4, 4); c.fillRect(x + w / 2 - 7, y, 4, 4); c.fillRect(x - 3, y + 9, 6, 3); }
+          c.fillStyle = col; c.fillRect(x - w / 2 - 5, top + 4, w + 10, 5);
+          break;
+        case 'lamp': {
+          c.fillRect(x - 1.5, top + 4, 3, h + 26); c.fillRect(x - 1.5, top + 4, 12, 2.5);
+          const gl = c.createRadialGradient(x + 10, top + 9, 1, x + 10, top + 9, 34);
+          gl.addColorStop(0, rgba(def.accent, 0.6)); gl.addColorStop(1, rgba(def.accent, 0));
+          c.fillStyle = gl; c.fillRect(x - 24, top - 25, 68, 68);
+          c.fillStyle = def.accent; c.beginPath(); c.arc(x + 10, top + 9, 3.2, 0, 7); c.fill();
+          break;
+        }
         default: // antenne
           c.fillRect(x - 2, top, 4, h + 30);
           c.fillRect(x - w / 2, top + 16, w, 2); c.fillRect(x - w / 2, top + 30, w, 2);
@@ -432,6 +481,37 @@ export class Renderer {
           c.fillStyle = rgba(def.rim, 0.16);
           for (let y = top + 10; y < top + h; y += 30) c.fillRect(l, y, w, 5 + 6 * hash(y, o.v));
           c.fillStyle = rgba(def.rim, 0.5); c.fillRect(l, top, w, 2.5);
+          break;
+        case 'castle':
+          for (let k = 0; k < 4; k++) c.fillRect(l - 4 + (k * (w + 8)) / 4 + 1, top - 9, (w + 8) / 4 - 4, 10);
+          c.fillRect(l - 4, top, w + 8, 12);
+          c.fillStyle = rgba(def.accent, 0.8);
+          for (let y = top + 34; y < top + h - 30; y += 62) { c.beginPath(); c.arc(x, y, 4, Math.PI, 0); c.lineTo(x + 4, y + 10); c.lineTo(x - 4, y + 10); c.fill(); }
+          c.fillStyle = rgba(def.rim, 0.1); c.fillRect(l, top, w * 0.3, h);
+          break;
+        case 'chimney':
+          c.fillStyle = rgba('#ffffff', 0.22); c.fillRect(l, top + 8, w, 12); c.fillStyle = rgba('#ff3b3b', 0.55); c.fillRect(l, top + 30, w, 12);
+          c.fillStyle = Math.sin(time * 3 + o.v * 9) > 0 ? '#ff4d6d' : rgba('#ff4d6d', 0.3); c.beginPath(); c.arc(x, top - 3, 3, 0, 7); c.fill();
+          if (Math.random() < 0.06 && this.parts.length < 200) this.spawn(x, top - 4, 1, { a: -Math.PI / 2, spread: 0.5, v: 26, col: 'rgba(60,60,70,.35)', life: 2.2, size: 5, grow: 9 });
+          break;
+        case 'ruin':
+          c.fillRect(l - 6, top, w + 12, 9); c.fillRect(l - 3, top + 9, w + 6, 5);
+          c.strokeStyle = rgba(def.rim, 0.2); c.lineWidth = 1.4; c.beginPath();
+          for (let k = 1; k < 5; k++) { c.moveTo(l + (k * w) / 5, top + 16); c.lineTo(l + (k * w) / 5, top + h); }
+          c.stroke();
+          c.fillStyle = rgba(def.rim, 0.5); c.fillRect(l - 6, top, w + 12, 2);
+          break;
+        case 'container':
+          for (let y = top, k = 0; y < top + h; y += 30, k++) {
+            c.fillStyle = [rgba(def.accent, 0.5), rgba(def.rim, 0.28), rgba('#e05a4a', 0.5), rgba('#4aa0e0', 0.45)][(k + ((o.v * 7) | 0)) % 4]; c.fillRect(l + 1, y + 1, w - 2, 28);
+            c.strokeStyle = rgba('#000000', 0.25); c.lineWidth = 1; c.beginPath(); for (let q = 1; q < 6; q++) { c.moveTo(l + (q * w) / 6, y + 3); c.lineTo(l + (q * w) / 6, y + 27); } c.stroke();
+          }
+          break;
+        case 'monolith':
+          c.strokeStyle = rgba(def.accent, 0.55 + 0.3 * Math.sin(time * 2 + o.v * 20)); c.lineWidth = 1.6; c.beginPath();
+          c.moveTo(x, top + 8); c.lineTo(x, top + h * 0.3); c.lineTo(x - w * 0.25, top + h * 0.38); c.lineTo(x - w * 0.25, top + h * 0.6);
+          c.moveTo(x, top + h * 0.3); c.lineTo(x + w * 0.25, top + h * 0.45); c.lineTo(x + w * 0.25, top + h * 0.8); c.stroke();
+          c.fillStyle = rgba(def.accent, 0.8); c.fillRect(l, top, w, 2);
           break;
         default: { // rocher : sommet irrégulier, flancs légèrement évasés
           const j = (k) => hash(k, o.v * 77) * 9;
@@ -499,7 +579,7 @@ export class Renderer {
     }
     if (o.kind === 'mover') {
       const y = moverY(o, t);
-      switch (o.st) {
+      switch (o.st === 'bat' ? 'bird' : o.st) {
         case 'balloon':
           c.strokeStyle = col; c.lineWidth = 1; c.beginPath(); c.moveTo(x - 9, y + 16); c.lineTo(x - 4, y + 27); c.moveTo(x + 9, y + 16); c.lineTo(x + 4, y + 27); c.stroke();
           c.fillStyle = col; c.fillRect(x - 5, y + 26, 10, 7);
@@ -531,6 +611,25 @@ export class Renderer {
           for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + time, r = 16 + 5 * hash(i, o.v * 50); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
           c.fill();
           c.strokeStyle = '#ff7a2a'; c.lineWidth = 1.5; c.stroke();
+          break;
+        }
+        case 'jelly': {
+          const pu = Math.sin(time * 3 + o.v * 9) * 2;
+          c.fillStyle = rgba(def.accent, 0.2); c.beginPath(); c.arc(x, y, 30, 0, 7); c.fill();
+          c.strokeStyle = rgba(def.accent, 0.7); c.lineWidth = 2; c.beginPath();
+          for (let k = -2; k <= 2; k++) { c.moveTo(x + k * 6, y + 4); c.quadraticCurveTo(x + k * 6 + Math.sin(time * 4 + k) * 5, y + 16, x + k * 7, y + 26 + pu); }
+          c.stroke();
+          c.fillStyle = def.accent; c.beginPath(); c.arc(x, y + 2, 19 + pu, Math.PI, 0); c.quadraticCurveTo(x, y + 9, x - 19 - pu, y + 2); c.fill();
+          c.fillStyle = rgba('#ffffff', 0.45); c.beginPath(); c.arc(x - 6, y - 7, 5, 0, 7); c.fill();
+          break;
+        }
+        case 'mine': {
+          c.strokeStyle = col; c.lineWidth = 3; c.beginPath();
+          for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU + time * 0.6; c.moveTo(x + Math.cos(a) * 12, y + Math.sin(a) * 12); c.lineTo(x + Math.cos(a) * 20, y + Math.sin(a) * 20); }
+          c.stroke();
+          c.fillStyle = col; c.beginPath(); c.arc(x, y, 14, 0, 7); c.fill();
+          c.strokeStyle = rgba(def.rim, 0.6); c.lineWidth = 1.5; c.stroke();
+          c.fillStyle = Math.sin(time * 7 + o.v * 9) > 0 ? '#ff3b5c' : rgba('#ff3b5c', 0.3); c.beginPath(); c.arc(x, y, 4.5, 0, 7); c.fill();
           break;
         }
         default: // drone
@@ -586,14 +685,16 @@ export class Renderer {
       else if (w === 'fireflies') { vx = Math.sin(time * 0.8 + q.ph) * 14; vy = Math.cos(time * 0.6 + q.ph * 2) * 12; }
       else if (w === 'petals') { vx = -26 + Math.sin(time * 1.4 + q.ph) * 22; vy = 34 * q.z; }
       else if (w === 'dust') { vx = -170 * q.z; vy = Math.sin(time + q.ph) * 8; }
+      else if (w === 'bubbles') { vx = Math.sin(time * 1.5 + q.ph) * 12; vy = -38 * q.z; }
       q.x += (vx - (camDX / Math.max(dt, 1e-3)) * 0.5 * q.z) * dt; q.y += vy * dt;
       if (q.x < -20) q.x += 440; else if (q.x > 420) q.x -= 440;
       if (q.y > vh + 20) q.y -= vh + 40; else if (q.y < -20) q.y += vh + 40;
-      if (w === 'snow') { c.fillStyle = `rgba(255,255,255,${0.5 + 0.3 * q.z})`; c.beginPath(); c.arc(q.x, q.y, 1.1 * q.z + 0.4, 0, 7); c.fill(); }
+      if (w === 'bubbles') { c.strokeStyle = 'rgba(220,250,255,.5)'; c.lineWidth = 1; c.beginPath(); c.arc(q.x, q.y, 2 + 2.5 * q.z, 0, 7); c.stroke(); }
+      else if (w === 'snow') { c.fillStyle = `rgba(255,255,255,${0.5 + 0.3 * q.z})`; c.beginPath(); c.arc(q.x, q.y, 1.1 * q.z + 0.4, 0, 7); c.fill(); }
       else if (w === 'rain') { c.strokeStyle = 'rgba(200,215,255,.3)'; c.lineWidth = 1; c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x - 3, q.y + 15 * q.z); c.stroke(); }
       else if (w === 'embers') { c.fillStyle = `rgba(255,${(140 + 80 * Math.sin(time * 5 + q.ph)) | 0},40,${0.5 + 0.4 * Math.sin(time * 3 + q.ph)})`; c.beginPath(); c.arc(q.x, q.y, 1.3 * q.z, 0, 7); c.fill(); }
-      else if (w === 'fireflies') { const a = 0.5 + 0.5 * Math.sin(time * 2.4 + q.ph * 3); c.fillStyle = `rgba(235,255,150,${a * 0.25})`; c.beginPath(); c.arc(q.x, q.y, 5, 0, 7); c.fill(); c.fillStyle = `rgba(245,255,190,${a})`; c.beginPath(); c.arc(q.x, q.y, 1.4, 0, 7); c.fill(); }
-      else if (w === 'petals') { c.fillStyle = 'rgba(255,190,205,.8)'; c.beginPath(); c.ellipse(q.x, q.y, 3 * q.z, 1.5 * q.z, time * 2 + q.ph, 0, 7); c.fill(); }
+      else if (w === 'fireflies') { const a = 0.5 + 0.5 * Math.sin(time * 2.4 + q.ph * 3); c.fillStyle = rgba(def.wcol || '#ebff96', a * 0.25); c.beginPath(); c.arc(q.x, q.y, 5, 0, 7); c.fill(); c.fillStyle = rgba(def.wcol || '#f5ffbe', a); c.beginPath(); c.arc(q.x, q.y, 1.4, 0, 7); c.fill(); }
+      else if (w === 'petals') { c.fillStyle = rgba(def.wcol || '#ffbecd', 0.8); c.beginPath(); c.ellipse(q.x, q.y, 3 * q.z, 1.5 * q.z, time * 2 + q.ph, 0, 7); c.fill(); }
       else { c.strokeStyle = rgba(def.rim, 0.22); c.lineWidth = 1; c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x + 14 * q.z, q.y); c.stroke(); }
     }
   }

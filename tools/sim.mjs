@@ -16,7 +16,7 @@ for (const def of LEVELS) {
     if (g.state === 'dead') break;
   }
   const s = g.stats, won = g.state === 'win';
-  const good = won && g.t > 95 && g.t < 215 && L.orbTotal === 100 && L.starTotal === 3;
+  const good = won && g.t > 95 && g.t < 240 && L.orbTotal === 100 && L.starTotal === 3;
   if (!good) ok = false;
   console.log(
     `N${String(def.id).padStart(2)} ${good ? 'OK ' : 'KO '} long=${Math.round(L.length)} temps=${g.t.toFixed(0)}s chocs=${s.hits} ` +

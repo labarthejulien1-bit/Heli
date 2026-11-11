@@ -3,7 +3,7 @@
 - **Aucune dépendance, aucun build** : JavaScript en modules ES, Canvas 2D, fichiers statiques servis tels quels.
 - **100 % local** : aucun appel réseau, aucune pub, aucun traceur. Sauvegarde dans `localStorage` (`js/save.js`) ; toute évolution du format doit rester compatible (`sanitize`).
 - **Langues** : chaque texte visible passe par `t('clé')` (`js/i18n.js`) et doit exister en fr, en, es, pt, de, it. `node tools/i18n-check.mjs` doit afficher `OK`.
-- **Niveaux** : générés par `js/levelgen.js` à partir de `js/data.js` (graine fixe). Après toute modification de la physique, du générateur ou des niveaux, `node tools/sim.mjs` doit passer (chaque niveau faisable, durée 95–215 s au pilote automatique).
+- **Niveaux** : générés par `js/levelgen.js` à partir de `js/data.js` (graine fixe). Après toute modification de la physique, du générateur ou des niveaux, `node tools/sim.mjs` doit passer (chaque niveau faisable, durée 95–240 s au pilote automatique). Un niveau peut avoir des particularités (`mod` : `grav`, `windX`, `dark`) ; le pilote automatique et le réservoir en tiennent compte.
 - **Carburant** : le réservoir (`level.tank`) est dimensionné par le générateur sur le plus long trajet entre deux héliports principaux ; le pilote automatique doit finir chaque niveau sans descendre sous ~20 % (`essenceMin` dans la sortie de `tools/sim.mjs`).
 - **Contenu fixe par niveau** : exactement 100 pièces (hors de la trajectoire sûre) et 3 étoiles (points difficiles) ; `tools/sim.mjs` le vérifie. Les pièces et étoiles ne sont créditées qu'à l'arrivée ; un échec renvoie au début du niveau.
 - **État de l'appareil** : pas de barre de vie ; points de dégâts (`maxHp`, choc doux = 1, gros choc = 3) rendus par la fumée. Se ravitailler répare.

@@ -29,6 +29,12 @@ const TREE = {
   dead: { h: [50, 140], wr: 0.3, sh: 'tri' },
   crystal: { h: [45, 160], wr: 0.36, sh: 'tri' },
   antenna: { h: [70, 200], wr: 0.06, sh: 'col', wmin: 8, wmax: 10 },
+  lamp: { h: [60, 110], wr: 0.1, sh: 'col', wmin: 8, wmax: 10 },
+  totem: { h: [60, 130], wr: 0.2, sh: 'col', wmin: 16, wmax: 22 },
+  cypress: { h: [80, 200], wr: 0.2, sh: 'tri' },
+  coral: { h: [40, 120], wr: 0.42, sh: 'tri' },
+  mushroom: { h: [60, 170], wr: 0.62, sh: 'lol', wmax: 84 },
+  baobab: { h: [90, 170], wr: 0.55, sh: 'lol', wmax: 76 },
 };
 
 function blur(a, r) {
@@ -62,7 +68,7 @@ export function generateLevel(def) {
   add('end', 1, 780);
   const LEN = X, N = Math.ceil(LEN / STEP) + 2;
   // Héliports : de plus en plus petits et haut perchés au fil des niveaux.
-  const lv = def.id - 1, shrink = 1 - 0.045 * lv, roofH = 120 + 18 * def.id, peakH = 170 + 12 * def.id;
+  const eid = Math.min(def.id, 11), lv = eid - 1, shrink = 1 - 0.045 * lv, roofH = 120 + 18 * eid, peakH = 170 + 12 * eid; // difficulté plafonnée après le niveau 11
   const gapOf = (s) => {
     const sp = SPEC[s.type];
     if (!sp) return 250;
@@ -158,7 +164,7 @@ export function generateLevel(def) {
 
   // --- 3. Obstacles
   const obs = [], items = [], zones = [], pads = [{ x: 170, y: groundAt(170), w: 120, kind: 'start' }];
-  const th = def.theme;
+  const th = def.theme, slow = 1 / Math.sqrt((def.mod || {}).grav || 1); // en faible gravité, tout bouge plus lentement
   const push = (o) => { o.v = R(); obs.push(o); return o; };
 
   function tree(x, scale = 1, extra = 30) {
@@ -218,8 +224,8 @@ export function generateLevel(def) {
           pad = { x, y: gy, w: Math.max(50, 66 * shrink) };
         } else if (v === 'cave') {
           // abri ouvert à gauche : entrer sous la dalle, se poser, ressortir en marche arrière
-          const clr = 88 - 2 * def.id, top = gy - clr - 62;
-          const built = ['building', 'neon', 'pagoda', 'lighthouse'].includes(th.pillar[0]);
+          const clr = 88 - 2 * eid, top = gy - clr - 62;
+          const built = ['building', 'neon', 'pagoda', 'lighthouse', 'castle', 'container', 'chimney', 'monolith'].includes(th.pillar[0]);
           push({ kind: 'shelter', st: built ? 'building' : 'rock', x, y: top, clr, w: 200, g: gy, minX: x - 100, maxX: x + 100,
             shapes: [{ p: rectPoly(x - 100, top, 200, 62) }, { p: rectPoly(x + 76, top, 24, gy + 24 - top) }] });
           items.push({ type: 'star', x: x + 48, y: gy - 30 });
@@ -252,20 +258,20 @@ export function generateLevel(def) {
       case 'cave': break;
       case 'movers':
         every(250, 330, (x) => {
-          push({ kind: 'mover', st: th.mover, x, y0: pathAt(x), amp: 120 + d * 10, per: 4.4 - d * 0.35, ph: R(), r: 20, dyn: 1, minX: x - 24, maxX: x + 24 });
+          push({ kind: 'mover', st: th.mover, x, y0: pathAt(x), amp: 120 + d * 10, per: (4.4 - d * 0.35) * slow, ph: R(), r: 20, dyn: 1, minX: x - 24, maxX: x + 24 });
         });
         every(170, 320, (x) => tree(x, 0.7, 70));
         break;
       case 'mills':
         every(340, 420, (x) => {
           const len = 72 + d * 9, hub = bAt(x) + len * 0.42;
-          push({ kind: 'mill', x, y: hub, len, per: 4.2 - d * 0.35, ph: R(), g: groundAt(x) + 20, dyn: 1, minX: x - len - 6, maxX: x + len + 6 });
+          push({ kind: 'mill', x, y: hub, len, per: (4.2 - d * 0.35) * slow, ph: R(), g: groundAt(x) + 20, dyn: 1, minX: x - len - 6, maxX: x + len + 6 });
           if (d >= 4) hang(x, rand(44, 60), 6);
         });
         break;
       case 'geysers':
         every(400, 500, (x) => {
-          push({ kind: 'geyser', st: th.geyser, x, w: 44, g: groundAt(x), per: 3.3 - d * 0.2, on: 0.42, ph: R(), dyn: 1, minX: x - 22, maxX: x + 22 });
+          push({ kind: 'geyser', st: th.geyser, x, w: 44, g: groundAt(x), per: (3.3 - d * 0.2) * slow, on: 0.42, ph: R(), dyn: 1, minX: x - 22, maxX: x + 22 });
         });
         every(170, 320, (x) => tree(x, 0.6, 70));
         break;
@@ -336,7 +342,8 @@ export function generateLevel(def) {
   // Réservoir : dimensionné sur le plus long trajet entre deux ravitaillements principaux.
   let maxGap = 0, lastX = 170;
   for (const p of pads) if (p.kind !== 'fuel' || p.main) { maxGap = Math.max(maxGap, p.x - lastX); lastX = p.x; }
-  const tank = (maxGap / 200) * (def.id <= 2 ? 1.8 : 1.6); // secondes de rotor à pleine puissance
+  const mod = def.mod || {};
+  const tank = ((maxGap / 200) * (def.id <= 2 ? 1.8 : 1.6)) / Math.sqrt(mod.grav || 1) * (mod.windX < 0 ? 1.25 : 1); // secondes de rotor à pleine puissance
 
   return {
     def, length: LEN, secs, obs, items, zones, pads, tank,
