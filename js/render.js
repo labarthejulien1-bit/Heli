@@ -1,7 +1,6 @@
 // Rendu Canvas 2D : ciel, parallaxe, relief, obstacles, objets, particules.
 import { clamp, lerp, hash, noise1, fbm, mix, rgba, TAU, DEG } from './util.js';
 import { WORLD_H, STEP, moverY, millAngle, geyserState } from './levelgen.js';
-import { maxHp } from './game.js';
 import { drawHeli } from './helidraw.js';
 
 export const VW = 400; // largeur visible en unités de jeu
@@ -179,12 +178,12 @@ export class Renderer {
       if (h.power > 0.3 && gy - h.y < 70 && Math.random() < 0.5) this.spawn(h.x + (Math.random() - 0.5) * 40, gy - 2, 1, { a: -Math.PI / 2, spread: 2.4, v: 50, col: rgba(def.rim, 0.5), life: 0.5, size: 1.6 });
       if (look.trail && h.power > 0.4 && Math.random() < 0.6) this.spawn(h.x - 26, h.y, 1, { v: 8, vx: -30, col: look.flame ? (Math.random() < 0.5 ? '#ffb703' : '#ff5a1f') : look.trail, life: 0.6, size: 2.4 });
       // État de l'appareil : intact, fumée légère (choc doux), fumée noire et étincelles (gros choc), flammes (dernier point).
-      const mh = maxHp(g.H), lost = mh - h.hp;
+      const mh = g.maxHp, lost = mh - h.hp;
       if (g.state === 'fly' && lost > 0) {
-        const heavy = lost >= 3;
-        if (Math.random() < (heavy ? 0.7 : 0.16 * lost)) this.spawn(h.x - 8, h.y - 8, 1, { a: -Math.PI / 2, spread: 0.8, v: 30, vx: -h.vx * 0.2, col: heavy ? 'rgba(25,25,32,.75)' : 'rgba(200,200,210,.45)', life: heavy ? 1.1 : 0.7, size: heavy ? 3.5 : 2.2, grow: heavy ? 8 : 4 });
+        const heavy = lost / mh >= 0.45;
+        if (Math.random() < (heavy ? 0.7 : 0.16 + 0.5 * (lost / mh))) this.spawn(h.x - 8, h.y - 8, 1, { a: -Math.PI / 2, spread: 0.8, v: 30, vx: -h.vx * 0.2, col: heavy ? 'rgba(25,25,32,.75)' : 'rgba(200,200,210,.45)', life: heavy ? 1.1 : 0.7, size: heavy ? 3.5 : 2.2, grow: heavy ? 8 : 4 });
         if (heavy && Math.random() < 0.12) this.spawn(h.x - 6, h.y - 4, 2, { v: 110, col: '#ffd34d', life: 0.3, size: 1.2, g: 300 });
-        if (h.hp <= 1 && Math.random() < 0.6) this.spawn(h.x - 10, h.y - 6, 1, { a: -Math.PI / 2, spread: 1, v: 40, col: Math.random() < 0.5 ? '#ff5a1f' : '#ffb703', life: 0.4, size: 2.6 });
+        if (h.hp / mh <= 0.2 && Math.random() < 0.6) this.spawn(h.x - 10, h.y - 6, 1, { a: -Math.PI / 2, spread: 1, v: 40, col: Math.random() < 0.5 ? '#ff5a1f' : '#ffb703', life: 0.4, size: 2.6 });
       }
       c.save();
       c.translate(h.x, h.y);
@@ -315,14 +314,22 @@ export class Renderer {
         c.beginPath(); c.arc(pad.x + sx * (hw - 4), y - 6, 2.4, 0, 7); c.fill();
       }
       if (fuel) {
-        // borne de carburant
-        const bx = pad.x + hw + 9;
-        c.fillStyle = def.obs; c.fillRect(bx - 5, y - 20, 10, 22);
-        c.fillStyle = here && g.fuel < 1 ? '#ffffff' : GREEN; c.fillRect(bx - 3.5, y - 18, 7, 6);
-        c.strokeStyle = def.obs; c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx - 5, y - 8); c.quadraticCurveTo(bx - 12, y - 6, bx - 11, y - 14); c.stroke();
+        // Passerelles de service solidaires de la plateforme : la pompe à droite, l'atelier à gauche.
+        const deck = mix(def.obs, '#ffffff', 0.25);
+        for (const sd of [-1, 1]) {
+          const ex = pad.x + sd * hw, ox = ex + sd * 22;
+          c.fillStyle = deck; c.fillRect(Math.min(ex, ox), y - 3, 22, 5);
+          c.strokeStyle = deck; c.lineWidth = 2; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(ox - sd * 2, y + 1); c.lineTo(ex - sd * 2, y + 14); c.stroke(); // jambe de force
+          c.strokeStyle = rgba(col, 0.7); c.lineWidth = 1; c.beginPath(); c.moveTo(ox, y - 3); c.lineTo(ox, y - 9); c.lineTo(ex + sd * 3, y - 9); c.stroke(); // garde-corps
+        }
+        const bx = pad.x + hw + 12;
+        c.fillStyle = def.obs; c.fillRect(bx - 5, y - 23, 10, 20);
+        c.fillStyle = here && g.fuel < 1 ? '#ffffff' : GREEN; c.fillRect(bx - 3.5, y - 21, 7, 6);
+        c.strokeStyle = def.obs; c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx - 5, y - 11); c.quadraticCurveTo(bx - 11, y - 9, bx - 10, y - 16); c.stroke();
         // panneau atelier : une clé, pour montrer que l'arrêt répare aussi
-        const sx = pad.x - hw - 10, sy = y - 24;
-        c.fillStyle = def.obs; c.fillRect(sx - 1.5, sy, 3, 26);
+        const sx = pad.x - hw - 12, sy = y - 26;
+        c.fillStyle = def.obs; c.fillRect(sx - 1.5, sy, 3, 23);
         c.fillStyle = '#ffffff'; c.beginPath(); c.arc(sx, sy, 9, 0, TAU); c.fill();
         c.strokeStyle = GREEN; c.lineWidth = 2; c.beginPath(); c.arc(sx, sy, 9, 0, TAU); c.stroke();
         c.strokeStyle = '#1f8a55'; c.lineWidth = 2.6; c.lineCap = 'round'; c.beginPath(); c.moveTo(sx - 4, sy + 4); c.lineTo(sx + 1.5, sy - 1.5); c.stroke();

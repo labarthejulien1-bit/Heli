@@ -9,10 +9,16 @@ export const DT = 1 / 120;
 export const BASE_TILT = 14, MIN_TILT = -28, MAX_TILT = 38;
 const HIT = [[2, 0, 11], [-19, -2, 6]]; // cercles de collision (repère de l'appareil)
 const SOFT = 45; // vitesse d'impact sous laquelle on ne subit aucun dégât
-const LAND = 64; // même seuil pour un posé à plat (plus tolérant)
 const HARD = 130; // au-delà : gros choc
 // État de l'appareil en points : choc doux = 1, gros choc = 3. Un appareil standard encaisse 6 points (2 gros chocs).
 export const maxHp = (H) => Math.max(4, Math.round((H.armor / 100) * 6));
+// Modes de difficulté : hp = résistance, tank = réservoir, land = vitesse de posé sans dégât,
+// padSafe = aucun dégât en se posant sur un héliport, respawn = reprise au dernier ravitaillement.
+export const DIFF = {
+  easy: { hp: 2, tank: 1.35, land: 86, padSafe: true, respawn: true },
+  normal: { hp: 1, tank: 1, land: 72 },
+  hard: { hp: 0.67, tank: 0.95, land: 60 },
+};
 
 // Point le plus proche d'un polygone convexe (ou d'un segment) ; renvoie distance signée.
 function polyContact(pts, cx, cy, out) {
@@ -36,8 +42,10 @@ function polyContact(pts, cx, cy, out) {
 
 export class Game {
   // owned : masque des étoiles déjà acquises sur ce niveau (elles n'apparaissent plus).
-  constructor(level, heli, owned = 0) {
+  constructor(level, heli, owned = 0, diff = 'normal') {
     this.L = level; this.H = heli; this.owned = owned;
+    this.D = DIFF[diff] || DIFF.normal;
+    this.maxHp = Math.max(3, Math.round(maxHp(heli) * this.D.hp));
     this.ev = [];
     this.input = { thrust: false, tilt: BASE_TILT };
     this.reset(false);
@@ -53,9 +61,9 @@ export class Game {
       this.stats = { orbs: 0, rings: 0, stars: 0, hits: 0, respawns: 0, padImpact: 0, dist: 0, lands: 0 };
       let k = 0;
       L.items.forEach((it, i) => { if (it.type === 'star') { if (this.owned & (1 << k)) { this.taken[i] = 1; this.stats.stars++; } k++; } });
-    }
+    } else this.stats.respawns++;
     const p = L.pads[this.padIdx];
-    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: maxHp(this.H), inv: 0, grounded: true, spin: 0, air: 0 };
+    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: this.maxHp, inv: 0, grounded: true, spin: 0, air: 0 };
     this.fuel = 1; this.onPad = this.padIdx; this.dryT = 0; this.botDone = this.padIdx;
     this.state = 'fly';
     this.stateT = 0; this.padT = 0; this.o0 = 0;
@@ -83,7 +91,7 @@ export class Game {
       h.tilt += clamp(tt - h.tilt, -H.agility * dt, H.agility * dt);
     } else { h.spin += dt * 9; }
     if (h.inv > 0) h.inv -= dt;
-    if (fly && this.fuel > 0 && !this.freeFuel) { this.fuel -= (h.power * dt) / L.tank; if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
+    if (fly && this.fuel > 0 && !this.freeFuel) { this.fuel -= (h.power * dt) / (L.tank * this.D.tank); if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
 
     // Forces : poussée du rotor le long de l'axe de l'appareil, gravité, traînée, vent.
     const mod = L.def.mod || {}, Gl = G * (mod.grav || 1);
@@ -135,7 +143,7 @@ export class Game {
         if (p.kind === 'fuel') {
           this.stats.lands++;
           if (on > this.padIdx) this.padIdx = on;
-          this.seen[on] = 1; h.hp = maxHp(H); // le ravitaillement répare l'appareil
+          this.seen[on] = 1; h.hp = this.maxHp; // le ravitaillement répare l'appareil
           this.ev.push({ type: 'pad', x: p.x, y: p.y });
         }
       }
@@ -202,7 +210,9 @@ export class Game {
     }
     if (vn >= 0) { if (ny < -0.75 && vn < 20) h.grounded = true; return; }
     // Sur une surface portante (sol, toit, héliport) le train encaisse davantage : atterrir est plus tolérant.
-    const up = ny < -0.75, impact = -vn, soft = impact < (up ? LAND : SOFT), e = soft ? 0 : 0.4;
+    const up = ny < -0.75, impact = -vn;
+    const safe = up && this.D.padSafe && L.pads.some((p) => Math.abs(h.x - p.x) < p.w / 2 + 12 && Math.abs(p.y - (h.y + 11)) < 8);
+    const soft = safe || impact < (up ? this.D.land : SOFT), e = soft ? 0 : 0.4;
     h.vx -= (1 + e) * vn * nx; h.vy -= (1 + e) * vn * ny;
     if (!soft) {
       this.damage(impact >= (up ? HARD + 25 : HARD) ? 3 : 1, px, py);

@@ -9,7 +9,7 @@ import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -67,7 +67,7 @@ function setDemo(id = nextLevelId()) {
 }
 function startLevel(id) {
   S.mode = 'play'; S.levelId = id; S.level = getLevel(id); S.ended = false;
-  S.game = new Game(S.level, heliOf(save.heli), save.levels[id]?.sm || 0);
+  S.game = new Game(S.level, heliOf(save.heli), save.levels[id]?.sm || 0, save.settings.diff);
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
   lowBeep = 0; timeShown = -1;
@@ -80,26 +80,49 @@ function startLevel(id) {
   if (id === 1 && !save.tut) tutorialCard();
 }
 // Tutoriel du premier vol : une carte sur l'état de l'appareil, puis quatre gestes à réussir.
-function tutorialCard() {
-  S.tut = { step: 0, hold: 0 }; S.game.freeFuel = true;
-  S.mode = 'pause'; snd.rotorStop();
-  ui.innerHTML = `<div class="overlay center"><div class="sheet">
-    <h2>${t('dmgTitle')}</h2>
-    ${[1, 2, 3].map((k) => `<div class="tutrow"><canvas data-dmg="${k}"></canvas><span>${t('dmg' + k)}</span></div>`).join('')}
-    <p class="sub" style="margin:10px 0 14px">${t('dmg4')}</p>
-    <button class="btn primary" style="width:100%" data-act="resume">${ICON.play}${t('go')}</button>
-  </div></div>`;
-  ui.querySelectorAll('canvas[data-dmg]').forEach((cv2) => {
-    const k = +cv2.dataset.dmg, dpr = Math.min(2, window.devicePixelRatio || 1), w = 92, h = 58;
-    cv2.width = w * dpr; cv2.height = h * dpr;
-    const c = cv2.getContext('2d'), z = 1.15 * dpr;
-    c.setTransform(z, 0, 0, z, 46 * dpr, 40 * dpr);
-    const puffs = k === 1 ? [[-8, -16, 4, 'rgba(210,210,220,.6)'], [-13, -23, 5.5, 'rgba(210,210,220,.4)']]
-      : [[-8, -16, 5, 'rgba(25,25,32,.85)'], [-14, -23, 7, 'rgba(25,25,32,.7)'], [-22, -28, 9, 'rgba(25,25,32,.5)']];
-    for (const [x, y, r, col] of puffs) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+// Vignettes des fenêtres d'aide : l'appareil de départ, annoté (fumée, flèches, héliport).
+function tutIcon(cv2, kind) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), c = cv2.getContext('2d');
+  cv2.width = 92 * dpr; cv2.height = 58 * dpr;
+  const px = () => c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const arrow = (x1, y1, x2, y2, col) => {
+    px(); const a = Math.atan2(y2 - y1, x2 - x1);
+    c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 3; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    c.beginPath(); c.moveTo(x2 + Math.cos(a) * 4, y2 + Math.sin(a) * 4); c.lineTo(x2 + Math.cos(a + 2.4) * 7, y2 + Math.sin(a + 2.4) * 7); c.lineTo(x2 + Math.cos(a - 2.4) * 7, y2 + Math.sin(a - 2.4) * 7); c.fill();
+  };
+  const heli = (x, y, rot = 0, power = 0.9) => { c.setTransform(dpr * 0.95, 0, 0, dpr * 0.95, x * dpr, y * dpr); c.rotate(rot); drawHeli(c, HELIS[0].look, 0.31, power); };
+  const dots = (list) => { for (const [x, y, r, col] of list) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); } };
+  const pad = () => { px(); c.fillStyle = '#e8f1f0'; c.fillRect(8, 50, 52, 4); c.fillStyle = '#6ee7a0'; c.fillRect(8, 50, 52, 1.6); };
+  const mark = (ok) => { px(); c.strokeStyle = ok ? '#6ee7a0' : '#ff6b6b'; c.lineWidth = 3.4; c.lineCap = 'round'; c.beginPath(); if (ok) { c.moveTo(70, 30); c.lineTo(75, 36); c.lineTo(85, 22); } else { c.moveTo(70, 22); c.lineTo(84, 36); c.moveTo(84, 22); c.lineTo(70, 36); } c.stroke(); };
+  if (kind.startsWith('dmg')) {
+    const k = +kind[3]; heli(46, 38);
+    dots(k === 1 ? [[-8, -16, 4, 'rgba(210,210,220,.6)'], [-13, -23, 5.5, 'rgba(210,210,220,.4)']] : [[-8, -16, 5, 'rgba(25,25,32,.85)'], [-14, -23, 7, 'rgba(25,25,32,.7)'], [-22, -28, 9, 'rgba(25,25,32,.5)']]);
     drawHeli(c, HELIS[0].look, 0.31, 0.9);
-    if (k === 3) for (const [x, y, r, col] of [[-10, -9, 6, '#ff5a1f'], [-7, -12, 4, '#ffb703'], [-13, -5, 3.5, '#ffb703']]) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
-  });
+    if (k === 3) dots([[-10, -9, 6, '#ff5a1f'], [-7, -12, 4, '#ffb703'], [-13, -5, 3.5, '#ffb703']]);
+  } else if (kind === 'ctl1') { heli(36, 36); arrow(76, 44, 76, 16, '#6ee7a0'); }
+  else if (kind === 'ctl2') { heli(36, 26, 0, 0.1); arrow(76, 14, 76, 42, '#ffd34d'); }
+  else if (kind === 'ctl3') { heli(46, 32, 0.32); arrow(40, 52, 14, 52, '#ffffff'); arrow(52, 52, 78, 52, '#ffffff'); }
+  else if (kind === 'land1') { pad(); heli(34, 37, 0, 0.5); mark(true); }
+  else if (kind === 'land2') { pad(); heli(34, 38, 0.2, 0.1); dots([[14, 12, 3, '#ffd34d'], [-18, 13, 2.5, '#ffd34d'], [20, 9, 2, '#ff8a3a']]); mark(false); }
+}
+// Fenêtres d'aide du premier vol : état de l'appareil, commandes, atterrissage ; puis quatre gestes à réussir.
+const TUT_PAGES = [
+  { title: 'dmgTitle', rows: ['dmg1', 'dmg2', 'dmg3'], note: 'dmg4' },
+  { title: 'ctlTitle', rows: ['ctl1', 'ctl2', 'ctl3'] },
+  { title: 'landTitle', rows: ['land1', 'land2'], note: 'land3' },
+];
+function tutorialCard(page = 0) {
+  if (!S.tut) { S.tut = { step: 0, hold: 0 }; S.game.freeFuel = true; S.mode = 'pause'; snd.rotorStop(); }
+  S.tut.page = page;
+  const pg = TUT_PAGES[page], last = page === TUT_PAGES.length - 1;
+  ui.innerHTML = `<div class="overlay center"><div class="sheet">
+    <p class="sub" style="margin:0 0 4px">${page + 1}/${TUT_PAGES.length}</p><h2 style="margin-bottom:10px">${t(pg.title)}</h2>
+    ${pg.rows.map((k) => `<div class="tutrow"><canvas data-tut="${k}"></canvas><span>${t(k)}</span></div>`).join('')}
+    ${pg.note ? `<p class="sub" style="margin:10px 0 0">${t(pg.note)}</p>` : ''}
+    <button class="btn primary" style="width:100%;margin-top:14px" data-act="${last ? 'resume' : 'tutNext'}">${last ? ICON.play + t('go') : t('next')}</button>
+  </div></div>`;
+  ui.querySelectorAll('canvas[data-tut]').forEach((cv2) => tutIcon(cv2, cv2.dataset.tut));
 }
 function tutorialStep(g, dt) {
   const T = S.tut, h = g.heli, inp = g.input, air = S.level.groundAt(h.x) - h.y > 60;
@@ -157,7 +180,7 @@ function levels() {
     const open = levelUnlocked(save, l.id), rec = save.levels[l.id];
     return `<button class="lvl ${open ? '' : 'locked'}" data-level="${l.id}" style="--a:${l.sky[0][0]};--b:${l.sky[0][1]};--gr:${l.ground}">
       <span class="n">${l.id}</span>
-      <span class="name">${t('lvl' + l.id)}<small>${open ? `★ ${levelStars(save, l.id)}/3${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', l.id - 1)}</small></span>
+      <span class="name">${t('lvl' + l.id)}<small>${open ? `★ ${levelStars(save, l.id)}/3 · <i class="coin"></i>${rec?.orbs || 0}/100${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', l.id - 1)}</small></span>
       ${open ? `<span class="medals">${[0, 1, 2].map((i) => `<i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
     </button>`;
   }).join('')}</div></section>${nav('levels')}`;
@@ -167,7 +190,7 @@ function levelSheet(id) {
   if (!levelUnlocked(save, id)) return toast(t('lockedLevel', id - 1));
   setDemo(id);
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
-    <h2>${id} · ${t('lvl' + id)}</h2><p class="sub">★ ${levelStars(save, id)}/3 ${t('stars').toLowerCase()}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
+    <h2>${id} · ${t('lvl' + id)}</h2><p class="sub">★ ${levelStars(save, id)}/3 ${t('stars').toLowerCase()} · <i class="coin"></i>${rec?.orbs || 0}/100${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
     ${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
     <button class="btn primary" style="width:100%;margin-top:14px" data-play="${id}">${ICON.play}${t('play')}</button>
   </div></div>`);
@@ -187,6 +210,16 @@ function hangar() {
   }).join('')}</div></section>${nav('hangar')}`;
   ui.querySelectorAll('canvas[data-heli]').forEach((c) => heliCanvas(c, heliOf(c.dataset.heli).look, 0.95));
   $('#h-' + save.heli)?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  if (!save.tutHangar) { // première visite : à quoi servent les pièces et les étoiles
+    save.tutHangar = true; persist();
+    ui.insertAdjacentHTML('beforeend', `<div class="overlay center" data-act="closeSheet"><div class="sheet">
+      <h2 style="margin-bottom:10px">${t('shopTitle')}</h2>
+      <div class="tutrow"><span class="big"><i class="coin"></i></span><span>${t('shop1')}</span></div>
+      <div class="tutrow"><span class="big star">★</span><span>${t('shop2')}</span></div>
+      <p class="sub" style="margin:10px 0 0">${t('shop3')}</p>
+      <button class="btn primary" style="width:100%;margin-top:14px" data-act="closeTip">${t('ok')}</button>
+    </div></div>`);
+  }
 }
 
 function profile() {
@@ -210,6 +243,10 @@ function settings() {
       <div class="row"><span>${t('s_lang')}</span>${langSelect()}</div>
       <div class="row"><span>${t('s_vibe')}</span>${sw('vibe')}</div>
       ${installEvt ? `<div class="row"><button class="btn primary" style="flex:1" data-act="install">${t('install')}</button></div>` : ''}
+    </div>
+    <h3>${t('s_diff')}</h3><div class="panel">
+      <div class="seg wide">${['easy', 'normal', 'hard'].map((q) => `<button data-diff="${q}" class="${s.diff === q ? 'on' : ''}">${t('d_' + q)}</button>`).join('')}</div>
+      <p class="sub" style="margin:10px 2px 0;font-size:13px">${t('d_' + s.diff + 'Txt')}</p>
     </div>
     <h3>${t('s_audio')}</h3><div class="panel">
       <div class="row"><span>${t('s_music')}</span>${rng('music', 0, 1, 0.05)}</div>
@@ -259,9 +296,10 @@ function pause() {
 function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorStart(S.game.H); guardBack(); }
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
-  const dry = S.game.fuel <= 0;
+  const dry = S.game.fuel <= 0, canRe = S.game.D.respawn && S.game.padIdx > 0; // mode facile : reprise au dernier ravitaillement
   ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${S.level.def.id} · ${t('lvl' + S.level.def.id)}</p>
-    <button class="btn primary" data-act="restart">${t('restart')}</button>
+    ${canRe ? `<button class="btn primary" data-act="respawn">${t('fromPad')}</button>` : ''}
+    <button class="btn ${canRe ? '' : 'primary'}" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button></div></div>`;
 }
 function showResult() {
@@ -310,9 +348,13 @@ ui.addEventListener('click', (e) => {
     save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
   if (d.heliSel) { save.heli = d.heliSel; persist(); snd.preview(heliOf(d.heliSel)); setDemo(S.levelId); return hangar(); }
+  if (d.diff) { save.settings.diff = d.diff; persist(); return settings(); }
   if (d.quality) { save.settings.quality = d.quality; persist(); R.resize(d.quality); R.setLevel(S.level); return settings(); }
   switch (d.act) {
     case 'closeSheet': b.remove(); break;
+    case 'closeTip': b.closest('.overlay').remove(); break;
+    case 'tutNext': tutorialCard(S.tut.page + 1); break;
+    case 'respawn': S.game.reset(true); S.ended = false; S.mode = 'play'; ui.innerHTML = ''; snd.rotorStart(S.game.H); R.snap = true; guardBack(); break;
     case 'welcomeOk': {
       const n = $('#pilotName').value.trim();
       if (!n) { $('#pilotName').focus(); break; }

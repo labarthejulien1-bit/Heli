@@ -4,11 +4,11 @@ const KEY = 'heli-save-v1';
 
 export function defaults() {
   return {
-    v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false,
+    v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false,
     coins: 0, starsSpent: 0, // porte-monnaie : pièces cumulées, étoiles dépensées
     levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, sm (masque des étoiles trouvées) }
     stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },
-    settings: { music: 0.6, sfx: 0.8, vibe: true, quality: 'high', sens: 1, invert: false, shake: true, fps: false, battery: false },
+    settings: { diff: 'normal', music: 0.6, sfx: 0.8, vibe: true, quality: 'high', sens: 1, invert: false, shake: true, fps: false, battery: false },
   };
 }
 function sanitize(raw) {
