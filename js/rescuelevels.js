@@ -18,7 +18,8 @@
 // - timeLimit : fenêtre météo (s) ; au-delà, la mission est perdue. smoke.col : couleur du voile (brume, poussière).
 // - waves : crêtes qui parcourent la mer entre x0 et x1 (height, speed, spacing, width) et frappent un appareil trop bas.
 // - 'firewall' : barrière de feu qui s'embrase par périodes (x, height, period) ; 'strike' : foudre (x, period) ; 'faller' : bloc venu du ciel par la droite.
-// - props : 'spire' (aiguille rocheuse : x, w, h), 'ledge' (corniche : x, y, w), 'hang' (masse suspendue), 'house' (ruin : en ruine), décor 'pole', 'boat', 'wreck', 'fence', 'stump', 'cow'.
+// - 'cloud' : banc de fumée épaisse en altitude (x, w, y facultatif : bas du banc) qui cache l'appareil et pousse à voler bas.
+// - props : 'spire' (aiguille rocheuse : x, w, h), 'ledge' (corniche ancrée à la paroi : x dans le puits, side -1/1, y, w), 'hang' (masse suspendue), 'house' (ruin : en ruine), décor 'pole', 'boat', 'wreck', 'fence', 'stump', 'cow'.
 // - Chaque mission contient 100 pièces, placées par le constructeur hors de la route directe.
 // - stars : temps à battre (s) et nombre de chocs toléré pour les 2e et 3e étoiles.
 export const RESCUE_LEVELS = [
@@ -63,7 +64,7 @@ export const RESCUE_LEVELS = [
     props: [{ type: 'lighthouse', x: 470, w: 34, h: 150 }, { type: 'spire', x: 1500, w: 70, h: 330 }, { type: 'spire', x: 2300, w: 80, h: 360 }, { type: 'spire', x: 3000, w: 70, h: 310 }, { type: 'boat', x: 760 }],
     hazards: [{ type: 'gust', x: 1700, w: 520, fx: -150, period: 5, on: 0.35 }, { type: 'flyer', x0: 2450, x1: 2900, y: 360, speed: 80 }, { type: 'debris', x0: 3380, x1: 3620, look: 'log' }],
     victims: [{ type: 'person', variant: 'walker', col: '#e76f51', hat: '#264653', x: 3900, zoneWidth: 150, side: 1 }, { type: 'person', variant: 'walker', col: '#2a9d8f', hat: '#e9c46a', x: 3900, zoneWidth: 150, side: 1 }],
-    stars: { time: 345, maxHits: 1 } },
+    stars: { time: 340, maxHits: 1 } },
   { n: 4, seed: 4405, worldLength: 5600, tank: 63, recommended: 'chamois',
     look: {
       style: 'facet',
@@ -74,7 +75,7 @@ export const RESCUE_LEVELS = [
     terrain: [[0, 690], [500, 690], [900, 600], [1300, 520], [1800, 440], [2100, 400], [2130, 620], [2200, 620], [2230, 395], [2800, 360], [3300, 330], [3745, 318], [3780, 606], [3855, 612], [3930, 606], [3965, 318], [4250, 316], [4280, 540], [4340, 540], [4370, 318], [4700, 300], [5600, 280]], rough: 5,
     base: { x: 250 },
     thinAir: { above: 480, span: 300, loss: 0.34 },
-    props: [{ type: 'spire', x: 1500, w: 60, h: 180, st: 'ice' }, { type: 'spire', x: 2500, w: 70, h: 200, st: 'ice' }, { type: 'ledge', x: 3781, y: 470, w: 34 }],
+    props: [{ type: 'spire', x: 1500, w: 60, h: 180, st: 'ice' }, { type: 'spire', x: 2500, w: 70, h: 200, st: 'ice' }, { type: 'ledge', x: 3855, side: -1, y: 470, w: 36 }],
     hazards: [{ type: 'faller', x: 1100, period: 3.6, phase: 0.1 }, { type: 'faller', x: 1750, period: 3.2, phase: 0.6 }, { type: 'faller', x: 2650, period: 3.4, phase: 0.3 }, { type: 'faller', x: 3250, period: 3 }, { type: 'faller', x: 4550, period: 3.3, phase: 0.5 },
       { type: 'gust', x: 2900, w: 600, fx: -130, period: 6, on: 0.4 }],
     victims: [{ type: 'person', variant: 'climber', col: '#f4a261', hat: '#e63946', limp: true, x: 3855, zoneWidth: 110, side: 1 }],
@@ -106,12 +107,12 @@ export const RESCUE_LEVELS = [
     terrain: [[0, 560], [520, 560], [700, 470], [1300, 440], [1900, 460], [2500, 440], [2620, 700], [2780, 715], [3050, 715], [3200, 700], [3300, 430], [3900, 400], [4500, 420], [5070, 430], [5105, 740], [5200, 748], [5295, 740], [5330, 430], [5900, 410], [6400, 420]], rough: 5,
     base: { x: 250 },
     trees: { every: [240, 400], scale: 0.7 },
-    props: [{ type: 'spire', x: 1600, w: 60, h: 150, st: 'mesa' }, { type: 'spire', x: 4200, w: 70, h: 170, st: 'mesa' }, { type: 'ledge', x: 5122, y: 520, w: 46 }, { type: 'ledge', x: 5278, y: 615, w: 46 }],
+    props: [{ type: 'spire', x: 1600, w: 60, h: 150, st: 'mesa' }, { type: 'spire', x: 4200, w: 70, h: 170, st: 'mesa' }, { type: 'ledge', x: 5200, side: -1, y: 520, w: 42 }, { type: 'ledge', x: 5200, side: 1, y: 615, w: 42 }],
     hazards: [{ type: 'thermal', x: 2640, w: 230, fy: -170 }, { type: 'thermal', x: 3520, w: 260, fy: 140 }, { type: 'faller', x: 2200, period: 3.6, col: '#a05a34' }, { type: 'faller', x: 4700, period: 3.2, phase: 0.5, col: '#a05a34' },
       { type: 'flyer', x0: 3400, x1: 4000, y: 290, speed: 70 }],
     victims: [{ type: 'person', variant: 'hiker', col: '#e9c46a', hat: '#ffffff', x: 2915, zoneWidth: 170, side: 1 }, { type: 'person', variant: 'hiker', col: '#90be6d', hat: '#f94144', limp: true, x: 5205, zoneWidth: 110, side: -1 }],
     stars: { time: 195, maxHits: 1 } },
-  { n: 7, seed: 4708, worldLength: 6200, tank: 84, recommended: 'chamois',
+  { n: 7, seed: 4708, worldLength: 6200, tank: 80, recommended: 'chamois',
     look: {
       style: 'flat',
       sky: [['#2a1410', '#e2581c'], ['#1a0d0c', '#ff8a3a']], mid: '#7a2a14', ground: '#150a08', obs: '#0d0605', rim: '#ff9a3c', accent: '#ffe08a',
@@ -122,12 +123,13 @@ export const RESCUE_LEVELS = [
     base: { x: 250 },
     trees: { every: [90, 170], scale: 1.0 },
     props: [{ type: 'stump', x: 1500 }, { type: 'stump', x: 2500 }, { type: 'stump', x: 3900 }],
-    hazards: [{ type: 'firewall', x: 1250, height: 170, period: 5 }, { type: 'firewall', x: 2150, height: 190, period: 4.4, phase: 0.3 }, { type: 'firewall', x: 2950, height: 165, period: 5.2, phase: 0.6 }, { type: 'firewall', x: 4150, height: 200, period: 4.6, phase: 0.2 },
+    hazards: [{ type: 'firewall', x: 1250, height: 170, period: 5 }, { type: 'firewall', x: 2150, height: 270, period: 4.4, phase: 0.3 }, { type: 'firewall', x: 2950, height: 165, period: 5.2, phase: 0.6 }, { type: 'firewall', x: 4150, height: 310, period: 4.6, phase: 0.2 },
+      { type: 'cloud', x: 900, w: 620 }, { type: 'cloud', x: 1950, w: 480 }, { type: 'cloud', x: 3500, w: 520 }, { type: 'cloud', x: 4000, w: 420 }, { type: 'cloud', x: 5200, w: 500 },
       { type: 'firefront', x: 6150, speed: -3.4, height: 240 }, { type: 'smoke', density: 0.5 },
       { type: 'faller', x: 1700, period: 3.8, col: '#ff8a2a', r: 10 }, { type: 'faller', x: 3700, period: 3.3, phase: 0.5, col: '#ff8a2a', r: 10 }],
     victims: [{ type: 'person', variant: 'forester', col: '#f4a261', hat: '#e9c46a', x: 3300, zoneWidth: 170, side: 1 },
       { type: 'animal', variant: 'deer', size: 'medium', col: '#a8703f', x: 4900, zoneWidth: 190, side: -1 }, { type: 'animal', variant: 'fawn', size: 'small', col: '#c99364', x: 4900, zoneWidth: 190, side: -1 }],
-    stars: { time: 325, maxHits: 1 } },
+    stars: { time: 320, maxHits: 1 } },
   { n: 8, seed: 4809, worldLength: 6000, tank: 77, recommended: 'mouette',
     look: {
       style: 'flat',
@@ -160,7 +162,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'explorer', col: '#e76f51', hat: '#ffb703', x: 3900, zoneWidth: 170, side: 1, floe: { x0: 3750, x1: 4350, speed: 14 } },
       { type: 'animal', variant: 'husky', size: 'small', col: '#d9dde3', x: 3900, zoneWidth: 170, side: 1, floe: { x0: 3750, x1: 4350, speed: 14 } }],
     stars: { time: 130, maxHits: 1 } },
-  { n: 10, seed: 5011, worldLength: 6200, tank: 74, recommended: 'chamois',
+  { n: 10, seed: 5011, worldLength: 6200, tank: 72, recommended: 'chamois',
     look: {
       style: 'flat',
       sky: [['#160a10', '#6b1f1a'], ['#220b0b', '#b8401c']], mid: '#4a1717', ground: '#0f0507', obs: '#1b090c', rim: '#ff7a2a', accent: '#ffc24a',
@@ -169,11 +171,12 @@ export const RESCUE_LEVELS = [
     },
     terrain: [[0, 700], [600, 700], [1000, 640], [1500, 560], [2000, 470], [2500, 420], [3000, 440], [3500, 380], [4000, 360], [4480, 350], [4520, 600], [4580, 600], [4610, 345], [4830, 345], [4860, 600], [4920, 600], [4950, 350], [5500, 380], [6200, 340]], rough: 7,
     base: { x: 250 },
-    hazards: [{ type: 'firewall', x: 1300, height: 190, period: 4.6, col: '#ff3b1f' }, { type: 'firewall', x: 2250, height: 210, period: 5, phase: 0.4, col: '#ff3b1f' }, { type: 'firewall', x: 3250, height: 180, period: 4.2, phase: 0.7, col: '#ff3b1f' },
+    hazards: [{ type: 'firewall', x: 1300, height: 190, period: 4.6, col: '#ff3b1f' }, { type: 'firewall', x: 2250, height: 300, period: 5, phase: 0.4, col: '#ff3b1f' }, { type: 'firewall', x: 3250, height: 250, period: 4.2, phase: 0.7, col: '#ff3b1f' },
+      { type: 'cloud', x: 1050, w: 520 }, { type: 'cloud', x: 2050, w: 460 }, { type: 'cloud', x: 3000, w: 560 }, { type: 'cloud', x: 5000, w: 600 },
       { type: 'faller', x: 1700, period: 3.2, col: '#ff7a2a' }, { type: 'faller', x: 2700, period: 2.9, phase: 0.4, col: '#ff7a2a' }, { type: 'faller', x: 3700, period: 3.4, phase: 0.7, col: '#ff7a2a' }, { type: 'faller', x: 4250, period: 3.1, phase: 0.2, col: '#ff7a2a' },
       { type: 'thermal', x: 4490, w: 130, fy: -170 }, { type: 'smoke', density: 0.35 }],
     victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'volcanologist', col: ['#adb5bd', '#ced4da', '#868e96'][k], hat: ['#ffd166', '#ef476f', '#06d6a0'][k], x: 4720, zoneWidth: 190, side: 1 })),
-    stars: { time: 285, maxHits: 1 } },
+    stars: { time: 280, maxHits: 1 } },
   { n: 11, seed: 5112, worldLength: 5600, tank: 68, recommended: 'sentinelle',
     look: {
       style: 'hatch', grain: 0.6,
@@ -266,7 +269,7 @@ export const RESCUE_LEVELS = [
     terrain: [[0, 560], [600, 560], [900, 440], [1900, 420], [2300, 470], [2700, 410], [3300, 430], [3870, 430], [3905, 745], [4000, 752], [4095, 745], [4130, 430], [4700, 420], [5600, 440]], rough: 5,
     base: { x: 250 },
     trees: { every: [240, 420], scale: 0.6 },
-    props: [{ type: 'ledge', x: 3922, y: 540, w: 46, h: 14 }, { type: 'ledge', x: 4078, y: 640, w: 46, h: 14 }, { type: 'spire', x: 1500, w: 60, h: 170 }, { type: 'spire', x: 3000, w: 60, h: 190 }],
+    props: [{ type: 'ledge', x: 4000, side: -1, y: 540, w: 42, h: 14 }, { type: 'ledge', x: 4000, side: 1, y: 640, w: 42, h: 14 }, { type: 'spire', x: 1500, w: 60, h: 170 }, { type: 'spire', x: 3000, w: 60, h: 190 }],
     hazards: [{ type: 'flyer', x0: 2300, x1: 2900, y: 300, speed: 70, col: '#2a3148' }, { type: 'flyer', x0: 4300, x1: 4900, y: 300, speed: 80, col: '#2a3148', phase: 0.5 },
       { type: 'gust', x: 1200, w: 500, fx: -110, period: 6, on: 0.35 }],
     victims: [{ type: 'person', variant: 'caver', col: '#f77f00', hat: '#ffd166', x: 4000, zoneWidth: 110, side: 1 }, { type: 'person', variant: 'caver', col: '#4ea8de', hat: '#ffd166', limp: true, x: 4000, zoneWidth: 110, side: 1 }],
@@ -307,7 +310,7 @@ export const RESCUE_LEVELS = [
       { type: 'debris', x0: 1700, x1: 2100, look: 'roof' }, { type: 'debris', x0: 2150, x1: 2500, look: 'car', phase: 0.5 }],
     victims: [{ type: 'person', variant: 'islander', col: '#ef476f', hat: '#ffd166', x: 3820, zoneWidth: 190, side: 1 }, { type: 'person', variant: 'islander', col: '#118ab2', hat: '#06d6a0', x: 3820, zoneWidth: 190, side: 1 },
       { type: 'animal', variant: 'turtle', size: 'small', col: '#52796f', x: 5050, zoneWidth: 160, side: -1 }],
-    stars: { time: 170, maxHits: 1 } },
+    stars: { time: 175, maxHits: 1 } },
   { n: 19, seed: 5920, worldLength: 6600, tank: 78, recommended: 'chamois', timeLimit: 330,
     look: {
       style: 'flat', grain: 0.5,
@@ -323,7 +326,7 @@ export const RESCUE_LEVELS = [
       { type: 'gust', x: 4200, w: 500, fx: -120, period: 6, on: 0.35, y0: 118 }],
     victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'climber', col: ['#e63946', '#ffb703', '#2a9d8f'][k], hat: ['#1d3557', '#023047', '#e9c46a'][k], limp: k === 2, x: 5350, zoneWidth: 200, side: 1 })),
     stars: { time: 300, maxHits: 1 } },
-  { n: 20, seed: 6021, worldLength: 7000, tank: 95, recommended: 'sentinelle', mod: { dark: 1, windX: -25 },
+  { n: 20, seed: 6021, worldLength: 7000, tank: 100, recommended: 'sentinelle', mod: { dark: 1, windX: -25 },
     look: {
       style: 'flat',
       sky: [['#05070d', '#1b2233'], ['#04060a', '#252e44']], mid: '#161c2b', ground: '#07090e', obs: '#0d111a', rim: '#aab6cc', accent: '#ffe9a8',
@@ -336,10 +339,10 @@ export const RESCUE_LEVELS = [
     waves: { x0: 1950, x1: 3150, height: 42, speed: 65, spacing: 600, width: 110 },
     trees: { every: [260, 420], scale: 0.8 },
     props: [{ type: 'spire', x: 2500, w: 70, h: 320 }, { type: 'spire', x: 4500, w: 60, h: 160 }, { type: 'house', x: 3700, w: 120, h: 90, ruin: true }, { type: 'pole', x: 3550 }, { type: 'pole', x: 4200, flip: true }, { type: 'wreck', x: 3400 }],
-    hazards: [{ type: 'gust', x: 1700, w: 800, fx: -150, period: 5, on: 0.4 }, { type: 'strike', x: 2200, period: 6 }, { type: 'strike', x: 2900, period: 5.4, phase: 0.5 }, { type: 'strike', x: 5000, period: 6.2, phase: 0.3 },
-      { type: 'firewall', x: 4900, height: 170, period: 5 }, { type: 'faller', x: 5600, period: 3.4, col: '#aab6cc', r: 12 }, { type: 'debris', x0: 2620, x1: 3100, look: 'log' }],
+    hazards: [{ type: 'gust', x: 1700, w: 800, fx: -150, period: 5, on: 0.4 }, { type: 'strike', x: 2200, period: 6 }, { type: 'strike', x: 2900, period: 5.4, phase: 0.5 }, { type: 'strike', x: 5380, period: 6.2, phase: 0.3 },
+      { type: 'firewall', x: 4900, height: 240, period: 5 }, { type: 'cloud', x: 4650, w: 520 }, { type: 'faller', x: 5600, period: 3.4, col: '#aab6cc', r: 12 }, { type: 'debris', x0: 2620, x1: 3100, look: 'log' }],
     victims: [{ type: 'person', variant: 'hiker', col: '#f4a261', hat: '#e63946', limp: true, x: 1350, zoneWidth: 150, side: 1 }, { type: 'person', variant: 'shepherd', col: '#8d99ae', hat: '#6b4f2a', x: 4040, zoneWidth: 150, side: 1 },
       { type: 'animal', variant: 'dog', size: 'small', col: '#f1f1f1', x: 6350, zoneWidth: 160, side: -1 }],
-    stars: { time: 335, maxHits: 1 } },
+    stars: { time: 340, maxHits: 1 } },
 ];
 export const rescueLevel = (n) => RESCUE_LEVELS.find((l) => l.n === n);

@@ -1,19 +1,19 @@
 // Point d'entrée : écrans, commandes, boucle de jeu.
-import { HELIS, LEVELS, RANKS, TOTAL_MEDALS, LANGS } from './data.js';
+import { HELIS, LEVELS, RANKS, TOTAL_MEDALS, LANGS, heliUnlock } from './data.js';
 import { generateLevel } from './levelgen.js';
 import { Game, autopilot, DT, BASE_TILT, MIN_TILT, MAX_TILT } from './game.js';
 import { Renderer } from './render.js';
 import { drawHeli, drawOccupant } from './helidraw.js';
 import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
-import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
+import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy, heliOpen } from './save.js';
 import { clamp, fmtTime } from './util.js';
-import { RESCUE_HELIS, rescueHeli, rescueUnlocked, rescueBuy } from './rescue.js';
+import { RESCUE_HELIS, rescueHeli, rescueUnlocked, rescueBuy, rescueCanBuy, rescueOpenHeli, rescueStarWallet } from './rescue.js';
 import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.8.0';
+const VERSION = '2.9.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -65,7 +65,8 @@ function heliCanvas(cvs, look, scale = 1) {
 // Heli Rescue : un décor côtier et un appareil de secours, en attendant les niveaux du monde).
 const rcache = new Map();
 const getRescue = (n) => { if (!rcache.has(n)) rcache.set(n, buildRescueLevel(rescueLevel(n))); return rcache.get(n); };
-const rwallet = () => `<span class="wallet"><span><i class="coin"></i>${save.heliRescue.coins}</span><b>★ ${rescueStars(save)}/60</b></span>`;
+const rwallet = (shop) => `<span class="wallet"><span><i class="coin"></i>${save.heliRescue.coins}</span><b>★ ${shop ? rescueStarWallet(save) : rescueStars(save) + '/60'}</b></span>`;
+const lockIcon = () => ICON.lock.replace('<svg', '<svg style="width:12px;height:12px"');
 const rescueOpen = (n) => n === 1 || !!save.heliRescue.levels[n - 1]?.done;
 const levelTitle = () => (S.rescue ? `${S.rescue} · ${t('r_lvl' + S.rescue)}` : `${S.level.def.id} · ${t('lvl' + S.level.def.id)}`);
 const myRescueHeli = () => { const h = rescueHeli(save.heliRescue.heli); return rescueUnlocked(save, h) ? h : RESCUE_HELIS[0]; };
@@ -275,7 +276,7 @@ function showRescueResult() {
 }
 function rhangar() {
   const cur = myRescueHeli().id;
-  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('hangar')} · Heli Rescue${rwallet()}</h2><div class="cards">${RESCUE_HELIS.map((h) => {
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('hangar')} · Heli Rescue${rwallet(true)}</h2><div class="cards">${RESCUE_HELIS.map((h) => {
     const own = rescueUnlocked(save, h), sel = cur === h.id;
     const bar = (lb, v) => `<div class="bar"><span>${t(lb)}</span><i><b style="width:${Math.round(clamp(v, 0.08, 1) * 100)}%"></b></i></div>`;
     return `<div class="hcard panel ${own ? '' : 'locked'}" id="rh-${h.id}">
@@ -284,7 +285,8 @@ function rhangar() {
       ${bar('stat_power', h.thrust / 1.5)}${bar('stat_agility', h.handling / 1.3)}${bar('r_fuel', h.fuel / 1.4)}${bar('r_wind', h.wind / 1.5)}
       <div class="bar"><span>${t('places')}</span><em class="seats">${'<u></u>'.repeat(h.places)}${h.heavyLift ? '<u class="big"></u>' : ''}</em></div>
       ${own ? `<button class="btn ${sel ? 'ghost' : 'primary'}" data-rheli-sel="${h.id}" ${sel ? 'disabled' : ''}>${sel ? '✓ ' + t('selected') : t('select')}</button>`
-        : `<button class="btn primary ${save.heliRescue.coins >= h.price ? '' : 'cant'}" data-rbuy="${h.id}">${t('buy')} · <i class="coin"></i>${h.price}</button>`}
+        : rescueOpenHeli(save, h) ? `<button class="btn primary ${rescueCanBuy(save, h) ? '' : 'cant'}" data-rbuy="${h.id}">${t('buy')} · ${priceLabel(h.price)}</button>`
+        : `<div class="req"><small>${lockIcon()} ${t('locked')} · ${priceLabel(h.price)}</small>${t('r_unlock', h.unlock)}</div>`}
     </div>`;
   }).join('')}</div></section>${nav('rhangar')}`;
   ui.querySelectorAll('canvas[data-rheli]').forEach((c) => heliCanvas(c, rescueHeli(c.dataset.rheli).look, 0.95));
@@ -333,7 +335,8 @@ function hangar() {
       <canvas data-heli="${h.id}"></canvas><h4>${h.name}</h4>
       ${bar('power', (h.power - 1.6) / (max.power - 1.6))}${bar('agility', h.agility / max.agility)}${bar('armor', h.armor / max.armor)}${bar('speed', (1.25 - h.drag) / 0.5)}
       ${own ? `<button class="btn ${sel ? 'ghost' : 'primary'}" data-heli-sel="${h.id}" ${sel ? 'disabled' : ''}>${sel ? '✓ ' + t('selected') : t('select')}</button>`
-        : `<button class="btn primary ${canBuy(save, h) ? '' : 'cant'}" data-buy="${h.id}">${t('buy')} · ${priceLabel(h.price)}</button>`}
+        : heliOpen(save, h) ? `<button class="btn primary ${canBuy(save, h) ? '' : 'cant'}" data-buy="${h.id}">${t('buy')} · ${priceLabel(h.price)}</button>`
+        : `<div class="req"><small>${lockIcon()} ${t('locked')} · ${priceLabel(h.price)}</small>${t('lockedLevel', heliUnlock(h))}</div>`}
     </div>`;
   }).join('')}</div></section>${nav('hangar')}`;
   ui.querySelectorAll('canvas[data-heli]').forEach((c) => heliCanvas(c, heliOf(c.dataset.heli).look, 0.95));
@@ -472,7 +475,7 @@ ui.addEventListener('click', (e) => {
   if (d.level) return levelSheet(+d.level);
   if (d.buy) {
     const h = heliOf(d.buy);
-    if (!buy(save, h)) return toast(t('notEnough'));
+    if (!buy(save, h)) return toast(heliOpen(save, h) ? t('notEnough') : t('lockedLevel', heliUnlock(h)));
     save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
   if (d.rlevel) return rescueSheet(+d.rlevel);
@@ -480,7 +483,7 @@ ui.addEventListener('click', (e) => {
   if (d.rplay) return startRescue(+d.rplay);
   if (d.rbuy) {
     const h = rescueHeli(d.rbuy);
-    if (!rescueBuy(save, h)) return toast(t('notEnough'));
+    if (!rescueBuy(save, h)) return toast(rescueOpenHeli(save, h) ? t('notEnough') : t('r_unlock', h.unlock));
     save.heliRescue.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(); return rhangar();
   }
   if (d.rheliSel) { save.heliRescue.heli = d.rheliSel; persist(); snd.preview(rescueHeli(d.rheliSel)); setDemo(); return rhangar(); }

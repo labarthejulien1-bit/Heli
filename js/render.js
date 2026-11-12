@@ -203,6 +203,18 @@ export class Renderer {
       c.restore();
     }
 
+    // bancs de fumée épaisse (missions en feu) : au premier plan, ils cachent l'appareil qui vole trop haut
+    for (const q of L.clouds || []) {
+      if (q.x > camX + VW + 120 || q.x + q.w < camX - 120) continue;
+      const col = q.col || '#241a18', n = Math.ceil(q.w / 46);
+      c.fillStyle = rgba(col, 0.94); c.fillRect(q.x + 30, camY - 40, q.w - 60, q.y - 44 - camY + 40);
+      for (let pass = 0; pass < 2; pass++) for (let k = 0; k <= n; k++) {
+        const px = q.x + (k / n) * q.w, e = Math.min(1, k / 2, (n - k) / 2), r = 40 + 26 * hash(k, q.x + pass * 7), py = q.y - 34 - (1 - e) * 60 + Math.sin(time * 0.5 + k * 1.7 + pass) * 5 - pass * 30;
+        c.fillStyle = pass ? rgba(mix(col, '#ff7a3a', 0.1), 0.6) : rgba(col, 0.95);
+        c.beginPath(); c.arc(px + pass * 17, py, r, 0, TAU); c.fill();
+        if (!pass) c.fillRect(px - r, camY - 40, r * 2, Math.max(0, py - camY + 40));
+      }
+    }
     // --- premier plan (écran)
     c.setTransform(s, 0, 0, s, 0, 0);
     this.weather(c, def, vh, time, dt, camDX);
@@ -818,10 +830,14 @@ export class Renderer {
           }
           break;
         }
-        case 'ledge': { // corniche rocheuse en saillie dans un puits
-          const j = (k) => hash(k, o.v * 77) * 4;
-          c.beginPath(); c.moveTo(l - 3, top + 3 + j(1)); c.lineTo(l + w * 0.3, top + j(2)); c.lineTo(l + w * 0.7, top + 1); c.lineTo(l + w + 3, top + 3 + j(3)); c.lineTo(l + w - 2, top + h + 5); c.lineTo(l + w * 0.5, top + h + 2); c.lineTo(l + 2, top + h + 6); c.fill();
-          c.strokeStyle = rgba(def.rim, 0.55); c.lineWidth = 2; c.beginPath(); c.moveTo(l - 3, top + 3 + j(1)); c.lineTo(l + w * 0.3, top + j(2)); c.lineTo(l + w * 0.7, top + 1); c.lineTo(l + w + 3, top + 3 + j(3)); c.stroke();
+        case 'ledge': { // corniche : un éperon de la même matière que la falaise, large à sa racine dans la paroi, effilé vers le vide
+          const sd = o.side || -1, root = x - sd * (w / 2 + 6), tip = x + sd * w / 2, j = (k) => hash(k, o.v * 77) * 3;
+          const gr = c.createLinearGradient(0, 380, 0, 820); gr.addColorStop(0, def.ground); gr.addColorStop(1, def.groundDeep || mix(def.ground, '#000000', 0.35));
+          c.fillStyle = gr;
+          c.beginPath(); c.moveTo(root, top - 10); c.lineTo(root + sd * w * 0.35, top - 1 + j(1)); c.lineTo(tip - sd * 5, top + j(2)); c.lineTo(tip, top + 4);
+          c.lineTo(tip - sd * 6, top + h); c.lineTo(root + sd * w * 0.45, top + h + 5 + j(3)); c.lineTo(root, top + h + 30); c.fill();
+          c.strokeStyle = rgba(def.rim, 0.75); c.lineWidth = 2.2; c.lineJoin = 'round'; c.beginPath();
+          c.moveTo(root, top - 10); c.lineTo(root + sd * w * 0.35, top - 1 + j(1)); c.lineTo(tip - sd * 5, top + j(2)); c.lineTo(tip, top + 4); c.lineTo(tip - sd * 6, top + h); c.lineTo(root + sd * w * 0.45, top + h + 5 + j(3)); c.lineTo(root, top + h + 30); c.stroke();
           break;
         }
         case 'castle':

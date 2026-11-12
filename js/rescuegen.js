@@ -71,7 +71,13 @@ export function buildRescueLevel(cfg) {
   const rock = (x, y, w, h, st) => obs.push({ kind: 'pillar', st, x, y, w, h, shapes: [{ p: rectPoly(x - w / 2, y, w, h) }], minX: x - w / 2, maxX: x + w / 2, v: R() });
   for (const p of cfg.props || []) {
     if (p.type === 'spire') { const g = groundAt(p.x); rock(p.x, g - p.h, p.w, p.h + 24, p.st || 'rock'); }
-    else if (p.type === 'ledge') rock(p.x, p.y, p.w, p.h || 16, 'ledge');
+    else if (p.type === 'ledge') {
+      // corniche : part de la paroi du puits (côté side : -1 gauche, 1 droite, cherchée depuis p.x à la hauteur p.y) et avance de p.w dans le vide
+      const h = p.h || 16, sd = p.side || -1; let wx = p.x;
+      while (Math.abs(wx - p.x) < 400 && groundAt(wx) > p.y + h) wx += sd * 2;
+      const x = wx - sd * (p.w / 2 - 3);
+      obs.push({ kind: 'pillar', st: 'ledge', side: sd, x, y: p.y, w: p.w + 6, h, shapes: [{ p: rectPoly(x - p.w / 2 - 3, p.y, p.w + 6, h) }], minX: x - p.w / 2 - 3, maxX: x + p.w / 2 + 3, v: R() });
+    }
     else if (p.type === 'hang') obs.push({ kind: 'hang', st: p.st || 'rock', x: p.x, y: p.len, w: p.w, shapes: [{ p: [p.x - p.w / 2, -80, p.x + p.w / 2, -80, p.x + p.w * 0.3, p.len, p.x - p.w * 0.3, p.len] }], minX: p.x - p.w / 2, maxX: p.x + p.w / 2, v: R() });
   }
   for (const b of builds) { const g = groundAt(b.x), top = g - b.h; obs.push({ kind: 'pillar', st: 'house', ruin: b.ruin, x: b.x, y: top, w: b.w, h: b.h + 24, shapes: [{ p: rectPoly(b.x - b.w / 2, top, b.w, b.h + 24) }], minX: b.x - b.w / 2, maxX: b.x + b.w / 2, v: R() }); }
@@ -102,6 +108,8 @@ export function buildRescueLevel(cfg) {
   const zones = (cfg.hazards || []).filter((h) => h.type === 'thermal').map((h) => ({ x: h.x, w: h.w, y0: 30, y1: 760, fx: 0, fy: h.fy }));
   const fire = (cfg.hazards || []).find((h) => h.type === 'firefront') || null, quake = (cfg.hazards || []).find((h) => h.type === 'quake') || null;
   const smoke = (cfg.hazards || []).find((h) => h.type === 'smoke') || null;
+  // bancs de fumée épaisse en altitude : on ne voit plus l'appareil qui passe derrière (y : bas du banc)
+  const clouds = (cfg.hazards || []).filter((h) => h.type === 'cloud').map((h) => ({ x: h.x, w: h.w, y: h.y ?? groundAt(h.x + h.w / 2) - 150, col: h.col }));
   obs.sort((p, q) => p.minX - q.minX);
 
   // --- Altitude de croisière (pour le pilote automatique) : au-dessus du relief et des arbres alentour
@@ -148,7 +156,7 @@ export function buildRescueLevel(cfg) {
     // musique : toujours en mineur, plus pressante, avec le pouls de l'urgence (mood 'rescue', js/audio.js)
     def: { ...look, music: { ...look.music, scale: 'min', bpm: Math.max(84, look.music.bpm + 10), mood: 'rescue' }, id: 100 + cfg.n, seed: cfg.seed, mod: cfg.mod || {}, objectives: [] },
     rescue: { cfg, victims, base: pads[0] }, twoWay: true, decor: (cfg.props || []).filter((p) => ['cow', 'pole', 'boat', 'wreck', 'fence', 'stump'].includes(p.type)), surfAt, waves: WV || null, waterAt, gusts,
-    length: LEN, secs: [], obs, items, zones, fire, quake, smoke, pads, tank: cfg.tank, tunnels: [], traffic: [],
+    length: LEN, secs: [], obs, items, zones, fire, quake, smoke, clouds, pads, tank: cfg.tank, tunnels: [], traffic: [],
     ground, ceil, groundAt, ceilAt: samp(ceil), pathAt: samp(cruise), gapAt: () => 240, groundSlope: slope(ground), ceilSlope: slope(ceil),
     startX: cfg.base.x, pad: pads[0], orbTotal: items.length, starTotal: 0,
   };

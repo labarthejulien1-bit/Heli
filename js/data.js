@@ -55,6 +55,10 @@ export const HELIS = [
     look: { body: 'ufo', c1: '#8b5cf6', c2: '#b6ff5a', c3: '#4c1d95', glass: '#b8fff0', glow: '#b6ff5a', trail: '#b6ff5a' }, price: { stars: 14 } },
 ];
 
+// Niveau de l'Aventure à réussir pour déverrouiller un hélicoptère (0 = dès le départ) : dans l'ordre du hangar,
+// du niveau 1 pour le deuxième appareil au niveau 29 pour le dernier. Une fois déverrouillé, il reste à l'acheter.
+export const heliUnlock = (h) => { const i = HELIS.indexOf(h); return i <= 0 ? 0 : Math.round(((i - 1) * 28) / (HELIS.length - 2)) + 1; };
+
 // Types d'objectifs : finish, orbs (% des 100 pièces), time (s), hits (max), soft (vitesse max à l'arrivée), stars.
 // fuel : arrêts de ravitaillement dans l'ordre (easy, roof, peak = principaux ; trees, cave = bonus difficiles avec une étoile).
 // traffic : appareils qui croisent à contresens ('plane', 'heli', 'ufo').

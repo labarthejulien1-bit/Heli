@@ -171,7 +171,7 @@ export function rescueAutopilot(g) {
   // dangers périodiques : on essaie plusieurs allures et on garde la première qui reste sûre pendant près de deux secondes
   const risk = (v, vy) => {
     for (let t = 0; t <= 1.8; t += 0.1) {
-      const px = h.x + v * t, py = h.y + vy * Math.min(t, 0.6);
+      const px = h.x + v * t - (v - h.vx) * 0.5 * (1 - Math.exp(-t / 0.5)), py = h.y + vy * Math.min(t, 0.6); // la vitesse ne rejoint l'allure voulue que peu à peu
       for (const o of L.obs) { if (o.minX > h.x + 500) break; if (!o.safeAt || o.maxX < h.x - 400) continue; if ((o.wide ? px > o.minX - 90 && px < o.maxX + 90 : px > o.minX - 46 && px < o.maxX + 46) && !o.safeAt(g.t + t, py, px)) return t; }
     }
     return 9;

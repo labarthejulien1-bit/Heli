@@ -1,5 +1,5 @@
 // Sauvegarde 100 % locale (localStorage), versionnée, avec export/import JSON.
-import { HELIS, LEVELS } from './data.js';
+import { HELIS, LEVELS, heliUnlock } from './data.js';
 import { RESCUE_HELIS } from './rescue.js';
 const KEY = 'heli-save-v1';
 
@@ -7,7 +7,7 @@ export function defaults() {
   return {
     v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false,
     world: 'adv', // monde affiché à l'accueil : 'adv' (Aventure) ou 'rescue' (Heli Rescue)
-    heliRescue: { levels: {}, heli: 'mesange', coins: 0, helis: ['mesange'] }, // progression du monde Heli Rescue, indépendante de l'Aventure
+    heliRescue: { levels: {}, heli: 'mesange', coins: 0, starsSpent: 0, helis: ['mesange'] }, // progression du monde Heli Rescue, indépendante de l'Aventure
     coins: 0, starsSpent: 0, // porte-monnaie : pièces cumulées, étoiles dépensées
     levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, sm (masque des étoiles trouvées) }
     stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },
@@ -34,7 +34,7 @@ function sanitize(raw) {
   r.helis = r.helis.filter((id) => RESCUE_HELIS.some((h) => h.id === id));
   if (!r.helis.includes('mesange')) r.helis.unshift('mesange');
   if (!r.helis.includes(r.heli)) r.heli = 'mesange';
-  r.coins = Math.max(0, Math.floor(+r.coins || 0));
+  r.coins = Math.max(0, Math.floor(+r.coins || 0)); r.starsSpent = Math.max(0, Math.floor(+r.starsSpent || 0));
   s.coins = Math.max(0, Math.floor(+s.coins || 0)); s.starsSpent = Math.max(0, Math.floor(+s.starsSpent || 0));
   s.lastLevel = Math.min(LEVELS.length, Math.max(1, s.lastLevel | 0 || 1));
   return s;
@@ -55,7 +55,9 @@ export const starCount = (s) => Object.values(s.levels).reduce((n, l) => n + bit
 export const starWallet = (s) => Math.max(0, starCount(s) - s.starsSpent);
 export const levelUnlocked = (s, id) => id === 1 || !!s.levels[id - 1]?.done;
 // Achat d'un hélicoptère : en pièces, ou en étoiles pour les plus rares.
-export function canBuy(s, h) { return h.price.stars ? starWallet(s) >= h.price.stars : s.coins >= h.price.coins; }
+// Chaque hélicoptère se déverrouille en réussissant un niveau (heliUnlock), puis s'achète.
+export const heliOpen = (s, h) => s.helis.includes(h.id) || !heliUnlock(h) || !!s.levels[heliUnlock(h)]?.done;
+export function canBuy(s, h) { return !heliOpen(s, h) ? false : h.price.stars ? starWallet(s) >= h.price.stars : s.coins >= h.price.coins; }
 export function buy(s, h) {
   if (s.helis.includes(h.id) || !canBuy(s, h)) return false;
   if (h.price.stars) s.starsSpent += h.price.stars; else s.coins -= h.price.coins;
