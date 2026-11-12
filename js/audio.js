@@ -124,6 +124,40 @@ export class Sound {
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     src.connect(f); f.connect(g); g.connect(this.sg); src.start(t, Math.random()); src.stop(t + dur + 0.05);
   }
+  // Voix synthétique : un oscillateur dont la hauteur suit une courbe (pts : [instant 0..1, fréquence]), passé dans un
+  // filtre passe-bande (formant) ; vib = vibrato [Hz, profondeur], trem = trémolo [Hz, profondeur 0..1].
+  voice(type, pts, dur, vol, when = 0, o = {}) {
+    if (!this.ac) return;
+    const ac = this.ac, t = ac.currentTime + when, osc = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+    osc.type = type; osc.frequency.setValueAtTime(pts[0][1], t);
+    for (const [k, fr] of pts.slice(1)) osc.frequency.linearRampToValueAtTime(fr, t + k * dur);
+    f.type = 'bandpass'; f.frequency.value = o.formant || 900; f.Q.value = o.q || 1.2;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + Math.min(0.03, dur * 0.2)); g.gain.setValueAtTime(vol, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    const stop = [osc];
+    if (o.vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1]; l.connect(lg); lg.connect(osc.frequency); l.start(t); stop.push(l); }
+    let out = g;
+    if (o.trem) { const l = ac.createOscillator(), lg = ac.createGain(), tg = ac.createGain(); l.frequency.value = o.trem[0]; lg.gain.value = o.trem[1] / 2; tg.gain.value = 1 - o.trem[1] / 2; l.connect(lg); lg.connect(tg.gain); g.connect(tg); out = tg; l.start(t); stop.push(l); }
+    osc.connect(f); f.connect(g); out.connect(this.sg); osc.start(t);
+    for (const n of stop) n.stop(t + dur + 0.05);
+  }
+  // Cri d'un animal qui attend les secours, propre à chaque espèce.
+  call(variant) {
+    if (!this.ac || this.sfxVol <= 0) return;
+    const woof = (w, f) => { this.voice('sawtooth', [[0, f * 0.8], [0.25, f * 1.25], [1, f * 0.6]], 0.13, 0.5, w, { formant: 750, q: 1.6 }); this.voice('square', [[0, f * 0.4], [1, f * 0.3]], 0.11, 0.22, w, { formant: 320 }); };
+    switch (variant) {
+      case 'dog': woof(0, 440); woof(0.24, 420); break; // « waf waf »
+      case 'husky': this.voice('triangle', [[0, 330], [0.3, 560], [0.75, 590], [1, 400]], 1.1, 0.3, 0, { formant: 620, vib: [5, 9] }); break; // hurlement
+      case 'cat': this.voice('sawtooth', [[0, 620], [0.3, 930], [0.65, 860], [1, 540]], 0.55, 0.3, 0, { formant: 1500, q: 2.2 }); break; // miaulement
+      case 'horse': this.voice('sawtooth', [[0, 900], [0.12, 1500], [1, 520]], 0.95, 0.3, 0, { formant: 1300, vib: [13, 90] }); break; // hennissement
+      case 'goat': this.voice('sawtooth', [[0, 430], [0.2, 470], [1, 400]], 0.6, 0.34, 0, { formant: 1100, trem: [11, 0.9] }); break; // bêlement
+      case 'elephant': this.voice('sawtooth', [[0, 330], [0.2, 640], [0.7, 600], [1, 420]], 0.9, 0.3, 0, { formant: 950, q: 2.5, vib: [22, 22] }); break; // barrissement
+      case 'deer': this.voice('sawtooth', [[0, 250], [0.4, 300], [1, 190]], 0.5, 0.36, 0, { formant: 520 }); break; // brame bref
+      case 'fawn': this.voice('triangle', [[0, 980], [0.5, 1150], [1, 900]], 0.32, 0.26, 0, { formant: 1400, trem: [14, 0.7] }); break; // chevrotement aigu
+      case 'orangutan': [0, 0.26, 0.52].forEach((w, i) => this.voice('triangle', [[0, 260 + i * 30], [1, 360 + i * 40]], 0.17, 0.36, w, { formant: 480 })); break; // « hou hou hou »
+      case 'flamingo': [0, 0.2].forEach((w) => this.voice('square', [[0, 500], [1, 390]], 0.15, 0.2, w, { formant: 1150, q: 3 })); break; // cacardement nasal
+      default: break; // la tortue reste muette
+    }
+  }
   sfx(name) {
     if (!this.ac || this.sfxVol <= 0) return;
     const now = this.ac.currentTime;
@@ -143,7 +177,6 @@ export class Sound {
       case 'win': [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => this.tone(mtof(69 + n), 0.5, 'triangle', 0.22, i * 0.11)); break;
       case 'medal': this.tone(mtof(84), 0.4, 'triangle', 0.25); this.tone(mtof(91), 0.5, 'sine', 0.18, 0.08); break;
       case 'ui': this.tone(660, 0.06, 'triangle', 0.12); break;
-      case 'bark': this.tone(430, 0.09, 'sawtooth', 0.16, 0, 0.6); this.tone(390, 0.1, 'sawtooth', 0.14, 0.16, 0.6); break;
       case 'splash': this.burst(0.5, 1400, 0.5); break;
       case 'thunder': this.burst(1.6, 300, 0.35); break;
     }
@@ -164,14 +197,19 @@ export class Sound {
     const m = this.music, ac = this.ac;
     if (!m || ac.state !== 'running') return;
     if (m.next < ac.currentTime - 1) m.next = ac.currentTime + 0.05;
-    const { root, scale, bpm } = m.cfg, bar = 240 / bpm;
+    const { root, scale, bpm } = m.cfg, bar = 240 / bpm, tense = m.cfg.mood === 'rescue';
     while (m.next < ac.currentTime + 0.6) {
       const t = m.next, ch = CHORDS[scale][m.bar % 4];
       ch.forEach((n, i) => this.pad(mtof(root + n), t, bar * 1.25, i ? 0.07 : 0.09));
       this.pad(mtof(root + ch[0] - 12), t, bar * 1.1, 0.12, 'sine');
       const sc = SCALES[scale];
+      if (tense) { // ambiance de catastrophe : basse qui bat comme un pouls, note tenue inquiète, sirène lointaine par moments
+        for (let k = 0; k < 8; k++) this.thump(mtof(root + ch[0] - 24), t + (k * bar) / 8, k % 4 === 0 ? 0.3 : k % 2 ? 0.1 : 0.17);
+        this.pad(mtof(root + 13 + (m.bar % 4 === 3 ? 1 : 0)), t, bar * 1.05, 0.022, 'sawtooth');
+        if (m.bar % 4 === 2) for (let k = 0; k < 4; k++) this.pad(mtof(root + 12 + (k % 2 ? 3 : 7)), t + (k * bar) / 4, bar / 4, 0.035, 'sine');
+      }
       for (let k = 0; k < 8; k++) {
-        if (Math.random() < 0.3) this.pluck(mtof(root + 12 + sc[(Math.random() * sc.length) | 0] + (Math.random() < 0.3 ? 12 : 0)), t + (k * bar) / 8);
+        if (Math.random() < (tense ? 0.14 : 0.3)) this.pluck(mtof(root + 12 + sc[(Math.random() * sc.length) | 0] + (Math.random() < 0.3 ? 12 : 0)), t + (k * bar) / 8);
       }
       m.next += bar; m.bar++;
     }
@@ -181,6 +219,12 @@ export class Sound {
     o.type = type; o2.type = 'sine'; o.frequency.value = f; o2.frequency.value = f * 1.004;
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * 0.35); g.gain.linearRampToValueAtTime(0, t + dur);
     o.connect(g); o2.connect(g); g.connect(this.mg); o.start(t); o2.start(t); o.stop(t + dur + 0.1); o2.stop(t + dur + 0.1);
+  }
+  thump(f, t, vol) {
+    const ac = this.ac, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f * 1.5, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.07);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.connect(g); g.connect(this.mg); o.start(t); o.stop(t + 0.35);
   }
   pluck(f, t) {
     const ac = this.ac, o = ac.createOscillator(), g = ac.createGain();

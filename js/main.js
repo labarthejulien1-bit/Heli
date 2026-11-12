@@ -8,12 +8,12 @@ import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
-import { RESCUE_HELIS, rescueHeli, rescueUnlocked } from './rescue.js';
+import { RESCUE_HELIS, rescueHeli, rescueUnlocked, rescueBuy } from './rescue.js';
 import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.6.0';
+const VERSION = '2.7.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -65,6 +65,7 @@ function heliCanvas(cvs, look, scale = 1) {
 // Heli Rescue : un décor côtier et un appareil de secours, en attendant les niveaux du monde).
 const rcache = new Map();
 const getRescue = (n) => { if (!rcache.has(n)) rcache.set(n, buildRescueLevel(rescueLevel(n))); return rcache.get(n); };
+const rwallet = () => `<span class="wallet"><span><i class="coin"></i>${save.heliRescue.coins}</span><b>★ ${rescueStars(save)}/60</b></span>`;
 const rescueOpen = (n) => n === 1 || !!save.heliRescue.levels[n - 1]?.done;
 const levelTitle = () => (S.rescue ? `${S.rescue} · ${t('r_lvl' + S.rescue)}` : `${S.level.def.id} · ${t('lvl' + S.level.def.id)}`);
 const myRescueHeli = () => { const h = rescueHeli(save.heliRescue.heli); return rescueUnlocked(save, h) ? h : RESCUE_HELIS[0]; };
@@ -103,7 +104,7 @@ function startRescue(n) {
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
   lowBeep = 0; timeShown = -1;
-  $('#cpMarks').innerHTML = S.level.pads.map((p) => `<b class="${p.base ? '' : 'bonus'}" style="left:${(p.x / S.level.length) * 100}%"></b>`).join('');
+  $('#cpMarks').innerHTML = S.level.pads.filter((p) => p.base).map((p) => `<b style="left:${(p.x / S.level.length) * 100}%"></b>`).join(''); // seule la base est repérée : au joueur de trouver les victimes
   $('#fps').hidden = !save.settings.fps;
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
   save.stats.flights++; persist();
@@ -214,12 +215,12 @@ function home() {
 // Missions Heli Rescue : même présentation que les niveaux de l'Aventure (bannières aux couleurs de la mission,
 // étoiles, record) ; les missions pas encore livrées sont annoncées en grisé.
 function rmap() {
-  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('r_missions')}<span class="wallet"><b>★ ${rescueStars(save)}/60</b></span></h2><div class="scroll">${Array.from({ length: 20 }, (_, i) => {
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('r_missions')}${rwallet()}</h2><div class="scroll">${Array.from({ length: 20 }, (_, i) => {
     const n = i + 1, cfg = rescueLevel(n), open = cfg && rescueOpen(n), rec = save.heliRescue.levels[n], st = rec?.stars || 0;
     const k = cfg ? cfg.look : { sky: [['#3a3f52', '#5a6076']], ground: '#22263a' };
     return `<button class="lvl ${open ? '' : 'locked'}" ${open ? `data-rlevel="${n}"` : cfg ? `data-rlock="${n}"` : 'data-act="soon"'} style="--a:${k.sky[0][0]};--b:${k.sky[0][1]};--gr:${k.ground}">
       <span class="n">${n}</span>
-      <span class="name">${cfg ? t('r_lvl' + n) : '···'}<small>${!cfg ? t('soon') : open ? `${t('r_uni' + n)}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', n - 1)}</small></span>
+      <span class="name">${cfg ? t('r_lvl' + n) : '···'}<small>${!cfg ? t('soon') : open ? `${t('r_uni' + n)} · <i class="coin"></i>${rec?.orbs || 0}/100${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', n - 1)}</small></span>
       ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal ${st > q ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
     </button>`;
   }).join('')}</div></section>${nav('rmap')}`;
@@ -227,10 +228,14 @@ function rmap() {
 // Fiche d'une mission avant le lancement : nom, univers, victimes, appareil conseillé, record.
 function rescueSheet(n) {
   const cfg = rescueLevel(n), rec = save.heliRescue.levels[n], st = rec?.stars || 0;
+  // appareil indispensable : gros animal (gros porteur) ou victime à la surface de l'eau (amphibie)
+  const flag = cfg.victims.some((v) => v.size === 'big') ? 'heavyLift' : cfg.victims.some((v) => v.onWater) ? 'amphibious' : null;
+  const need = flag && { ok: !!myRescueHeli()[flag], names: RESCUE_HELIS.filter((h) => h[flag]).map((h) => h.name).join(', ') };
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
-    <h2>${n} · ${t('r_lvl' + n)}</h2><p class="sub">${t('r_uni' + n)} · ${'★'.repeat(st)}${'☆'.repeat(3 - st)}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
+    <h2>${n} · ${t('r_lvl' + n)}</h2><p class="sub">${t('r_uni' + n)} · ${'★'.repeat(st)}${'☆'.repeat(3 - st)} · <i class="coin"></i>${rec?.orbs || 0}/100${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
     <div class="obj"><span>${t('r_victims')}</span><small>${cfg.victims.map((v) => t('r_v_' + v.variant)).join(', ')}</small></div>
     <div class="obj"><span>${t('r_reco')}</span><small>${rescueHeli(cfg.recommended).name}</small></div>
+    ${need && !need.ok ? `<div class="obj warn"><span>⚠ ${t('r_required', need.names)}</span></div>` : ''}
     <div class="obj"><i class="medal ${st > 0 ? 'on' : ''}"></i>${t('r_star1')}</div>
     <div class="obj"><i class="medal ${st > 1 ? 'on' : ''}"></i>${t('r_star2', fmtTime(cfg.stars.time))}</div>
     <div class="obj"><i class="medal ${st > 2 ? 'on' : ''}"></i>${t('r_star3', cfg.stars.maxHits)}</div>
@@ -244,12 +249,14 @@ function showRescueResult() {
   const rec = (save.heliRescue.levels[n] ||= { done: false, stars: 0, time: null });
   const newRec = rec.time != null && g.t < rec.time;
   rec.done = true; rec.stars = Math.max(rec.stars, count);
+  rec.orbs = Math.max(rec.orbs || 0, g.stats.orbs); save.heliRescue.coins += g.stats.orbs; // pièces de la mission, créditées à l'arrivée
   if (rec.time == null || g.t < rec.time) rec.time = g.t;
   save.stats.landings++; commitRun(); persist();
   const hasNext = !!rescueLevel(n + 1);
   ui.innerHTML = `<div class="overlay"><div class="sheet">
     <h2>${t('r_done')}</h2><p class="sub">${n} · ${t('r_lvl' + n)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
     <div class="portraits">${g.vs.map((v, i) => `<span><canvas data-vic="${i}"></canvas><small>${t('r_v_' + v.variant)}</small></span>`).join('')}</div>
+    <div class="obj"><span><i class="coin"></i> +${g.stats.orbs} ${t('orbs').toLowerCase()}</span><small>${g.stats.orbs}/100 · <i class="coin"></i>${save.heliRescue.coins}</small></div>
     <div class="obj"><i class="medal ${stars[0] ? 'on' : ''}"></i>${t('r_star1')}</div>
     <div class="obj"><i class="medal ${stars[1] ? 'on' : ''}"></i>${t('r_star2', fmtTime(cfg.stars.time))}<small>${fmtTime(g.t)}</small></div>
     <div class="obj"><i class="medal ${stars[2] ? 'on' : ''}"></i>${t('r_star3', cfg.stars.maxHits)}<small>${g.stats.hits}</small></div>
@@ -269,7 +276,7 @@ function showRescueResult() {
 }
 function rhangar() {
   const cur = myRescueHeli().id;
-  ui.innerHTML = `<section class="screen scrim"><h2>${t('hangar')} · Heli Rescue</h2><div class="cards">${RESCUE_HELIS.map((h) => {
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('hangar')} · Heli Rescue${rwallet()}</h2><div class="cards">${RESCUE_HELIS.map((h) => {
     const own = rescueUnlocked(save, h), sel = cur === h.id;
     const bar = (lb, v) => `<div class="bar"><span>${t(lb)}</span><i><b style="width:${Math.round(clamp(v, 0.08, 1) * 100)}%"></b></i></div>`;
     return `<div class="hcard panel ${own ? '' : 'locked'}" id="rh-${h.id}">
@@ -278,7 +285,7 @@ function rhangar() {
       ${bar('stat_power', h.thrust / 1.5)}${bar('stat_agility', h.handling / 1.3)}${bar('r_fuel', h.fuel / 1.4)}${bar('r_wind', h.wind / 1.5)}
       <div class="bar"><span>${t('places')}</span><em class="seats">${'<u></u>'.repeat(h.places)}${h.heavyLift ? '<u class="big"></u>' : ''}</em></div>
       ${own ? `<button class="btn ${sel ? 'ghost' : 'primary'}" data-rheli-sel="${h.id}" ${sel ? 'disabled' : ''}>${sel ? '✓ ' + t('selected') : t('select')}</button>`
-        : `<div class="req"><small>${ICON.lock.replace('<svg', '<svg style="width:12px;height:12px"')} ${t('toUnlock')}</small>${t('r_unlock', h.unlock)}</div>`}
+        : `<button class="btn primary ${save.heliRescue.coins >= h.price ? '' : 'cant'}" data-rbuy="${h.id}">${t('buy')} · <i class="coin"></i>${h.price}</button>`}
     </div>`;
   }).join('')}</div></section>${nav('rhangar')}`;
   ui.querySelectorAll('canvas[data-rheli]').forEach((c) => heliCanvas(c, rescueHeli(c.dataset.rheli).look, 0.95));
@@ -472,6 +479,11 @@ ui.addEventListener('click', (e) => {
   if (d.rlevel) return rescueSheet(+d.rlevel);
   if (d.rlock) return toast(t('lockedLevel', +d.rlock - 1));
   if (d.rplay) return startRescue(+d.rplay);
+  if (d.rbuy) {
+    const h = rescueHeli(d.rbuy);
+    if (!rescueBuy(save, h)) return toast(t('notEnough'));
+    save.heliRescue.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(); return rhangar();
+  }
   if (d.rheliSel) { save.heliRescue.heli = d.rheliSel; persist(); snd.preview(rescueHeli(d.rheliSel)); setDemo(); return rhangar(); }
   if (d.heliSel) { save.heli = d.heliSel; persist(); snd.preview(heliOf(d.heliSel)); setDemo(S.levelId); return hangar(); }
   if (d.diff) {
@@ -589,7 +601,7 @@ function events() {
       case 'bump': if (play) snd.sfx('bump'); break;
       case 'aboard': R.spawn(e.x, e.y - 20, 10, { a: -Math.PI / 2, spread: 2.4, v: 70, col: '#7dffb0', life: 0.6 }); if (play) { toast('● ' + t('r_aboard')); snd.sfx('cp'); vibe(25); } break;
       case 'saved': R.spawn(e.x, e.y, 12, { a: -Math.PI / 2, spread: 2.2, v: 80, col: '#ff8fa3', life: 0.8 }); if (play) { toast('♥ ' + t('r_thanks')); snd.sfx('repair'); vibe(20); } break;
-      case 'bark': if (play) snd.sfx('bark'); break;
+      case 'call': if (play) snd.call(e.variant); break;
       case 'quake': R.shake = 30; if (play) { snd.sfx('thunder'); vibe([40, 30, 40, 30, 60]); } break;
       case 'beep': if (play) snd.tone(e.d < 300 ? 1100 : 820, 0.06, 'square', 0.09); break;
       case 'found': R.spawn(e.x, e.y - 10, 14, { a: -Math.PI / 2, spread: 2.6, v: 90, col: '#ffffff', life: 0.6 }); if (play) { toast('● ' + t('r_found')); snd.sfx('cp'); vibe(25); } break;
@@ -610,7 +622,8 @@ function events() {
 let lowBeep = 0;
 const timeTxt = $('#timeTxt'), progFill = $('#progFill'), progDot = $('#progDot'); let timeShown = -1;
 const fuelFill = $('#fuelFill'), fuelBar = $('#fuelBar'), starTxt = $('#starTxt'), hint = $('#hint'), fpsEl = $('#fps');
-let hintKey = '';
+let hintKey = '', paxKey = '';
+const paxHud = $('#paxHud');
 function updateHud() {
   const g = S.game, L = S.level, h = g.heli;
   fuelFill.style.width = g.fuel * 100 + '%';
@@ -619,6 +632,19 @@ function updateHud() {
   if (low && g.fuel > 0 && time > lowBeep) { lowBeep = time + 1.1; snd.tone(520, 0.09, 'square', 0.1); snd.tone(520, 0.09, 'square', 0.1, 0.16); }
   // Aventure : étoiles du niveau. Heli Rescue : victimes déposées (cœurs) et places occupées à bord.
   starTxt.textContent = g.vs ? '♥'.repeat(g.savedCount) + '♡'.repeat(g.vs.length - g.savedCount) + '  ' + '●'.repeat(g.aboard.length) + '○'.repeat(Math.max(0, g.H.places - g.aboard.length)) : '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars);
+  const key2 = g.vs ? g.H.id + ':' + g.vs.map((v) => (v.state === 'aboard' ? v.seat : '-')).join('') : '';
+  if (key2 !== paxKey) {
+    paxKey = key2;
+    const ab = g.vs ? g.vs.filter((v) => v.state === 'aboard') : [], n = g.vs ? g.H.places + (g.H.heavyLift ? 1 : 0) : 0;
+    paxHud.innerHTML = Array.from({ length: n }, (_, i) => `<canvas class="${i >= g.H.places ? 'big' : ''}"></canvas>`).join('');
+    paxHud.querySelectorAll('canvas').forEach((cv2, i) => {
+      const v = i >= g.H.places ? ab.find((q) => q.seat === 'cargo') : ab.find((q) => q.seat === i);
+      if (!v) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1), c = cv2.getContext('2d');
+      cv2.width = cv2.height = 52 * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0); cv2.classList.add('on');
+      drawOccupant(c, 26, 27, 18, { type: v.type, variant: v.variant, col: v.col, hat: v.hat, seed: 1 }, 0.6);
+    });
+  }
   // Bas de l'écran : temps depuis le départ et avancement, avec les ravitaillements sur la route.
   const pr = clamp(h.x / (L.rescue ? L.length : L.pad.x), 0, 1) * 100 + '%';
   progFill.style.width = pr; progDot.style.left = pr;

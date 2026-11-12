@@ -301,7 +301,7 @@ export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
       F('M19,1 Q15,-8 5,-9 L-6,-9 Q-10,-8 -11,-3 L-33,-5.5 L-33,-3.500 L-11,3 Q0,7 12,6 Q18,5 19,1Z', c1);
       F('M-29,-5.5 L-36,-16 L-33,-16 L-27,-5.500Z', c1); F('M-25,-5 L-19,-4.500 L-19,-3.300 L-25,-3.800Z', c2);
       F('M18,0.5 Q14.500,-7 6.500,-8 L6,-0.500Z', glass); F('M-11,-0.5 L18.500,1.500 L17.500,3 L-11.500,1Z', c2);
-      rescueFit(c, look, t, [-1.5, 3.2, 2.6], [3, -11], [-7, -9.5]);
+      rescueFit(c, look, t, [-8.2, 0.6, 2.1], [3, -11], [-7, -9.5]);
       tailRotor(c, -33, -5, t, power, dark);
       rotor(c, 0, -15, 31, t, power, dark);
       break;
@@ -315,7 +315,7 @@ export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
       F('M-13,1 L19,2.6 Q18,6 12,7 Q0,8 -13,4Z', look.c2);
       F('M-9,-10 L-8,-14 L5,-14 L7,-10Z', '#3a3f4a');
       F('M18.5,1 Q18.500,-7 9.500,-9 L8,0Z', glass);
-      rescueFit(c, look, t, [-2, 0, 2.5], [-2, -16], [-11.5, -11]);
+      rescueFit(c, look, t, [-1.7, 3.7, 2.2], [-2, -16], [-11.5, -11]);
       rotor(c, 0, -18, 32, t, power, dark);
       break;
     }
@@ -326,7 +326,7 @@ export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
       F('M19,0.5 Q15.500,-7.500 7,-9 L6.500,-1Z', glass); F('M-12,0 L19.500,1.600 L18.500,3.200 L-12,1.600Z', look.c2);
       S('M-5,5 L-7,9 M9,5.5 L11,9 M-5,5 L11,9', dark, 1.3);
       F('M-15,8.5 L20,8.500 Q23,8.500 22,10.500 Q20,13.500 14,13.500 L-9,13.500 Q-15,13.500 -15,8.500Z', '#f8f9fa'); F('M-14,11.4 L21.500,11.400 Q20,13.500 14,13.500 L-9,13.500 Q-13.500,13.500 -14,11.400Z', '#d62828');
-      rescueFit(c, look, t, [-2, 2.6, 2.7], [2, -12], [-10, -10.5]);
+      rescueFit(c, look, t, [-1.8, 3.5, 1.9], [2, -12], [-10, -10.5]);
       tailRotor(c, -33, -6, t, power, dark);
       rotor(c, 0, -16, 32, t, power, dark);
       break;
@@ -338,7 +338,7 @@ export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
       F('M20,2 Q19,-7 10,-9 L-6,-9 Q-12,-8 -13,-3 L-13,4 Q0,8 12,7 Q18,6 20,2Z', c1);
       F('M19.5,1 Q18.500,-6 10.500,-8 L9,0Z', glass); F('M-13,1.2 L20,2.800 L19,4.400 L-13,2.800Z', look.c2);
       E(14, 7.5, 2.4, 1.8, '#3a3f4a'); E(15, 7.8, 1.3, 1.1, '#fff3b0');
-      rescueFit(c, look, t, [-1.5, -0.2, 2.5], [-6, -11], [8, -10]);
+      rescueFit(c, look, t, [-1.2, 4.2, 2.1], [-6, -11], [8, -10]);
       F('M0,-9 L1.2,-23 L3.800,-23 L5,-9Z', c1);
       rotor(c, 2.5, -17.5, 29, t, power, dark);
       rotor(c, 2.5, -24.5, 29, -t * 1.07 + 0.8, power, dark);
@@ -351,7 +351,7 @@ export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
       F('M-31,2.5 L21,2.500 L21,4.500 L-31,4.500Z', look.c2);
       F('M21,0 Q20,-6 14,-6.2 L14,0Z', glass);
       if (look.cargo) { const [gx, gy, gr] = look.cargo; rrect(c, gx - gr - 1.5, gy - gr - 1, gr * 2 + 3, gr * 2 + 2, 2.5, '#5f1212'); }
-      rescueFit(c, look, t, [-10.5, -1.5, 3.4], [2, -9], [15, -8]);
+      rescueFit(c, look, t, [17, 4.9, 2.1], [2, -9], [15, -8]);
       wheel(-20, 9.5, 2.6, -20, 6); wheel(10, 9.5, 2.600, 10, 6);
       rotor(c, -22, -23, 23, t, power, dark);
       rotor(c, 14, -18, 23, -t + 0.4, power, dark);

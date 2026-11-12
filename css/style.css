@@ -190,3 +190,10 @@ input[type=range]{flex:0 0 46%;accent-color:var(--accent);height:30px}
 .pbar{height:8px;border-radius:4px;background:rgba(255,255,255,.14);margin-top:14px;overflow:hidden}
 .pbar i{display:block;height:100%;background:var(--accent);border-radius:4px}
 .about{text-align:center;font-size:12px;opacity:.6;margin:18px 0 8px;line-height:1.6}
+
+/* Heli Rescue : médaillons des places à bord (hublots agrandis), avertissement d'appareil indispensable */
+#paxHud{display:flex;gap:7px;margin-top:8px;pointer-events:none}
+#paxHud canvas{width:52px;height:52px;border-radius:50%;border:3px solid rgba(255,255,255,.35);background:rgba(20,30,40,.35);box-sizing:border-box}
+#paxHud canvas.big{border-radius:14px}
+#paxHud canvas.on{border-color:#6ee7a0;background:linear-gradient(#cfeaf5,#8fb8c9);animation:pop .4s both}
+.obj.warn{color:#ffd34d;font-weight:700}

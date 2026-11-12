@@ -380,17 +380,7 @@ export class Renderer {
   pads(c, L, def, g, time, x0, x1) {
     const GREEN = '#6ee7a0';
     for (const pad of L.pads) {
-      if (pad.kind === 'zone') { // zone de pose d'une victime : cercle « H » en pointillés, à même le sol
-        if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
-        const here = g.onPad === pad.i, left = g.vs && g.vs.some((v) => v.zone === pad.i && (v.state === 'wait' || v.state === 'walk') && (v.found || !L.rescue.cfg.radar));
-        if (!left) continue;
-        c.strokeStyle = rgba(here ? '#6ee7a0' : '#ffffff', 0.85); c.lineWidth = 2; c.setLineDash([7, 6]); c.lineDashOffset = -time * 14;
-        c.beginPath(); c.ellipse(pad.x, pad.y + 1, pad.w / 2, 7, 0, 0, TAU); c.stroke(); c.setLineDash([]);
-        c.fillStyle = rgba('#ffffff', 0.85); c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillText('H', pad.x, pad.y + 5);
-        const gr = c.createLinearGradient(0, pad.y - 120, 0, pad.y); gr.addColorStop(0, rgba('#ffffff', 0)); gr.addColorStop(1, rgba('#ffffff', 0.12 + 0.05 * Math.sin(time * 3)));
-        c.fillStyle = gr; c.fillRect(pad.x - pad.w / 2, pad.y - 120, pad.w, 120);
-        continue;
-      }
+      if (pad.kind === 'zone') continue; // aucune marque au sol : au joueur de trouver où se poser près des victimes
       if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
       const y = pad.y, end = pad.kind === 'end', fuel = pad.kind === 'fuel', hw = pad.w / 2;
       const col = end ? def.accent : fuel ? GREEN : def.rim, here = g.onPad === pad.i;
@@ -445,15 +435,20 @@ export class Renderer {
   // Monde Heli Rescue : poste de secours à la base, victimes au sol, jauge d'embarquement, remerciements.
   rescue(c, L, def, g, time, x0, x1) {
     const b = L.rescue.base;
-    if (L.waterAt) { // eau : nappe translucide par-dessus le relief immergé, crête de vagues animée
-      const wy = L.waterAt(g.t), wc = mix(def.mid, '#1c6f8f', 0.55);
+    this.decor(c, L, def, g, time, x0, x1);
+    if (L.waterAt) { // eau : nappe translucide par-dessus le relief immergé, houle animée et crêtes d'écume des grosses vagues
+      const wc = mix(def.mid, '#1c6f8f', 0.55), X0 = Math.floor(x0 / 12) * 12, surf = (x) => L.surfAt(x, g.t) + Math.sin(x * 0.045 + time * 1.8) * 2.4;
       c.fillStyle = rgba(wc, 0.62);
-      c.beginPath(); c.moveTo(x0, wy);
-      for (let x = Math.floor(x0 / 16) * 16; x <= x1 + 16; x += 16) c.lineTo(x, wy + Math.sin(x * 0.045 + time * 1.8) * 2.4);
-      c.lineTo(x1 + 16, wy + 400); c.lineTo(x0, wy + 400); c.fill();
+      c.beginPath(); c.moveTo(x0, surf(x0));
+      for (let x = X0; x <= x1 + 12; x += 12) c.lineTo(x, surf(x));
+      c.lineTo(x1 + 12, 1300); c.lineTo(x0, 1300); c.fill();
       c.strokeStyle = rgba('#ffffff', 0.55); c.lineWidth = 1.6; c.beginPath();
-      for (let x = Math.floor(x0 / 16) * 16; x <= x1 + 16; x += 16) c.lineTo(x, wy + Math.sin(x * 0.045 + time * 1.8) * 2.4);
+      for (let x = X0; x <= x1 + 12; x += 12) c.lineTo(x, surf(x));
       c.stroke();
+      if (L.waves) { // écume au sommet des vagues
+        const flat = L.waterAt(g.t); c.fillStyle = rgba('#ffffff', 0.8);
+        for (let x = X0; x <= x1 + 12; x += 12) { const k = flat - L.surfAt(x, g.t); if (k > L.waves.height * 0.55) { c.beginPath(); c.arc(x + 3 * Math.sin(time * 7 + x), surf(x) - 1, 2 + 3.5 * hash(x, Math.floor(time * 6)), 0, TAU); c.fill(); } }
+      }
     }
     if (L.fire) { // front de feu : flammes dansantes, lueur, et terre brûlée derrière lui
       const F = L.fire, fx = F.x + F.speed * g.t, gy = L.groundAt(fx), back = F.speed < 0 ? 1 : -1;
@@ -483,15 +478,6 @@ export class Renderer {
       c.fillStyle = def.obs; c.fillRect(bx + 40, by - 60, 2.5, 60); // manche à air
       c.fillStyle = '#ff7b2e'; c.beginPath(); c.moveTo(bx + 42, by - 60); c.lineTo(bx + 62, by - 55 + Math.sin(time * 4) * 2); c.lineTo(bx + 42, by - 50); c.fill();
     }
-    for (const d of L.decor || []) { // décor sans collision (vaches au pré...)
-      if (d.x < x0 - 30 || d.x > x1 + 30) continue;
-      const gy = L.groundAt(d.x);
-      c.save(); c.translate(d.x, gy); c.scale(d.flip ? -1 : 1, 1);
-      c.strokeStyle = '#3a2a1c'; c.lineWidth = 1.8; c.lineCap = 'round'; c.beginPath(); for (const lx of [-6, -3, 4, 7]) { c.moveTo(lx, -6); c.lineTo(lx, 0); } c.stroke();
-      c.fillStyle = '#f4f1e8'; c.beginPath(); c.ellipse(0.5, -9, 9, 4.6, 0, 0, TAU); c.fill(); c.beginPath(); c.ellipse(10.5, -8 + Math.sin(time * 1.2 + d.x) * 2.5, 3.4, 2.8, 0.5, 0, TAU); c.fill();
-      c.fillStyle = '#3a2a1c'; c.beginPath(); c.ellipse(-3, -10, 3.2, 2.2, 0.3, 0, TAU); c.ellipse(4, -8, 2.2, 1.8, 0, 0, TAU); c.fill();
-      c.restore();
-    }
     for (const v of g.vs) {
       if (v.state === 'aboard' || v.state === 'saved' || v.px < x0 - 30 || v.px > x1 + 30) continue;
       if (L.rescue.cfg.radar && v.state === 'wait' && !v.found) continue; // enseveli : invisible tant que le détecteur ne l'a pas trouvé
@@ -500,7 +486,7 @@ export class Renderer {
       const py = v.state === 'out' || Math.abs(v.px - L.pads[v.zone].x) > L.pads[v.zone].w / 2 + 4 ? gy : L.pads[v.zone].y; // sur un toit, on reste à hauteur du toit
       const near = v.state === 'wait' && Math.abs(g.heli.x - v.px) < 520;
       this.figure(c, v, v.px, py, time, moving, face, near);
-      if (near && v.variant === 'dog' && (time * 0.6) % 1 < 0.45) { // aboiement : petits arcs au-dessus du chien
+      if (near && v.type === 'animal' && g.callT > 1.5) { // cri de l'animal : petits arcs au-dessus de lui
         c.strokeStyle = '#ffffff'; c.lineWidth = 1.6; c.lineCap = 'round';
         for (const r of [7, 12]) { c.beginPath(); c.arc(v.px + face * 9, py - 16, r, -1.1 + (face < 0 ? Math.PI : 0), 0.3 + (face < 0 ? Math.PI : 0)); c.stroke(); }
       }
@@ -514,6 +500,44 @@ export class Renderer {
         c.globalAlpha = 1 - k; c.fillStyle = '#ff5d73';
         c.beginPath(); c.moveTo(hx, hy + 4); c.bezierCurveTo(hx - 8, hy - 2, hx - 4, hy - 8, hx, hy - 3); c.bezierCurveTo(hx + 4, hy - 8, hx + 8, hy - 2, hx, hy + 4); c.fill(); c.globalAlpha = 1;
       }
+    }
+  }
+
+  // Décor sans collision : bétail, et tout le désordre d'une catastrophe (poteaux couchés, barques, épaves, clôtures, souches).
+  decor(c, L, def, g, time, x0, x1) {
+    const dark = mix(def.obs, '#000000', 0.25);
+    for (const d of L.decor || []) {
+      if (d.x < x0 - 60 || d.x > x1 + 60) continue;
+      let gy = L.groundAt(d.x);
+      c.save(); c.lineCap = 'round';
+      if (d.type === 'boat') { // barque : flotte si le sol est sous l'eau, sinon échouée de travers
+        const wy = L.waterAt ? L.waterAt(g.t) : 1e9, afloat = gy > wy; if (afloat) gy = wy + 2 + Math.sin(time * 1.6 + d.x) * 1.5;
+        c.translate(d.x, gy); c.scale(d.flip ? -1 : 1, 1); c.rotate(afloat ? Math.sin(time * 1.3 + d.x) * 0.06 : -0.22);
+        c.fillStyle = '#8a5a3c'; c.beginPath(); c.moveTo(-20, -9); c.lineTo(22, -9); c.lineTo(15, 1); c.lineTo(-15, 1); c.fill();
+        c.fillStyle = '#f1e9d8'; c.fillRect(-20, -10.5, 42, 2.5); c.fillStyle = '#5f3d28'; c.fillRect(-6, -9, 2.5, 8); c.fillRect(7, -9, 2.5, 8);
+      } else {
+        c.translate(d.x, gy); c.scale(d.flip ? -1 : 1, 1);
+        if (d.type === 'pole') { // poteau électrique penché, fils pendants
+          c.rotate(0.3); c.strokeStyle = dark; c.lineWidth = 4; c.beginPath(); c.moveTo(0, 8); c.lineTo(0, -92); c.stroke();
+          c.lineWidth = 3; c.beginPath(); c.moveTo(-15, -82); c.lineTo(15, -82); c.stroke();
+          c.lineWidth = 1.1; c.strokeStyle = rgba(dark, 0.8); c.beginPath(); c.moveTo(-14, -82); c.quadraticCurveTo(-34, -40 + Math.sin(time * 1.5 + d.x) * 4, -44, -6); c.moveTo(14, -82); c.quadraticCurveTo(22, -60, 17 + Math.sin(time * 2 + d.x) * 3, -44); c.stroke();
+        } else if (d.type === 'wreck') { // voiture renversée sur le flanc
+          c.rotate(-0.14); c.fillStyle = mix('#b23a48', def.obs, 0.35); c.beginPath(); c.moveTo(-19, 0); c.lineTo(-17, -9); c.lineTo(-8, -10); c.lineTo(-3, -18); c.lineTo(10, -18); c.lineTo(15, -10); c.lineTo(20, -8); c.lineTo(20, 0); c.fill();
+          c.fillStyle = rgba('#cfe6f0', 0.7); c.fillRect(-1, -16, 9, 5); c.fillStyle = '#1b1b22'; c.beginPath(); c.arc(-10, 0, 4.4, 0, TAU); c.arc(12, 0, 4.4, 0, TAU); c.fill();
+        } else if (d.type === 'fence') { // clôture couchée par le vent
+          c.strokeStyle = '#8a6a4a'; c.lineWidth = 2.6; c.beginPath();
+          for (let k = 0; k < 5; k++) { const lean = 0.25 + 0.3 * hash(k, d.x); c.moveTo(-30 + k * 15, 2); c.lineTo(-30 + k * 15 + Math.sin(lean) * 15, 2 - Math.cos(lean) * 15); }
+          c.stroke(); c.lineWidth = 1.8; c.beginPath(); c.moveTo(-28, -8); c.lineTo(8, -10); c.lineTo(36, -2); c.stroke();
+        } else if (d.type === 'stump') { // souche et tronc abattu
+          c.fillStyle = dark; c.fillRect(-7, -12, 14, 14); c.beginPath(); c.moveTo(-7, -12); c.lineTo(-3, -18); c.lineTo(0, -12); c.lineTo(4, -16); c.lineTo(7, -12); c.fill();
+          c.save(); c.translate(14, -3); c.rotate(0.08); c.fillRect(0, -5, 62, 9); c.fillStyle = mix(dark, '#d9b38c', 0.5); c.beginPath(); c.ellipse(62, -0.5, 3, 4.5, 0, 0, TAU); c.fill(); c.restore();
+        } else { // vache
+          c.strokeStyle = '#3a2a1c'; c.lineWidth = 1.8; c.beginPath(); for (const lx of [-6, -3, 4, 7]) { c.moveTo(lx, -6); c.lineTo(lx, 0); } c.stroke();
+          c.fillStyle = '#f4f1e8'; c.beginPath(); c.ellipse(0.5, -9, 9, 4.6, 0, 0, TAU); c.fill(); c.beginPath(); c.ellipse(10.5, -8 + Math.sin(time * 1.2 + d.x) * 2.5, 3.4, 2.8, 0.5, 0, TAU); c.fill();
+          c.fillStyle = '#3a2a1c'; c.beginPath(); c.ellipse(-3, -10, 3.2, 2.2, 0.3, 0, TAU); c.ellipse(4, -8, 2.2, 1.8, 0, 0, TAU); c.fill();
+        }
+      }
+      c.restore();
     }
   }
 
@@ -718,7 +742,7 @@ export class Renderer {
     }
     if (o.kind === 'pillar') {
       const l = x - o.w / 2, top = o.y, w = o.w, h = o.h;
-      if (o.st !== 'rock') c.fillRect(l, top, w, h);
+      if (o.st !== 'rock' && o.st !== 'ledge') c.fillRect(l, top, w, h);
       switch (o.st) {
         case 'building': case 'neon': {
           const neon = o.st === 'neon';
@@ -766,6 +790,21 @@ export class Renderer {
           c.fillStyle = rgba(def.accent, 0.85);
           for (let k = 0; k < Math.floor(w / 34); k++) c.fillRect(l + 12 + k * 34, top + 26, 13, 15);
           c.fillStyle = mix(col, '#000000', 0.3); c.fillRect(l + w / 2 - 7, top + h - 24 - 30, 14, 30);
+          if (o.ruin) { // maison sinistrée : toit éventré, fissures, volet pendant, gravats
+            const sk = mix(def.sky[0][1], def.mid, 0.5);
+            c.fillStyle = sk; c.beginPath(); c.moveTo(l + w * 0.12, top - 1); c.lineTo(l + w * 0.2, top + 9); c.lineTo(l + w * 0.3, top + 4); c.lineTo(l + w * 0.38, top + 12); c.lineTo(l + w * 0.5, top - 1); c.fill();
+            c.strokeStyle = mix(col, '#000000', 0.45); c.lineWidth = 1.4; c.beginPath(); c.moveTo(l + w * 0.38, top + 12); c.lineTo(l + w * 0.32, top + 30); c.lineTo(l + w * 0.4, top + 44); c.lineTo(l + w * 0.34, top + 62);
+            c.moveTo(l + w * 0.8, top + 12); c.lineTo(l + w * 0.86, top + 34); c.lineTo(l + w * 0.78, top + 50); c.stroke();
+            c.fillStyle = mix(col, '#000000', 0.5); for (let k = 0; k < Math.floor(w / 34); k += 2) c.fillRect(l + 12 + k * 34, top + 26, 13, 15); // fenêtres éteintes
+            c.save(); c.translate(l + w - 4, top + 28); c.rotate(0.5); c.fillStyle = mix(col, '#7a2f2a', 0.6); c.fillRect(0, 0, 7, 15); c.restore();
+            c.fillStyle = mix(col, '#ffffff', 0.25); for (let k = 0; k < 6; k++) { const gx = l - 16 + hash(k, o.v * 50) * (w + 32), gs = 4 + 6 * hash(k, o.v * 9); c.fillRect(gx, top + h - 24 - gs, gs * 1.4, gs); }
+          }
+          break;
+        }
+        case 'ledge': { // corniche rocheuse en saillie dans un puits
+          const j = (k) => hash(k, o.v * 77) * 4;
+          c.beginPath(); c.moveTo(l - 3, top + 3 + j(1)); c.lineTo(l + w * 0.3, top + j(2)); c.lineTo(l + w * 0.7, top + 1); c.lineTo(l + w + 3, top + 3 + j(3)); c.lineTo(l + w - 2, top + h + 5); c.lineTo(l + w * 0.5, top + h + 2); c.lineTo(l + 2, top + h + 6); c.fill();
+          c.strokeStyle = rgba(def.rim, 0.55); c.lineWidth = 2; c.beginPath(); c.moveTo(l - 3, top + 3 + j(1)); c.lineTo(l + w * 0.3, top + j(2)); c.lineTo(l + w * 0.7, top + 1); c.lineTo(l + w + 3, top + 3 + j(3)); c.stroke();
           break;
         }
         case 'castle':

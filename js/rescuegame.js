@@ -45,12 +45,14 @@ export class RescueGame extends Game {
     this.water(dt);
     this.dangers(dt);
     if (this.state !== 'fly') return;
-    // un chien perdu aboie quand l'appareil approche
-    this.barkT = (this.barkT || 0) - dt;
-    if (this.barkT <= 0) { const d = this.vs.find((v) => v.variant === 'dog' && v.state === 'wait' && Math.abs(v.px - hh.x) < 520); if (d) { this.barkT = 1.7; this.ev.push({ type: 'bark', x: d.px, y: d.y }); } }
+    // un animal qui attend appelle quand l'appareil approche
+    this.callT = (this.callT || 0) - dt;
+    if (this.callT <= 0) { const d = this.vs.find((v) => v.type === 'animal' && v.state === 'wait' && Math.abs(v.px - hh.x) < 520 && (v.found || !cfg.radar)); if (d) { this.callT = 2.1; this.ev.push({ type: 'call', variant: d.variant, x: d.px, y: d.y }); } }
     const h = this.heli, H = this.H, L = this.L, pad = this.onPad >= 0 ? L.pads[this.onPad] : null;
     const still = h.grounded && Math.abs(h.vx) < 20 && h.power < 0.5 && Math.abs(h.tilt) < 12;
     const aboard = this.aboard, big = (v) => v.size === 'big';
+    // Aucune zone n'est tracée au sol : il suffit d'être posé à plat tout près de la victime, à sa hauteur.
+    const near = (v) => Math.abs(h.x - v.px) < 150 && Math.abs(h.y + 11 - v.y) < 28;
     let seats = H.places - aboard.filter((v) => !big(v)).length - this.vs.filter((v) => v.state === 'walk' && !big(v)).length;
     let cargo = !!H.heavyLift && !this.vs.some((v) => big(v) && (v.state === 'aboard' || v.state === 'walk'));
 
@@ -58,12 +60,12 @@ export class RescueGame extends Game {
       if (v.state === 'wait') {
         // retour tranquille au point d'attente si l'embarquement a été interrompu
         if (Math.abs(v.px - v.x) > 1) v.px += Math.sign(v.x - v.px) * SPEED[v.size] * 0.6 * dt;
-        if (pad && pad.i === v.zone && still && (v.found || !L.rescue.cfg.radar)) {
+        if (near(v) && still && pad !== L.rescue.base && (v.found || !L.rescue.cfg.radar)) {
           if (big(v) ? cargo : seats > 0) { v.state = 'walk'; if (big(v)) cargo = false; else seats--; }
           else this.warn(big(v) && !H.heavyLift ? 'needBig' : 'full');
         }
       } else if (v.state === 'walk') {
-        if (!(pad && pad.i === v.zone && h.grounded)) { v.state = 'wait'; v.board = 0; this.ev.push({ type: 'cancel' }); continue; } // décollage trop tôt : annulé
+        if (!(near(v) && h.grounded)) { v.state = 'wait'; v.board = 0; this.ev.push({ type: 'cancel' }); continue; } // décollage trop tôt : annulé
         const dx = h.x - v.px;
         if (Math.abs(dx) > 9) v.px += Math.sign(dx) * SPEED[v.size] * (v.limp ? 0.6 : 1) * dt;
         else {
@@ -101,12 +103,13 @@ export class RescueGame extends Game {
   water(dt) {
     const L = this.L, h = this.heli;
     if (!L.waterAt) return;
-    const wy = L.waterAt(this.t);
+    const wy = L.surfAt(h.x, this.t), crest = L.waterAt(this.t) - wy; // crest : hauteur de la vague à cet endroit
     if (h.y + 11 > wy) {
-      if (this.H.amphibious) { h.y = wy - 11; if (h.vy > 0) h.vy = 0; h.grounded = true; h.vx -= h.vx * Math.min(1, 3 * dt); }
+      if (this.H.amphibious && crest < 18) { h.y = wy - 11; if (h.vy > 0) h.vy = 0; h.grounded = true; h.vx -= h.vx * Math.min(1, 3 * dt); }
       else { this.damage(3, h.x, wy); h.y = wy - 12; h.vy = -190; this.ev.push({ type: 'splash', x: h.x, y: wy }); }
     }
-    for (const v of this.vs) if ((v.state === 'wait' || v.state === 'walk') && wy < L.pads[v.zone].y - 2) return this.fail('tide');
+    const flat = L.waterAt(this.t);
+    for (const v of this.vs) if ((v.state === 'wait' || v.state === 'walk') && !L.pads[v.zone].floe && !L.pads[v.zone].water && flat < L.pads[v.zone].y - 2) return this.fail('tide');
   }
   // Front de feu, répliques, détecteur de victimes.
   dangers(dt) {
@@ -118,7 +121,7 @@ export class RescueGame extends Game {
     }
     if (Q) { // réplique : l'appareil posé sur une zone est secoué et décolle un peu (l'embarquement s'interrompt)
       const on = ((this.t / Q.period) % 1) < Q.on;
-      if (on && !this.quaking) { this.ev.push({ type: 'quake' }); if (h.grounded && this.onPad > 0) { h.vy = -95; h.y -= 3; } }
+      if (on && !this.quaking) { this.ev.push({ type: 'quake' }); if (h.grounded && this.onPad !== 0) { h.vy = -95; h.y -= 3; } }
       this.quaking = on;
     }
     for (const v of this.vs) if (v.state === 'wait' && L.pads[v.zone].water && !this.H.amphibious && Math.abs(v.px - h.x) < 160) this.warn('needAmphi');
@@ -155,19 +158,31 @@ export function rescueAutopilot(g) {
     P = L.pads[nearest.zone];
   } else if (!aboard.length && !waiting.length) P = L.rescue.base;
   const dxp = P.x - h.x, dir = Math.sign(dxp) || 1;
-  let ty = L.pathAt(h.x + dir * 60), vdes = clamp(dxp * 0.9, -150, 150), landing = false;
-  if (Math.abs(dxp) < 380) {
-    // on reste à l'altitude de croisière jusqu'à l'aplomb de la zone, puis on descend à la verticale
-    if (Math.abs(dxp) < P.w * 0.22 && Math.abs(h.vx) < 45) landing = true;
-  }
-  if (h.y > ty + 45 && Math.abs(dxp) > 60) vdes = clamp(vdes, -25, 25); // trop bas : on monte d'abord, presque à la verticale
+  let ty = L.pathAt(h.x + dir * 60), vdes = clamp(dxp * 0.9, -150, 150);
+  // on reste à l'altitude de croisière jusqu'à l'aplomb de la zone, puis on descend à la verticale (sans quitter l'axe)
+  const wide = P.base || P.w >= 150, tol = P.base ? 30 : wide ? P.w * 0.2 : Math.max(9, P.w * 0.1);
+  if (g.botLand === P.i ? Math.abs(dxp) > tol * 2.2 && h.y < ty + 50 : !(Math.abs(dxp) < tol && Math.abs(h.vx) < (wide ? 34 : 14))) g.botLand = -1; else g.botLand = P.i;
+  let landing = g.botLand === P.i;
+  if (Math.abs(dxp) < 70) vdes = clamp(dxp * 1.6, -45, 45);
+  if (h.y > ty + 45 && Math.abs(dxp) > 60) vdes = clamp(vdes, -10, 10); // trop bas : on monte d'abord, presque à la verticale
   else if (Math.abs(h.y - ty) > 70 && Math.abs(dxp) > 200) vdes = clamp(vdes, -90, 90);
-  for (const o of L.obs) { // danger périodique droit devant : on patiente
-    if (!o.safeAt) continue;
-    const d = (o.x - h.x) * dir;
-    const far = o.flyY != null ? Math.min(Math.abs(o.minX - h.x), Math.abs(o.maxX - h.x)) : d;
-    if ((o.flyY != null ? h.x > o.minX - 60 && h.x < o.maxX + 60 : d > 10 && d < 100) && far < 400) { let safe = true; for (let t = 0; t < 1.1; t += 0.1) if (!o.safeAt(g.t + t, h.y, h.x + dir * 40)) safe = false; if (!safe) vdes = -25 * dir; }
-  }
+  // oiseaux à l'altitude de croisière : on passe au-dessus (ou au-dessous)
+  for (const o of L.obs) if (o.flyY != null && h.x > o.minX - 170 && h.x < o.maxX + 170 && Math.abs(ty - o.flyY) < 72) ty = o.flyY - 78 > 50 ? o.flyY - 78 : o.flyY + 78;
+  // dangers périodiques : on essaie plusieurs allures et on garde la première qui reste sûre pendant près de deux secondes
+  const risk = (v, vy) => {
+    for (let t = 0; t <= 1.8; t += 0.1) {
+      const px = h.x + v * t, py = h.y + vy * Math.min(t, 0.6);
+      for (const o of L.obs) { if (o.minX > h.x + 500) break; if (!o.safeAt || o.maxX < h.x - 400) continue; if ((o.wide ? px > o.minX - 90 && px < o.maxX + 90 : px > o.minX - 46 && px < o.maxX + 46) && !o.safeAt(g.t + t, py, px)) return t; }
+    }
+    return 9;
+  };
+  const vyNow = clamp(h.vy, -60, 60);
+  if (landing) { if (risk(0, 70) < 9 && h.y < P.y - 120) landing = false; }
+  if (!landing && !h.grounded) {
+    let best = vdes, bt = -1;
+    for (const v of [vdes, vdes * 0.5, 0, -70 * dir, -150 * dir, 150 * dir]) { const r = risk(v, vyNow); if (r > bt) { bt = r; best = v; } if (r >= 9) break; }
+    vdes = best;
+  } else if (h.grounded && !landing && risk(vdes * 0.4, -60) < 9) { inp.thrust = false; inp.tilt = 0; return; } // on attend au sol que la voie soit libre
   inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3, -32, 32);
-  inp.thrust = landing ? h.vy > (h.y < P.y - 75 ? 95 : 34) : h.grounded || h.y + h.vy * 0.26 > ty;
+  inp.thrust = landing ? h.vy > (h.y < P.y - 75 ? (P.base ? 95 : 70) : 34) : h.grounded || h.y + h.vy * 0.26 > ty || h.vy > 115;
 }

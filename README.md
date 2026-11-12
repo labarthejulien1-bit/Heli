@@ -27,10 +27,11 @@ PWA Android **100 % locale** : aucune pub, aucun compte, aucune collecte de donn
 
 Un second monde, accessible depuis l'accueil : **20 missions de secours héliporté** et **5 appareils de secours** (Mésange, Chamois, Mouette, Sentinelle, Tandem), avec sa propre progression.
 
-- Se poser dans la zone près de chaque victime, rester posé pendant qu'elle embarque, la ramener à la base. Les passagers sont visibles derrière les hublots et alourdissent l'appareil.
+- Se poser à plat tout près de chaque victime (aucune zone n'est tracée : au pilote de trouver où), rester posé pendant qu'elle embarque, la ramener à la base. Les passagers sont visibles derrière de grands hublots (et en médaillons à l'écran) et alourdissent l'appareil ; les animaux appellent, chacun avec son cri.
 - L'appareil vole dans les deux sens : une inclinaison franche du côté opposé au nez le retourne.
 - Chaque mission a son décor, son style et ses dangers : marée, crevasses et air raréfié, toits inondés, canyons, front de feu, banquise à la dérive, volcan, répliques, avalanche au détecteur, marais, naufrage, gouffre de nuit, blizzard, cyclone, Himalaya...
-- Trois étoiles par mission : tout le monde sauf, temps, chocs. Les appareils se débloquent en réussissant des missions.
+- Missions longues et accidentées : vagues qui frappent un appareil trop bas, barrières de feu, foudre, blocs tombant du ciel, puits étroits à corniches, quartiers inondés et en ruine.
+- Trois étoiles par mission : tout le monde sauf, temps, chocs. **100 pièces par mission**, créditées à l'arrivée, pour acheter les appareils de secours (porte-monnaie propre à Heli Rescue).
 - Les missions sont de simples données (`js/rescuelevels.js`) ; `node tools/sim-rescue.mjs` vérifie que chacune est faisable.
 
 ## Démarrage
