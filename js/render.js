@@ -203,7 +203,7 @@ export class Renderer {
     c.setTransform(s, 0, 0, s, 0, 0);
     this.weather(c, def, vh, time, dt, camDX);
     if (L.smoke) { // fumée ou cendres : nappes sombres qui dérivent et masquent une partie de la vue
-      c.fillStyle = `rgba(30,22,20,${0.5 * L.smoke.density})`;
+      c.fillStyle = L.smoke.col ? rgba(L.smoke.col, 0.5 * L.smoke.density) : `rgba(30,22,20,${0.5 * L.smoke.density})`; // col : brume claire, poussière...
       for (let k = 0; k < 7; k++) {
         const sx2 = ((((hash(k, 21) * 700 - camX * 0.5 - time * (14 + k * 3)) % 700) + 700) % 700) - 150, sy2 = 120 + hash(k, 22) * (vh - 320), w2 = 110 + hash(k, 23) * 90;
         c.beginPath(); c.ellipse(sx2, sy2, w2, w2 * 0.42, 0, 0, TAU); c.fill();
@@ -234,8 +234,10 @@ export class Renderer {
     c.fillStyle = gr; c.fillRect(0, 0, VW, vh);
     if ((def.mod || {}).dark && !opts.hideHeli) {
       const hx = h.x - camX, hy = h.y - camY;
-      gr = c.createRadialGradient(hx + 40, hy, 80, hx + 40, hy, 300);
-      gr.addColorStop(0, 'rgba(0,0,8,0)'); gr.addColorStop(1, 'rgba(0,0,8,.78)');
+      // un appareil équipé d'un projecteur éclaire plus loin, vers l'avant
+      const lamp = !!g.H.searchlight, ox = (lamp ? 90 : 40) * h.dir;
+      gr = c.createRadialGradient(hx + ox, hy + (lamp ? 30 : 0), lamp ? 110 : 70, hx + ox, hy + (lamp ? 30 : 0), lamp ? 400 : 250);
+      gr.addColorStop(0, 'rgba(0,0,8,0)'); gr.addColorStop(1, lamp ? 'rgba(0,0,8,.8)' : 'rgba(0,0,8,.88)');
       c.fillStyle = gr; c.fillRect(0, 0, VW, vh);
     }
     if (this.flash > 0) { c.fillStyle = `rgba(255,60,60,${this.flash * 0.35})`; c.fillRect(0, 0, VW, vh); this.flash -= dt * 2.5; }
@@ -528,6 +530,7 @@ export class Renderer {
       c.fillStyle = fur; c.beginPath(); c.ellipse(0.5, -7.5, 7.5, 3.6, 0, 0, TAU); c.fill();
       c.beginPath(); c.arc(8.5, -10.5, 3.2, 0, TAU); c.fill();
       c.beginPath(); c.ellipse(7, -13.5, 1.2, 2.4, -0.4, 0, TAU); c.fill();
+      if (v.variant === 'elephant') { c.lineWidth = 2.2; c.beginPath(); c.moveTo(10.5, -9.5); c.quadraticCurveTo(14, -6, 12.5, -2); c.stroke(); c.beginPath(); c.ellipse(6.5, -11, 3, 3.6, 0.3, 0, TAU); c.fill(); } // trompe et oreille
       c.lineWidth = 1.6; c.beginPath(); c.moveTo(-7, -8); c.quadraticCurveTo(-11, -10 + Math.sin(time * 9) * 2, -10, -14); c.stroke(); // queue qui remue
       c.fillStyle = '#1b1b26'; c.beginPath(); c.arc(9.6, -11, 0.6, 0, TAU); c.fill();
     }

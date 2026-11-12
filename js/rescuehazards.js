@@ -66,6 +66,11 @@ export function makeFloe(pad, L) {
     kind: 'hazard', dyn: 1, x: (pad.floe.x0 + pad.floe.x1) / 2, minX: pad.floe.x0 - w, maxX: pad.floe.x1 + w,
     shapesAt() { return [{ p: [pad.x - w / 2, pad.y, pad.x + w / 2, pad.y, pad.x + w / 2 - 8, pad.y + 22, pad.x - w / 2 + 8, pad.y + 22] }]; },
     draw(c, t, time, def) {
+      if (pad.floe.raft) { // radeau de fortune : rondins et mât avec un fanion
+        c.fillStyle = '#7a5a3c'; c.fillRect(pad.x - w / 2, pad.y, w, 9); c.fillStyle = '#5f4329'; for (let k = 6; k < w; k += 14) c.fillRect(pad.x - w / 2 + k, pad.y, 2, 9);
+        c.fillRect(pad.x - w / 2 + 4, pad.y - 34, 2.5, 34); c.fillStyle = '#ff7b2e'; c.beginPath(); c.moveTo(pad.x - w / 2 + 6, pad.y - 34); c.lineTo(pad.x - w / 2 + 22, pad.y - 29); c.lineTo(pad.x - w / 2 + 6, pad.y - 24); c.fill();
+        return;
+      }
       c.fillStyle = '#f4faff'; c.beginPath(); c.moveTo(pad.x - w / 2, pad.y); c.lineTo(pad.x + w / 2, pad.y); c.lineTo(pad.x + w / 2 - 8, pad.y + 22); c.lineTo(pad.x - w / 2 + 8, pad.y + 22); c.fill();
       c.fillStyle = 'rgba(120,170,220,.5)'; c.fillRect(pad.x - w / 2 + 4, pad.y + 9, w - 8, 3);
     },

@@ -13,7 +13,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -411,7 +411,7 @@ function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorS
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
   const dry = S.game.fuel <= 0, canRe = S.game.D.respawn && S.game.padIdx > 0; // mode facile : reprise au dernier ravitaillement
-  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${S.game.failReason === 'tide' ? t('r_tide') : S.game.failReason === 'fire' ? t('r_fire') : dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${levelTitle()}</p>
+  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${S.game.failReason === 'tide' ? t('r_tide') : S.game.failReason === 'fire' ? t('r_fire') : S.game.failReason === 'storm' ? t('r_storm') : dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${levelTitle()}</p>
     ${canRe ? `<button class="btn primary" data-act="respawn">${t('fromPad')}</button>` : ''}
     <button class="btn ${canRe ? '' : 'primary'}" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button></div></div>`;
@@ -588,7 +588,7 @@ function events() {
       case 'found': R.spawn(e.x, e.y - 10, 14, { a: -Math.PI / 2, spread: 2.6, v: 90, col: '#ffffff', life: 0.6 }); if (play) { toast('● ' + t('r_found')); snd.sfx('cp'); vibe(25); } break;
       case 'splash': R.spawn(e.x, e.y, 18, { a: -Math.PI / 2, spread: 1.6, v: 190, col: 'rgba(220,245,255,.8)', life: 0.7, g: 420, size: 2 }); if (play) snd.sfx('splash'); break;
       case 'cancel': if (play) { toast(t('r_cancel')); snd.sfx('bump'); } break;
-      case 'note': if (play) toast(t(e.kind === 'needBig' ? 'r_needBig' : 'r_full')); break;
+      case 'note': if (play) toast(t(e.kind === 'needBig' ? 'r_needBig' : e.kind === 'needAmphi' ? 'r_needAmphi' : 'r_full')); break;
       case 'land': R.spawn(g.heli.x, g.heli.y + 11, 8, { a: -Math.PI / 2, spread: 3, v: 60, col: 'rgba(255,255,255,.5)', life: 0.5 }); break;
       case 'crash': R.spawn(e.x, e.y, 46, { v: 230, col: '#ff8a3a', life: 1, g: 220, size: 3 }); R.spawn(e.x, e.y, 16, { v: 60, col: 'rgba(30,30,40,.7)', life: 1.4, size: 5, grow: 8 }); R.shake = 26; if (play) { snd.sfx('crash'); snd.rotorStop(); vibe([80, 40, 180]); } break;
       case 'pad': R.spawn(e.x, e.y - 6, 14, { a: -Math.PI / 2, spread: 2.6, v: 90, col: '#7dffb0', life: 0.6 }); if (play) { toast('⛽ ' + t('refuel')); snd.sfx('cp'); vibe(20); } break;
@@ -616,7 +616,9 @@ function updateHud() {
   const pr = clamp(h.x / (L.rescue ? L.length : L.pad.x), 0, 1) * 100 + '%';
   progFill.style.width = pr; progDot.style.left = pr;
   const sec = Math.floor(g.t);
-  if (sec !== timeShown) { timeShown = sec; timeTxt.textContent = fmtTime(g.t); }
+  // fenêtre météo : on affiche le temps restant
+  const lim = L.rescue && L.rescue.cfg.timeLimit;
+  if (sec !== timeShown) { timeShown = sec; timeTxt.textContent = lim ? '⏳ ' + fmtTime(Math.max(0, lim - g.t)) : fmtTime(g.t); timeTxt.style.color = lim && lim - g.t < 40 ? '#ff9c9c' : ''; }
   let key = '';
   const fp = L.pads[1];
   if (g.fuel < 0.22 && g.fuel > 0 && g.state === 'fly') key = 'lowFuel';

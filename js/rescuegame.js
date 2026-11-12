@@ -31,13 +31,14 @@ export class RescueGame extends Game {
     if (cfg.thinAir && !this.H.noAltLoss) this.lift = 1 - cfg.thinAir.loss * clamp((cfg.thinAir.above - hh.y) / cfg.thinAir.span, 0, 1);
     // Rafales périodiques (embruns, vent) : une poussée latérale tant que la rafale souffle
     this.gustX = 0;
-    for (const q of this.L.gusts) if (hh.x > q.x && hh.x < q.x + q.w && ((this.t / q.period + (q.phase || 0)) % 1) < q.on) this.gustX += q.fx;
+    for (const q of this.L.gusts) if (hh.x > q.x && hh.x < q.x + q.w && hh.y > (q.y0 ?? -1e9) && hh.y < (q.y1 ?? 1e9) && ((this.t / q.period + (q.phase || 0)) % 1) < q.on) this.gustX += q.fx; // y0/y1 : courant limité à une tranche d'altitude
     // Zones mobiles (plaques de glace) : la zone, l'appareil posé dessus et ceux qui y attendent dérivent ensemble
     for (const p of this.L.pads) {
       if (!p.move) continue;
       const nx = p.move(this.t), dx = nx - p.x; p.x = nx;
       if (this.onPad === p.i && hh.grounded) hh.x += dx;
-      for (const v of this.vs) if (v.zone === p.i) { v.x = nx + v.off; if (v.state === 'wait' || v.state === 'walk') v.px += dx; }
+      if (p.bob) p.y = p.bob(this.t);
+      for (const v of this.vs) if (v.zone === p.i) { v.x = nx + v.off; v.y = p.y; if (v.state === 'wait' || v.state === 'walk') v.px += dx; }
     }
     super.step(dt);
     if (this.state !== 'fly') return;
@@ -120,6 +121,8 @@ export class RescueGame extends Game {
       if (on && !this.quaking) { this.ev.push({ type: 'quake' }); if (h.grounded && this.onPad > 0) { h.vy = -95; h.y -= 3; } }
       this.quaking = on;
     }
+    for (const v of this.vs) if (v.state === 'wait' && L.pads[v.zone].water && !this.H.amphibious && Math.abs(v.px - h.x) < 160) this.warn('needAmphi');
+    if (L.rescue.cfg.timeLimit && this.t > L.rescue.cfg.timeLimit) return this.fail('storm'); // fenêtre météo refermée
     if (L.rescue.cfg.radar) { // victimes ensevelies : visibles seulement de près, le détecteur bipe de plus en plus vite
       let d = 1e9;
       for (const v of this.vs) { if (v.state !== 'wait' || v.found) continue; const k = Math.abs(v.px - h.x); if (k < 150) { v.found = true; this.ev.push({ type: 'found', x: v.px, y: v.y }); } else d = Math.min(d, k); }
@@ -141,7 +144,7 @@ export class RescueGame extends Game {
 // Pilote automatique de sauvetage : valide les niveaux (tools/sim-rescue.mjs) et anime le fond des menus.
 export function rescueAutopilot(g) {
   const h = g.heli, L = g.L, H = g.H, inp = g.input, aboard = g.aboard;
-  const can = (v) => v.size !== 'big' || H.heavyLift;
+  const can = (v) => (v.size !== 'big' || H.heavyLift) && (!L.pads[v.zone].water || H.amphibious);
   const waiting = g.vs.filter((v) => v.state === 'wait' && can(v));
   const full = aboard.filter((v) => v.size !== 'big').length >= H.places;
   const busy = g.vs.some((v) => v.state === 'walk') || (g.onPad === 0 && aboard.length && h.grounded);

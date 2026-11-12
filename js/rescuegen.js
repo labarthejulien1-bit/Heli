@@ -21,7 +21,7 @@ export function buildRescueLevel(cfg) {
     ground[i] = lerp(a[1], b[1], (1 - Math.cos(Math.PI * t)) / 2) + (fbm(x / 60, cfg.seed) - 0.5) * 2 * (cfg.rough || 0);
   }
   // Replats : la base et chaque zone de pose sont aplanies (raccord progressif sur 40 unités)
-  const flats = [{ x: cfg.base.x, w: 150 }, ...cfg.victims.filter((v) => !v.floe).map((v) => ({ x: v.x, w: v.zoneWidth })), ...(cfg.props || []).map((p) => ({ x: p.x, w: p.w }))];
+  const flats = [{ x: cfg.base.x, w: 150 }, ...cfg.victims.filter((v) => !v.floe && !v.dock && !v.onWater).map((v) => ({ x: v.x, w: v.zoneWidth })), ...(cfg.props || []).map((p) => ({ x: p.x, w: p.w }))];
   for (const f of flats) {
     const yc = ground[Math.round(f.x / STEP)], half = f.w / 2 + 14;
     for (let i = Math.max(0, Math.floor((f.x - half - 40) / STEP)); i <= Math.min(N - 1, Math.ceil((f.x + half + 40) / STEP)); i++) {
@@ -36,6 +36,7 @@ export function buildRescueLevel(cfg) {
   // --- Héliports : la base (plein, réparation, débarquement), puis une zone de pose par victime
   // Eau : niveau qui peut monter avec le temps
   const W = cfg.water, waterAt = W ? (t) => Math.max(W.max ?? W.y, W.y - (W.rise || 0) * t) : null;
+  const docks = [];
   const builds = (cfg.props || []).filter((p) => p.type === 'house').map((p) => ({ x: p.x, w: p.w, h: p.h }));
   const pads = [{ x: cfg.base.x, y: groundAt(cfg.base.x), w: 150, kind: 'fuel', base: true, main: true }];
   const victims = cfg.victims.map((v) => {
@@ -43,9 +44,12 @@ export function buildRescueLevel(cfg) {
     if (zone < 0) {
       // v.roof : la zone est le toit d'une maison de cette hauteur (sinon elle est à même le sol)
       // v.floe : la zone est une plaque de glace qui dérive sur l'eau entre x0 et x1
-      const y = v.floe ? cfg.water.y - 12 : groundAt(v.x) - (v.roof || 0);
+      // v.dock : ponton posé sur l'eau ; v.onWater : zone à la surface même de l'eau (amphibies seulement)
+      const y = v.floe ? cfg.water.y - 12 : v.dock ? cfg.water.y - 9 : v.onWater ? cfg.water.y : groundAt(v.x) - (v.roof || 0);
       if (v.roof) builds.push({ x: v.x, w: v.zoneWidth + 8, h: v.roof });
-      const pad = { x: v.x, y, w: v.zoneWidth, kind: 'zone' };
+      const pad = { x: v.x, y, w: v.zoneWidth, kind: 'zone', water: !!v.onWater };
+      if (v.dock) docks.push(pad);
+      if (v.floe && v.floe.bob) { const y0 = y, f = v.floe; pad.bob = (t) => y0 + Math.sin(t * 1.7) * f.bob; } // radeau soulevé par les vagues
       if (v.floe) { const f = v.floe, span = f.x1 - f.x0; pad.floe = f; pad.x0 = v.x; pad.move = (t) => { const u = ((t * f.speed) / span + (v.x - f.x0) / span) % 2; return f.x0 + span * (u < 1 ? u : 2 - u); }; }
       pads.push(pad); zone = pads.length - 1;
     }
@@ -75,6 +79,11 @@ export function buildRescueLevel(cfg) {
   const shell = { groundAt, waterAt };
   for (const hz of cfg.hazards || []) { const o = makeHazard(hz, shell); if (o) { o.v = R(); obs.push(o); } }
   for (const p of pads) if (p.floe) obs.push(makeFloe(p, shell));
+  for (const p of docks) { // ponton : un platelage sur pilotis, sur lequel tout appareil peut se poser
+    const w = p.w + 20;
+    obs.push({ kind: 'hazard', x: p.x, shapes: [{ p: rectPoly(p.x - w / 2, p.y, w, 9) }], minX: p.x - w / 2, maxX: p.x + w / 2,
+      draw(c) { c.fillStyle = '#5f4329'; for (const q of [-w / 2 + 6, 0, w / 2 - 8]) c.fillRect(p.x + q, p.y + 6, 4, 46); c.fillStyle = '#8a6a4a'; c.fillRect(p.x - w / 2, p.y, w, 8); c.fillStyle = '#6f5238'; for (let k = 0; k < w; k += 13) c.fillRect(p.x - w / 2 + k, p.y, 1.5, 8); } });
+  }
   // lianes pendantes (décor qui gêne : il faut passer dessous)
   for (const p of cfg.props || []) if (p.type === 'vine') obs.push({ kind: 'hang', st: 'vine', x: p.x, y: p.len, w: 16, shapes: [{ p: rectPoly(p.x - 8, -80, 16, p.len + 80) }], minX: p.x - 8, maxX: p.x + 8, v: R() });
   // ascendances thermiques, front de feu, répliques
