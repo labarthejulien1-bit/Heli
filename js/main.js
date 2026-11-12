@@ -3,7 +3,7 @@ import { HELIS, LEVELS, RANKS, TOTAL_MEDALS, LANGS } from './data.js';
 import { generateLevel } from './levelgen.js';
 import { Game, autopilot, DT, BASE_TILT, MIN_TILT, MAX_TILT } from './game.js';
 import { Renderer } from './render.js';
-import { drawHeli } from './helidraw.js';
+import { drawHeli, drawOccupant } from './helidraw.js';
 import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
@@ -13,7 +13,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.5.0';
+const VERSION = '2.6.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -249,7 +249,7 @@ function showRescueResult() {
   const hasNext = !!rescueLevel(n + 1);
   ui.innerHTML = `<div class="overlay"><div class="sheet">
     <h2>${t('r_done')}</h2><p class="sub">${n} · ${t('r_lvl' + n)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
-    <div class="obj"><span>♥ ${g.vs.map((v) => t('r_v_' + v.variant)).join(', ')}</span></div>
+    <div class="portraits">${g.vs.map((v, i) => `<span><canvas data-vic="${i}"></canvas><small>${t('r_v_' + v.variant)}</small></span>`).join('')}</div>
     <div class="obj"><i class="medal ${stars[0] ? 'on' : ''}"></i>${t('r_star1')}</div>
     <div class="obj"><i class="medal ${stars[1] ? 'on' : ''}"></i>${t('r_star2', fmtTime(cfg.stars.time))}<small>${fmtTime(g.t)}</small></div>
     <div class="obj"><i class="medal ${stars[2] ? 'on' : ''}"></i>${t('r_star3', cfg.stars.maxHits)}<small>${g.stats.hits}</small></div>
@@ -258,6 +258,13 @@ function showRescueResult() {
       <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
       <button class="btn ghost" data-act="quit">${t('r_missions')}</button>
     </div></div></div>`;
+  // portraits des personnes et animaux secourus
+  ui.querySelectorAll('canvas[data-vic]').forEach((cv2) => {
+    const v = g.vs[+cv2.dataset.vic], dpr = Math.min(2, window.devicePixelRatio || 1), c = cv2.getContext('2d');
+    cv2.width = cv2.height = 64 * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.beginPath(); c.arc(32, 32, 31, 0, 7); c.clip();
+    drawOccupant(c, 32, 33, 22, { type: v.type, variant: v.variant, col: v.col, hat: v.hat, seed: 1 }, 0.6);
+  });
   stars.forEach((f, i) => f && setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + i * 250));
 }
 function rhangar() {

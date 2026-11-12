@@ -23,13 +23,23 @@ PWA Android **100 % locale** : aucune pub, aucun compte, aucune collecte de donn
 - **3 objectifs par niveau** (médailles, pour le rang du pilote) : pièces, étoiles, temps, collisions, atterrissage en douceur.
 - Profil pilote, 6 langues, réglages (audio, vibrations, sensibilité, qualité graphique, économie de batterie), export / import de la sauvegarde.
 
+## Heli Rescue
+
+Un second monde, accessible depuis l'accueil : **20 missions de secours héliporté** et **5 appareils de secours** (Mésange, Chamois, Mouette, Sentinelle, Tandem), avec sa propre progression.
+
+- Se poser dans la zone près de chaque victime, rester posé pendant qu'elle embarque, la ramener à la base. Les passagers sont visibles derrière les hublots et alourdissent l'appareil.
+- L'appareil vole dans les deux sens : une inclinaison franche du côté opposé au nez le retourne.
+- Chaque mission a son décor, son style et ses dangers : marée, crevasses et air raréfié, toits inondés, canyons, front de feu, banquise à la dérive, volcan, répliques, avalanche au détecteur, marais, naufrage, gouffre de nuit, blizzard, cyclone, Himalaya...
+- Trois étoiles par mission : tout le monde sauf, temps, chocs. Les appareils se débloquent en réussissant des missions.
+- Les missions sont de simples données (`js/rescuelevels.js`) ; `node tools/sim-rescue.mjs` vérifie que chacune est faisable.
+
 ## Démarrage
 
 Aucune dépendance, aucune étape de build : ce sont des fichiers statiques.
 
 ```bash
 npm run serve     # http://localhost:8080
-npm run check     # valide les 30 niveaux (pilote automatique) et les traductions
+npm run check     # valide les 30 niveaux, les 20 missions Heli Rescue et les traductions
 ```
 
 ## Installation sur Android (PWA)
@@ -54,5 +64,6 @@ js/audio.js      Sons et musique procéduraux (Web Audio)
 js/i18n.js       Traductions fr / en / es / pt / de / it
 js/save.js       Sauvegarde locale (localStorage), déblocages
 js/main.js       Écrans, commandes, boucle de jeu
-tools/           sim.mjs (validation des niveaux), i18n-check.mjs, make-icons.mjs
+js/rescue*.js    Monde Heli Rescue : appareils, missions (données), constructeur, logique, dangers
+tools/           sim.mjs et sim-rescue.mjs (validation), i18n-check.mjs, make-icons.mjs
 ```

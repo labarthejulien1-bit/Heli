@@ -21,7 +21,7 @@ export function buildRescueLevel(cfg) {
     ground[i] = lerp(a[1], b[1], (1 - Math.cos(Math.PI * t)) / 2) + (fbm(x / 60, cfg.seed) - 0.5) * 2 * (cfg.rough || 0);
   }
   // Replats : la base et chaque zone de pose sont aplanies (raccord progressif sur 40 unités)
-  const flats = [{ x: cfg.base.x, w: 150 }, ...cfg.victims.filter((v) => !v.floe && !v.dock && !v.onWater).map((v) => ({ x: v.x, w: v.zoneWidth })), ...(cfg.props || []).map((p) => ({ x: p.x, w: p.w }))];
+  const flats = [{ x: cfg.base.x, w: 150 }, ...cfg.victims.filter((v) => !v.floe && !v.dock && !v.onWater).map((v) => ({ x: v.x, w: v.zoneWidth })), ...(cfg.props || []).filter((p) => p.w).map((p) => ({ x: p.x, w: p.w }))];
   for (const f of flats) {
     const yc = ground[Math.round(f.x / STEP)], half = f.w / 2 + 14;
     for (let i = Math.max(0, Math.floor((f.x - half - 40) / STEP)); i <= Math.min(N - 1, Math.ceil((f.x + half + 40) / STEP)); i++) {
@@ -62,6 +62,7 @@ export function buildRescueLevel(cfg) {
 
   // --- Maisons (décor ou toit servant de zone de pose), puis arbres clairsemés, jamais sur un replat
   const obs = [];
+  for (const p of cfg.props || []) if (p.type === 'lighthouse') { const g = groundAt(p.x), top = g - p.h; obs.push({ kind: 'pillar', st: 'lighthouse', x: p.x, y: top, w: p.w, h: p.h + 24, shapes: [{ p: rectPoly(p.x - p.w / 2, top, p.w, p.h + 24) }], minX: p.x - p.w / 2, maxX: p.x + p.w / 2, v: R() }); }
   for (const b of builds) { const g = groundAt(b.x), top = g - b.h; obs.push({ kind: 'pillar', st: 'house', x: b.x, y: top, w: b.w, h: b.h + 24, shapes: [{ p: rectPoly(b.x - b.w / 2, top, b.w, b.h + 24) }], minX: b.x - b.w / 2, maxX: b.x + b.w / 2, v: R() }); }
   if (cfg.trees) {
     for (let x = 120 + rand(0, 80); x < LEN - 80; x += rand(cfg.trees.every[0], cfg.trees.every[1])) {
@@ -106,7 +107,7 @@ export function buildRescueLevel(cfg) {
   const look = cfg.look;
   return {
     def: { ...look, id: 100 + cfg.n, seed: cfg.seed, mod: cfg.mod || {}, objectives: [] },
-    rescue: { cfg, victims, base: pads[0] }, twoWay: true, waterAt, gusts,
+    rescue: { cfg, victims, base: pads[0] }, twoWay: true, decor: (cfg.props || []).filter((p) => p.type === 'cow'), waterAt, gusts,
     length: LEN, secs: [], obs, items: [], zones, fire, quake, smoke, pads, tank: cfg.tank, tunnels: [], traffic: [],
     ground, ceil, groundAt, ceilAt: samp(ceil), pathAt: samp(cruise), gapAt: () => 240, groundSlope: slope(ground), ceilSlope: slope(ceil),
     startX: cfg.base.x, pad: pads[0], orbTotal: 0, starTotal: 0,

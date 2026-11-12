@@ -483,6 +483,15 @@ export class Renderer {
       c.fillStyle = def.obs; c.fillRect(bx + 40, by - 60, 2.5, 60); // manche à air
       c.fillStyle = '#ff7b2e'; c.beginPath(); c.moveTo(bx + 42, by - 60); c.lineTo(bx + 62, by - 55 + Math.sin(time * 4) * 2); c.lineTo(bx + 42, by - 50); c.fill();
     }
+    for (const d of L.decor || []) { // décor sans collision (vaches au pré...)
+      if (d.x < x0 - 30 || d.x > x1 + 30) continue;
+      const gy = L.groundAt(d.x);
+      c.save(); c.translate(d.x, gy); c.scale(d.flip ? -1 : 1, 1);
+      c.strokeStyle = '#3a2a1c'; c.lineWidth = 1.8; c.lineCap = 'round'; c.beginPath(); for (const lx of [-6, -3, 4, 7]) { c.moveTo(lx, -6); c.lineTo(lx, 0); } c.stroke();
+      c.fillStyle = '#f4f1e8'; c.beginPath(); c.ellipse(0.5, -9, 9, 4.6, 0, 0, TAU); c.fill(); c.beginPath(); c.ellipse(10.5, -8 + Math.sin(time * 1.2 + d.x) * 2.5, 3.4, 2.8, 0.5, 0, TAU); c.fill();
+      c.fillStyle = '#3a2a1c'; c.beginPath(); c.ellipse(-3, -10, 3.2, 2.2, 0.3, 0, TAU); c.ellipse(4, -8, 2.2, 1.8, 0, 0, TAU); c.fill();
+      c.restore();
+    }
     for (const v of g.vs) {
       if (v.state === 'aboard' || v.state === 'saved' || v.px < x0 - 30 || v.px > x1 + 30) continue;
       if (L.rescue.cfg.radar && v.state === 'wait' && !v.found) continue; // enseveli : invisible tant que le détecteur ne l'a pas trouvé
@@ -524,15 +533,43 @@ export class Renderer {
       c.fillStyle = v.hat || '#e76f51'; c.beginPath(); c.arc(0, -22, 3.8, Math.PI, 0); c.fill();
       if (v.variant === 'hiker') { c.fillStyle = '#6b4f2a'; c.fillRect(-5.5, -17, 3.4, 7); } // sac à dos
     } else {
-      const s = v.size === 'big' ? 1.9 : v.size === 'medium' ? 1.3 : 0.8, leg = moving ? Math.sin(ph) * 2.2 : 0, fur = v.col || '#b5835a';
+      const V = v.variant, fur = v.col || '#b5835a', leg = moving ? Math.sin(ph) * 2.2 : 0;
+      const s = v.size === 'big' ? (V === 'horse' ? 1.7 : 1.9) : v.size === 'medium' ? 1.3 : V === 'goat' || V === 'husky' ? 0.95 : 0.8;
       c.scale(s, s);
-      c.strokeStyle = fur; c.lineWidth = 1.8; c.beginPath(); c.moveTo(-5, -5); c.lineTo(-5 - leg, 0); c.moveTo(-2, -5); c.lineTo(-2 + leg, 0); c.moveTo(3, -5); c.lineTo(3 - leg, 0); c.moveTo(6, -5); c.lineTo(6 + leg, 0); c.stroke();
-      c.fillStyle = fur; c.beginPath(); c.ellipse(0.5, -7.5, 7.5, 3.6, 0, 0, TAU); c.fill();
-      c.beginPath(); c.arc(8.5, -10.5, 3.2, 0, TAU); c.fill();
-      c.beginPath(); c.ellipse(7, -13.5, 1.2, 2.4, -0.4, 0, TAU); c.fill();
-      if (v.variant === 'elephant') { c.lineWidth = 2.2; c.beginPath(); c.moveTo(10.5, -9.5); c.quadraticCurveTo(14, -6, 12.5, -2); c.stroke(); c.beginPath(); c.ellipse(6.5, -11, 3, 3.6, 0.3, 0, TAU); c.fill(); } // trompe et oreille
-      c.lineWidth = 1.6; c.beginPath(); c.moveTo(-7, -8); c.quadraticCurveTo(-11, -10 + Math.sin(time * 9) * 2, -10, -14); c.stroke(); // queue qui remue
-      c.fillStyle = '#1b1b26'; c.beginPath(); c.arc(9.6, -11, 0.6, 0, TAU); c.fill();
+      if (V === 'flamingo') { // échassier : deux longues pattes, cou en S
+        c.strokeStyle = '#ff8fab'; c.lineWidth = 1; c.beginPath(); c.moveTo(-1, -9); c.lineTo(-1 - leg, 0); c.moveTo(1.5, -9); c.lineTo(1.5 + leg, 0); c.stroke();
+        c.fillStyle = fur; c.beginPath(); c.ellipse(0, -11, 5, 3.4, 0, 0, TAU); c.fill();
+        c.strokeStyle = fur; c.lineWidth = 1.7; c.beginPath(); c.moveTo(4, -12); c.quadraticCurveTo(8, -16, 5, -19); c.quadraticCurveTo(3, -22, 6.5, -22.5); c.stroke();
+        c.fillStyle = '#2b2d42'; c.beginPath(); c.moveTo(6.5, -23.5); c.lineTo(10, -21.5); c.lineTo(6.5, -21.5); c.fill();
+      } else if (V === 'turtle') { // carapace basse, nageoires
+        c.fillStyle = fur; c.beginPath(); c.ellipse(-6, -1.5 + leg * 0.3, 3.4, 1.4, 0.4, 0, TAU); c.ellipse(6, -1.5 - leg * 0.3, 3.4, 1.4, -0.4, 0, TAU); c.fill();
+        c.fillStyle = '#2f5d50'; c.beginPath(); c.arc(0, -2, 8, Math.PI, 0); c.fill(); c.fillStyle = fur; c.beginPath(); c.arc(9.5, -3, 2.4, 0, TAU); c.fill();
+      } else if (V === 'orangutan') { // assis, longs bras
+        c.fillStyle = fur; c.beginPath(); c.ellipse(0, -7, 5, 7, 0, 0, TAU); c.fill(); c.beginPath(); c.arc(1, -15.5, 3.6, 0, TAU); c.fill();
+        c.strokeStyle = fur; c.lineWidth = 2.2; c.beginPath(); c.moveTo(-3, -11); c.lineTo(-7, -2 + (wave ? Math.sin(time * 9) * 3 - 12 : 0)); c.moveTo(3, -11); c.lineTo(7, -2 + leg); c.stroke();
+        c.fillStyle = '#7a4a2a'; c.beginPath(); c.arc(1.5, -15, 2.1, 0, TAU); c.fill();
+      } else {
+        const tall = V === 'deer' || V === 'horse' ? 8.5 : V === 'fawn' || V === 'goat' ? 6.5 : 5, by = -tall - 2.5; // hauteur des pattes
+        c.strokeStyle = fur; c.lineWidth = V === 'elephant' ? 3 : 1.8; c.beginPath();
+        for (const [lx, sg] of [[-5, -1], [-2, 1], [3, -1], [6, 1]]) { c.moveTo(lx, by + 2.5); c.lineTo(lx + sg * leg, 0); }
+        c.stroke();
+        c.fillStyle = fur; c.beginPath(); c.ellipse(0.5, by, 7.5, V === 'elephant' ? 5 : 3.6, 0, 0, TAU); c.fill();
+        const hx = V === 'deer' || V === 'horse' || V === 'fawn' || V === 'goat' ? 9.5 : 8.5, hy = by - (V === 'deer' || V === 'horse' ? 6.5 : V === 'fawn' || V === 'goat' ? 5 : 3);
+        if (hy < by - 3.5) { c.lineWidth = 2.6; c.beginPath(); c.moveTo(6, by - 1); c.lineTo(hx - 0.5, hy + 1); c.stroke(); } // encolure
+        c.beginPath(); c.ellipse(hx, hy, V === 'horse' ? 3.8 : 3.2, V === 'horse' ? 2.4 : 3, V === 'horse' ? 0.5 : 0, 0, TAU); c.fill();
+        if (V === 'cat' || V === 'husky' || V === 'deer' || V === 'fawn' || V === 'horse') { c.beginPath(); c.moveTo(hx - 2.4, hy - 2); c.lineTo(hx - 1.6, hy - 6.2); c.lineTo(hx + 0.4, hy - 2.4); c.fill(); } // oreille dressée
+        else if (V !== 'elephant' && V !== 'goat') { c.beginPath(); c.ellipse(hx - 1.5, hy - 3, 1.2, 2.4, -0.4, 0, TAU); c.fill(); } // oreille tombante
+        if (V === 'goat') { c.strokeStyle = '#d8d2c4'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(hx - 1, hy - 2.6); c.quadraticCurveTo(hx - 4, hy - 6.5, hx - 5.5, hy - 4.5); c.stroke(); c.strokeStyle = fur; c.beginPath(); c.moveTo(hx + 1, hy + 2.6); c.lineTo(hx + 0.6, hy + 5); c.stroke(); }
+        if (V === 'horse') { c.strokeStyle = '#2b1d14'; c.lineWidth = 1.8; c.beginPath(); c.moveTo(6.5, by - 2.5); c.lineTo(hx - 2.5, hy - 1.5); c.stroke(); }
+        if (V === 'fawn') { c.fillStyle = '#ffffff'; for (const [dx2, dy2] of [[-3, -0.8], [0.5, 0.6], [3.5, -0.6]]) { c.beginPath(); c.arc(dx2, by + dy2, 0.7, 0, TAU); c.fill(); } }
+        if (V === 'elephant') { c.strokeStyle = fur; c.lineWidth = 2.2; c.beginPath(); c.moveTo(hx + 2, hy + 1); c.quadraticCurveTo(hx + 5.5, hy + 4.5, hx + 4, by + 8.5); c.stroke(); c.fillStyle = mix(fur, '#000000', 0.15); c.beginPath(); c.ellipse(hx - 2, hy - 0.5, 3, 3.8, 0.3, 0, TAU); c.fill(); }
+        const tailCol = V === 'horse' ? '#2b1d14' : fur;
+        c.strokeStyle = tailCol; c.lineWidth = V === 'horse' ? 2.2 : 1.6; c.beginPath(); c.moveTo(-7, by - 0.5);
+        if (V === 'horse' || V === 'deer' || V === 'fawn' || V === 'goat' || V === 'elephant') c.quadraticCurveTo(-10, by + 1, -9.5 + Math.sin(time * 3) * 0.8, by + (V === 'horse' ? 7 : 3.5));
+        else c.quadraticCurveTo(-11, by - 2.5 + Math.sin(time * 9) * 2, -10, by - 6.5); // queue qui remue
+        c.stroke();
+        c.fillStyle = '#1b1b26'; c.beginPath(); c.arc(hx + 1.1, hy - 0.5, 0.6, 0, TAU); c.fill();
+      }
     }
     c.restore();
   }

@@ -98,9 +98,22 @@ export function drawOccupant(c, x, y, r, p, t) {
     const fur = p.col || '#b5835a', ear = Math.sin(t * 5 + (p.seed || 0) * 9) * 0.25;
     dot(0, r * 0.15, r * 0.6, fur);
     c.fillStyle = fur;
-    if (p.variant === 'cat') { for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(x + sw + sx * r * 0.55, y - r * 0.1); c.lineTo(x + sw + sx * r * 0.42, y - r * 0.75 + ear * r * 0.2); c.lineTo(x + sw + sx * r * 0.12, y - r * 0.3); c.fill(); } }
-    else { for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(x + sw + sx * r * 0.58, y - r * 0.05 + ear * r * 0.3, r * 0.2, r * 0.42, sx * 0.4, 0, 6.2832); c.fill(); } }
-    dot(0, r * 0.38, r * 0.22, '#f3e3d0'); dot(0, r * 0.3, r * 0.09, '#1b1b26');
+    const V = p.variant, X = x + sw;
+    const tri = (sx, w, h2) => { c.beginPath(); c.moveTo(X + sx * r * 0.55, y - r * 0.1); c.lineTo(X + sx * (r * 0.55 - w * r * 0.15), y - r * h2 + ear * r * 0.2); c.lineTo(X + sx * r * 0.12, y - r * 0.3); c.fill(); };
+    const flop = (sx, len) => { c.beginPath(); c.ellipse(X + sx * r * 0.58, y - r * 0.05 + ear * r * 0.3, r * 0.2, r * len, sx * 0.4, 0, 6.2832); c.fill(); };
+    if (V === 'cat' || V === 'husky') { tri(-1, 1, 0.78); tri(1, 1, 0.78); if (V === 'husky') dot(0, r * 0.3, r * 0.38, '#ffffff'); }
+    else if (V === 'deer' || V === 'fawn' || V === 'goat' || V === 'horse') { // oreilles dressées, plus cornes ou crinière
+      tri(-1, 2, 0.95); tri(1, 2, 0.95);
+      if (V === 'goat') { c.strokeStyle = '#d8d2c4'; c.lineWidth = r * 0.14; c.lineCap = 'round'; for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(X + sx * r * 0.2, y - r * 0.5); c.quadraticCurveTo(X + sx * r * 0.5, y - r * 1.1, X + sx * r * 0.2, y - r * 1.05); c.stroke(); } }
+      if (V === 'horse') { c.fillStyle = '#2b1d14'; c.beginPath(); c.ellipse(X, y - r * 0.5, r * 0.22, r * 0.4, 0, 0, 6.2832); c.fill(); c.fillStyle = fur; }
+      if (V === 'fawn') { dot(-r * 0.3, r * 0.5, r * 0.08, '#ffffff'); dot(r * 0.34, r * 0.42, r * 0.08, '#ffffff'); }
+    } else if (V === 'elephant') { for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(X + sx * r * 0.72, y + r * 0.1, r * 0.36, r * 0.52, 0, 0, 6.2832); c.fill(); } c.strokeStyle = fur; c.lineWidth = r * 0.26; c.lineCap = 'round'; c.beginPath(); c.moveTo(X, y + r * 0.3); c.quadraticCurveTo(X + r * 0.1, y + r * 0.9, X + r * 0.4, y + r * 0.85); c.stroke(); }
+    else if (V === 'orangutan') { dot(0, r * 0.25, r * 0.4, '#7a4a2a'); c.fillStyle = fur; c.beginPath(); c.ellipse(X, y - r * 0.5, r * 0.3, r * 0.22, 0, 0, 6.2832); c.fill(); }
+    else if (V === 'flamingo') { c.strokeStyle = fur; c.lineWidth = r * 0.22; c.lineCap = 'round'; c.beginPath(); c.moveTo(X, y + r); c.quadraticCurveTo(X - r * 0.4, y + r * 0.5, X, y + r * 0.2); c.stroke(); c.fillStyle = '#2b2d42'; c.beginPath(); c.moveTo(X + r * 0.3, y + r * 0.1); c.lineTo(X + r * 0.75, y + r * 0.45); c.lineTo(X + r * 0.25, y + r * 0.4); c.fill(); }
+    else if (V === 'turtle') { c.fillStyle = '#2f5d50'; c.beginPath(); c.arc(X, y + r * 0.9, r * 0.8, Math.PI, 0); c.fill(); c.fillStyle = fur; }
+    else { flop(-1, 0.42); flop(1, 0.42); }
+    c.fillStyle = fur;
+    if (p.variant !== 'flamingo' && p.variant !== 'elephant') { dot(0, r * 0.38, r * 0.22, '#f3e3d0'); dot(0, r * 0.3, r * 0.09, '#1b1b26'); }
     if (!blink) { dot(-r * 0.24, r * 0.02, r * 0.08, '#1b1b26'); dot(r * 0.24, r * 0.02, r * 0.08, '#1b1b26'); }
   }
 }
