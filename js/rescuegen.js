@@ -112,8 +112,9 @@ export function buildRescueLevel(cfg) {
   // Le banc occupe une tranche d'altitude (de y - thick à y) : couloir libre dessous pour voler, ciel dégagé au-dessus.
   // speed : le banc dérive (tempête de sable) et revient par l'autre bout de sa course x0..x1.
   const clouds = (cfg.hazards || []).filter((h) => h.type === 'cloud').map((h) => {
-    const mid = h.speed ? (h.x0 + h.x1) / 2 : h.x + h.w / 2, y = h.y ?? groundAt(mid) - 150, span = h.speed ? h.x1 - h.x0 + h.w : 0;
-    return { w: h.w, y, top: y - (h.thick ?? 190), col: h.col, x: h.x, minX: h.speed ? h.x0 - h.w : h.x, maxX: h.speed ? h.x1 + h.w : h.x + h.w, xAt: h.speed ? (t) => h.x1 - ((((h.speed * t + (h.phase || 0) * span) % span) + span) % span) : () => h.x };
+    let top = 1e9; if (h.y == null) for (let x = h.x; x <= h.x + h.w; x += 20) top = Math.min(top, groundAt(x)); // au-dessus du plus haut relief sous le banc
+    const y = h.y ?? top - 185, span = h.speed ? h.x1 - h.x0 + h.w : 0;
+    return { w: h.w, y, top: y - (h.thick ?? 300), col: h.col, x: h.x, minX: h.speed ? h.x0 - h.w : h.x, maxX: h.speed ? h.x1 + h.w : h.x + h.w, xAt: h.speed ? (t) => h.x1 - ((((h.speed * t + (h.phase || 0) * span) % span) + span) % span) : () => h.x };
   });
   obs.sort((p, q) => p.minX - q.minX);
 

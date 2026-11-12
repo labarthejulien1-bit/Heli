@@ -54,6 +54,30 @@ export function makeHazard(hz, L) {
       },
     };
   }
+  if (hz.type === 'lava') {
+    // Lave en fusion au fond d'un gouffre ou d'un cratère : une nappe incandescente qui bouillonne, mortelle au contact.
+    const xm = (hz.x0 + hz.x1) / 2, y = L.groundAt(xm) - (hz.depth ?? 60), l = hz.x0 - 40, r = hz.x1 + 40;
+    return {
+      kind: 'hazard', x: xm, minX: l, maxX: r,
+      shapes: [{ p: [l, y + 6, r, y + 6, r, y + 200, l, y + 200], hz: 16 }],
+      draw(c, t, time) {
+        const gl = c.createLinearGradient(0, y - 150, 0, y); gl.addColorStop(0, 'rgba(255,110,30,0)'); gl.addColorStop(1, 'rgba(255,110,30,.4)');
+        c.fillStyle = gl; c.fillRect(l, y - 150, r - l, 150); // lueur qui remonte le long des parois
+        c.fillStyle = '#ff5a14'; c.beginPath(); c.moveTo(l, y + 220);
+        for (let x = l; x <= r; x += 8) c.lineTo(x, y + Math.sin(x * 0.09 + time * 2.2) * 2.5 + Math.sin(x * 0.05 - time * 1.4) * 2);
+        c.lineTo(r, y + 220); c.fill();
+        c.fillStyle = '#ffc233'; c.beginPath();
+        for (let x = l; x <= r; x += 8) c.lineTo(x, y + Math.sin(x * 0.09 + time * 2.2) * 2.5 + Math.sin(x * 0.05 - time * 1.4) * 2);
+        for (let x = r; x >= l; x -= 8) c.lineTo(x, y + 5 + Math.sin(x * 0.07 + time * 1.7) * 2);
+        c.fill();
+        for (let i = 0; i < 5; i++) { // bulles qui gonflent puis éclatent en gouttes
+          const ph = (time * (0.5 + 0.3 * hash(i, xm)) + hash(i, xm + 2)) % 1, bx = hz.x0 + 8 + hash(i, xm + 5 + Math.floor(time * (0.5 + 0.3 * hash(i, xm)) + hash(i, xm + 2))) * (hz.x1 - hz.x0 - 16);
+          if (ph < 0.6) { c.fillStyle = '#ffd866'; c.beginPath(); c.arc(bx, y + 2, 2 + 5 * ph, Math.PI, 0); c.fill(); }
+          else { const k = (ph - 0.6) / 0.4; c.fillStyle = 'rgba(255,190,70,' + (1 - k) + ')'; for (const sx of [-1, 0, 1]) c.fillRect(bx + sx * 9 * k - 1.2, y - 26 * k * (1 - k) * 4 * (1 - 0.3 * Math.abs(sx)) - 1.2, 2.4, 2.4); }
+        }
+      },
+    };
+  }
   if (hz.type === 'strike') {
     // Foudre : une lueur d'avertissement, puis l'éclair frappe du ciel jusqu'au sol.
     const g = L.groundAt(hz.x), per = hz.period ?? 6, ph = hz.phase ?? 0;

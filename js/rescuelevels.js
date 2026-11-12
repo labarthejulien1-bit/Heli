@@ -18,6 +18,7 @@
 // - timeLimit : fenêtre météo (s) ; au-delà, la mission est perdue. smoke.col : couleur du voile (brume, poussière).
 // - waves : crêtes qui parcourent la mer entre x0 et x1 (height, speed, spacing, width) et frappent un appareil trop bas.
 // - 'firewall' : barrière de feu qui s'embrase par périodes (x, height, period) ; 'strike' : foudre (x, period) ; 'faller' : bloc venu du ciel par la droite.
+// - 'lava' : lave en fusion au fond d'un gouffre ou d'un cratère (x0, x1, depth : hauteur de lave au-dessus du fond), mortelle au contact.
 // - 'cloud' : banc de fumée épaisse (x, w ; y facultatif : bas du banc ; thick : épaisseur) qui cache l'appareil. Il laisse un couloir
 //   libre au ras du relief et le ciel dégagé au-dessus. Avec x0, x1 et speed, le banc dérive : tempête de sable (col).
 // - props : 'spire' (aiguille rocheuse : x, w, h), 'ledge' (corniche ancrée à la paroi : x dans le puits, side -1/1, y, w), 'hang' (masse suspendue), 'house' (ruin : en ruine), décor 'pole', 'boat', 'wreck', 'fence', 'stump', 'cow'.
@@ -111,7 +112,7 @@ export const RESCUE_LEVELS = [
     props: [{ type: 'spire', x: 1600, w: 60, h: 150, st: 'mesa' }, { type: 'spire', x: 4200, w: 70, h: 170, st: 'mesa' }, { type: 'ledge', x: 5200, side: -1, y: 520, w: 42 }, { type: 'ledge', x: 5200, side: 1, y: 615, w: 42 }],
     hazards: [{ type: 'thermal', x: 2640, w: 230, fy: -170 }, { type: 'thermal', x: 3520, w: 260, fy: 140 }, { type: 'faller', x: 2200, period: 3.6, col: '#a05a34' }, { type: 'faller', x: 4700, period: 3.2, phase: 0.5, col: '#a05a34' },
       { type: 'flyer', x0: 3400, x1: 4000, y: 290, speed: 70 },
-      { type: 'cloud', x0: 600, x1: 2500, w: 520, speed: 70, y: 330, thick: 135, col: '#b98a55' }, { type: 'cloud', x0: 3300, x1: 5000, w: 600, speed: 90, y: 300, thick: 130, col: '#b98a55', phase: 0.4 }, { type: 'cloud', x0: 5350, x1: 6300, w: 420, speed: 60, y: 310, thick: 130, col: '#b98a55', phase: 0.7 }],
+      { type: 'cloud', x0: 600, x1: 2500, w: 520, speed: 70, y: 300, thick: 230, col: '#b98a55' }, { type: 'cloud', x0: 3300, x1: 5000, w: 600, speed: 90, y: 270, thick: 220, col: '#b98a55', phase: 0.4 }, { type: 'cloud', x0: 5350, x1: 6300, w: 420, speed: 60, y: 280, thick: 220, col: '#b98a55', phase: 0.7 }],
     victims: [{ type: 'person', variant: 'hiker', col: '#e9c46a', hat: '#ffffff', x: 2915, zoneWidth: 170, side: 1 }, { type: 'person', variant: 'hiker', col: '#90be6d', hat: '#f94144', limp: true, x: 5205, zoneWidth: 110, side: -1 }],
     stars: { time: 195, maxHits: 1 } },
   { n: 7, seed: 4708, worldLength: 6200, tank: 80, recommended: 'chamois',
@@ -164,21 +165,25 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'explorer', col: '#e76f51', hat: '#ffb703', x: 3900, zoneWidth: 170, side: 1, floe: { x0: 3750, x1: 4350, speed: 14 } },
       { type: 'animal', variant: 'husky', size: 'small', col: '#d9dde3', x: 3900, zoneWidth: 170, side: 1, floe: { x0: 3750, x1: 4350, speed: 14 } }],
     stars: { time: 130, maxHits: 1 } },
-  { n: 10, seed: 5011, worldLength: 6200, tank: 72, recommended: 'chamois',
+  { n: 10, seed: 5011, worldLength: 6800, tank: 73, recommended: 'chamois',
     look: {
       style: 'flat',
       sky: [['#160a10', '#6b1f1a'], ['#220b0b', '#b8401c']], mid: '#4a1717', ground: '#0f0507', obs: '#1b090c', rim: '#ff7a2a', accent: '#ffc24a',
       sun: { c: '#ff8a3a', x: 0.6, y: [0.7, 0.6], r: 60 }, layers: ['jag', 'jag', 'jag'], extras: ['lava', 'smoke'], weather: 'embers',
       theme: { tree: ['dead'] }, music: { root: 48, scale: 'min', bpm: 82 },
     },
-    terrain: [[0, 700], [600, 700], [1000, 640], [1500, 560], [2000, 470], [2500, 420], [3000, 440], [3500, 380], [4000, 360], [4480, 350], [4520, 600], [4580, 600], [4610, 345], [4830, 345], [4860, 600], [4920, 600], [4950, 350], [5500, 380], [6200, 340]], rough: 7,
+    terrain: [[0, 700], [600, 700], [900, 660], [1050, 470], [1110, 455], [1140, 560], [1200, 560], [1230, 455], [1290, 470], [1450, 650], [1700, 640], [1730, 790], [1810, 790], [1840, 640],
+      [2200, 600], [2400, 380], [2460, 365], [2490, 480], [2560, 480], [2590, 365], [2650, 380], [2850, 580], [3050, 590], [3080, 790], [3170, 790], [3200, 590], [3500, 560], [3530, 780], [3600, 780], [3630, 560],
+      [3900, 520], [4150, 300], [4210, 285], [4240, 400], [4310, 400], [4340, 285], [4400, 300], [4600, 470], [4800, 480], [4830, 760], [4910, 760], [4940, 470], [5160, 470], [5190, 760], [5270, 760], [5300, 480], [5700, 500], [6800, 460]], rough: 6,
     base: { x: 250 },
-    hazards: [{ type: 'firewall', x: 1300, height: 190, period: 4.6, col: '#ff3b1f' }, { type: 'firewall', x: 2250, height: 300, period: 5, phase: 0.4, col: '#ff3b1f' }, { type: 'firewall', x: 3250, height: 250, period: 4.2, phase: 0.7, col: '#ff3b1f' },
-      { type: 'cloud', x: 1050, w: 520 }, { type: 'cloud', x: 2050, w: 460 }, { type: 'cloud', x: 3000, w: 560 }, { type: 'cloud', x: 5000, w: 600 },
-      { type: 'faller', x: 1700, period: 3.2, col: '#ff7a2a' }, { type: 'faller', x: 2700, period: 2.9, phase: 0.4, col: '#ff7a2a' }, { type: 'faller', x: 3700, period: 3.4, phase: 0.7, col: '#ff7a2a' }, { type: 'faller', x: 4250, period: 3.1, phase: 0.2, col: '#ff7a2a' },
-      { type: 'thermal', x: 4490, w: 130, fy: -170 }, { type: 'smoke', density: 0.35 }],
-    victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'volcanologist', col: ['#adb5bd', '#ced4da', '#868e96'][k], hat: ['#ffd166', '#ef476f', '#06d6a0'][k], x: 4720, zoneWidth: 190, side: 1 })),
-    stars: { time: 280, maxHits: 1 } },
+    // trois volcans à franchir (cratère plein de lave), cinq gouffres de lave en fusion ; un souffle brûlant monte de chacun, plus ou moins fort
+    hazards: [{ type: 'lava', x0: 1140, x1: 1200, depth: 36 }, { type: 'thermal', x: 1115, w: 110, fy: -110 }, { type: 'lava', x0: 1730, x1: 1810, depth: 70 }, { type: 'thermal', x: 1705, w: 130, fy: -150 }, { type: 'lava', x0: 2490, x1: 2560, depth: 40 }, { type: 'thermal', x: 2465, w: 120, fy: -120 }, { type: 'lava', x0: 3080, x1: 3170, depth: 80 }, { type: 'thermal', x: 3055, w: 140, fy: -210 }, { type: 'lava', x0: 3530, x1: 3600, depth: 60 }, { type: 'thermal', x: 3505, w: 120, fy: -130 }, { type: 'lava', x0: 4240, x1: 4310, depth: 40 }, { type: 'thermal', x: 4215, w: 120, fy: -120 }, { type: 'lava', x0: 4830, x1: 4910, depth: 70 }, { type: 'thermal', x: 4805, w: 130, fy: -180 }, { type: 'lava', x0: 5190, x1: 5270, depth: 60 }, { type: 'thermal', x: 5165, w: 130, fy: -150 },
+      { type: 'firewall', x: 1580, height: 190, period: 4.6, col: '#ff3b1f' }, { type: 'firewall', x: 2950, height: 300, period: 5, phase: 0.4, col: '#ff3b1f' }, { type: 'firewall', x: 3350, height: 250, period: 4.2, phase: 0.7, col: '#ff3b1f' },
+      { type: 'cloud', x: 1400, w: 620 }, { type: 'cloud', x: 2900, w: 820 }, { type: 'cloud', x: 4650, w: 760 },
+      { type: 'faller', x: 1850, period: 3.2, col: '#ff7a2a' }, { type: 'faller', x: 3650, period: 2.9, phase: 0.4, col: '#ff7a2a' }, { type: 'faller', x: 5400, period: 3.4, phase: 0.7, col: '#ff7a2a' }, { type: 'faller', x: 6000, period: 3.1, phase: 0.2, col: '#ff7a2a' },
+      { type: 'smoke', density: 0.35 }],
+    victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'volcanologist', col: ['#adb5bd', '#ced4da', '#868e96'][k], hat: ['#ffd166', '#ef476f', '#06d6a0'][k], x: 5050, zoneWidth: 190, side: 1 })),
+    stars: { time: 305, maxHits: 1 } },
   { n: 11, seed: 5112, worldLength: 5600, tank: 68, recommended: 'sentinelle',
     look: {
       style: 'hatch', grain: 0.6,
