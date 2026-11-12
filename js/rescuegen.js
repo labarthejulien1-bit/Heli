@@ -113,7 +113,7 @@ export function buildRescueLevel(cfg) {
   // speed : le banc dérive (tempête de sable) et revient par l'autre bout de sa course x0..x1.
   const clouds = (cfg.hazards || []).filter((h) => h.type === 'cloud').map((h) => {
     const mid = h.speed ? (h.x0 + h.x1) / 2 : h.x + h.w / 2, y = h.y ?? groundAt(mid) - 150, span = h.speed ? h.x1 - h.x0 + h.w : 0;
-    return { w: h.w, y, top: y - (h.thick ?? 190), col: h.col, x: h.x, xAt: h.speed ? (t) => h.x1 - ((((h.speed * t + (h.phase || 0) * span) % span) + span) % span) : () => h.x };
+    return { w: h.w, y, top: y - (h.thick ?? 190), col: h.col, x: h.x, minX: h.speed ? h.x0 - h.w : h.x, maxX: h.speed ? h.x1 + h.w : h.x + h.w, xAt: h.speed ? (t) => h.x1 - ((((h.speed * t + (h.phase || 0) * span) % span) + span) % span) : () => h.x };
   });
   obs.sort((p, q) => p.minX - q.minX);
 
@@ -137,6 +137,7 @@ export function buildRescueLevel(cfg) {
   };
   const free = (x, y) => {
     if (y < 60 || y > groundAt(x) - 16 || (waterAt && y > waterAt(0) - 60) || Math.abs(x - cfg.base.x) < 160) return false; // au-dessus des vagues les plus hautes
+    for (const q of clouds) if (x > q.minX - 30 && x < q.maxX + 30 && y > q.top - 30 && y < q.y + 30) return false; // jamais cachée derrière un banc de fumée ou de sable
     for (const o of obs) { if (o.maxX < x - 60 || o.minX > x + 60) continue; if (o.dyn) return false; for (const sh of o.shapes) if (ptDist(sh, x, y) < 26) return false; }
     return true;
   };
