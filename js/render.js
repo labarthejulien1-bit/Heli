@@ -1,7 +1,7 @@
 // Rendu Canvas 2D : ciel, parallaxe, relief, obstacles, objets, particules.
 import { clamp, lerp, hash, noise1, fbm, mix, rgba, TAU, DEG } from './util.js';
 import { WORLD_H, STEP, moverY, millAngle, geyserState } from './levelgen.js';
-import { drawHeli } from './helidraw.js';
+import { drawHeli, drawOccupant } from './helidraw.js';
 import { HELIS } from './data.js';
 
 export const VW = 400; // largeur visible en unités de jeu
@@ -40,7 +40,11 @@ export class Renderer {
     const p = clamp(h.x / L.length, 0, 1);
     // caméra
     // l'appareil est décalé du côté opposé à son nez, pour voir devant lui (dans les deux sens en Heli Rescue)
-    const tx = clamp(h.x - VW * (0.5 - 0.2 * h.dir) + clamp(h.vx * 0.22, h.dir > 0 ? -40 : -70, h.dir > 0 ? 70 : 40), 0, L.length - VW);
+    // (ce décalage glisse lentement d'un côté à l'autre au demi-tour, pour que l'œil suive)
+    if (this.snap || this.lead == null) this.lead = h.dir;
+    else { const dl = h.dir - this.lead; this.lead += Math.sign(dl) * Math.min(Math.abs(dl), dt * (0.5 + 1.1 * Math.min(1, Math.abs(dl)))); }
+    const ld = this.lead, e = ld * (1.5 - 0.5 * ld * ld), fw = (e + 1) / 2; // e : même trajet, adouci au départ et à l'arrivée
+    const tx = clamp(h.x - VW * (0.5 - 0.2 * e) + clamp(h.vx * 0.22, lerp(-70, -40, fw), lerp(40, 70, fw)), 0, L.length - VW);
     // Sur les écrans hauts, on montre jusqu'à 110 unités de terre sous le monde : le sol paraît plus haut et le bas de l'écran reste libre pour le pouce.
     const ty = vh >= WORLD_H - 10 ? WORLD_H - vh + clamp(vh - 790, 0, 110) : clamp(h.y - vh * 0.45, 0, WORLD_H - vh);
     const ocx = this.camX;
@@ -289,6 +293,7 @@ export class Renderer {
       return;
     }
     c.beginPath(); c.moveTo(0, vh);
+    let r0 = 0;
     const step = st === 'mesa' || st === 'pines' || st === 'spires' ? 4 : 8;
     // Les points sont calés sur des positions fixes du décor : la silhouette glisse sans se déformer.
     for (let x = -(((u0 % step) + step) % step); x <= VW + step; x += step) {
@@ -304,7 +309,7 @@ export class Renderer {
       if (style === 'pixel' && x > -step) c.lineTo(x, this._py ?? ly); // marche d'escalier : façon pixel art
       this._py = ly;
       c.lineTo(x, ly);
-      if (this._ridge) this._ridge.push(x, base - hh + amp * 0.3);
+      if (this._ridge) { if (!this._ridge.length) r0 = Math.round(u / step); this._ridge.push(x, base - hh + amp * 0.3); }
     }
     c.lineTo(VW + 8, vh); c.fill();
     c.globalAlpha = 1;
@@ -317,8 +322,9 @@ export class Renderer {
     }
     if (this._ridge) { // facettes : pans alternés clairs et sombres sous la crête, arêtes nettes
       const P = this._ridge;
-      for (let k = 0; k + 5 < P.length; k += 4) {
-        c.fillStyle = (k / 4) % 2 ? 'rgba(255,255,255,.2)' : 'rgba(20,40,80,.14)';
+      // chaque pan est attaché à une position fixe du décor (et non de l'écran) : les sommets ne clignotent pas quand on avance
+      for (let k = r0 & 1 ? 2 : 0; k + 5 < P.length; k += 4) {
+        c.fillStyle = ((r0 + k / 2) / 2) & 1 ? 'rgba(255,255,255,.2)' : 'rgba(20,40,80,.14)';
         c.beginPath(); c.moveTo(P[k], P[k + 1]); c.lineTo(P[k + 4], P[k + 5]); c.lineTo(P[k + 2], Math.max(P[k + 1], P[k + 5]) + 46); c.fill();
       }
     }
@@ -476,6 +482,17 @@ export class Renderer {
       c.fillStyle = '#9ad1e6'; c.fillRect(bx - 20, by - 26, 12, 10); c.fillRect(bx + 14, by - 26, 12, 10); c.fillStyle = '#7a5a3c'; c.fillRect(bx - 3, by - 20, 10, 20);
       c.fillStyle = '#ffffff'; c.beginPath(); c.arc(bx + 3, by - 36, 5.5, 0, TAU); c.fill(); c.fillStyle = '#d62828'; c.fillRect(bx + 2, by - 39.5, 2, 7); c.fillRect(bx - 0.5, by - 37, 7, 2);
       c.fillStyle = def.obs; c.fillRect(bx + 40, by - 60, 2.5, 60); // manche à air
+      const todo = g.vs.filter((v) => v.state === 'wait' || v.state === 'walk'); // portraits de ceux qu'il reste à aller chercher, en transparence
+      todo.forEach((v, i) => {
+        const px = bx + 3 + (i - (todo.length - 1) / 2) * 38, py = by - 86 + Math.sin(time * 1.6 + i) * 2;
+        c.save(); c.globalAlpha = 0.62;
+        c.fillStyle = '#e9f6fb'; c.beginPath(); c.arc(px, py, 17, 0, TAU); c.fill();
+        c.beginPath(); c.moveTo(px - 5, py + 15); c.lineTo(px, py + 23); c.lineTo(px + 5, py + 15); c.fill();
+        c.beginPath(); c.arc(px, py, 15.5, 0, TAU); c.clip();
+        drawOccupant(c, px, py + 1, 11.5, { type: v.type, variant: v.variant, col: v.col, hat: v.hat, seed: 1 }, 0.6);
+        c.restore();
+        c.strokeStyle = 'rgba(214,40,40,.7)'; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 17, 0, TAU); c.stroke();
+      });
       c.fillStyle = '#ff7b2e'; c.beginPath(); c.moveTo(bx + 42, by - 60); c.lineTo(bx + 62, by - 55 + Math.sin(time * 4) * 2); c.lineTo(bx + 42, by - 50); c.fill();
     }
     for (const v of g.vs) {

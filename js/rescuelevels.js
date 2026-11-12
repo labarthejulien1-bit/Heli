@@ -22,7 +22,7 @@
 // - Chaque mission contient 100 pièces, placées par le constructeur hors de la route directe.
 // - stars : temps à battre (s) et nombre de chocs toléré pour les 2e et 3e étoiles.
 export const RESCUE_LEVELS = [
-  { n: 1, seed: 4102, worldLength: 4600, tank: 96, recommended: 'mesange',
+  { n: 1, seed: 4102, worldLength: 4600, tank: 73, recommended: 'mesange',
     look: {
       sky: [['#8fd0e8', '#fdf6dc'], ['#a9dcf0', '#fff4d0']], mid: '#8cc29a', ground: '#3f7d4f', obs: '#2f6645', rim: '#dff5c8', accent: '#ffd166',
       sun: { c: '#fffbe6', x: 0.72, y: [0.2, 0.26], r: 34 }, layers: ['jag', 'hill', 'pines'], extras: ['clouds', 'birds'], weather: null,
@@ -35,7 +35,7 @@ export const RESCUE_LEVELS = [
     hazards: [{ type: 'flyer', x0: 1300, x1: 1800, y: 430, speed: 55 }, { type: 'thermal', x: 2560, w: 220, fy: -120 }],
     victims: [{ type: 'person', variant: 'hiker', limp: true, x: 3575, zoneWidth: 170, side: 1 }],
     stars: { time: 120, maxHits: 1 } },
-  { n: 2, seed: 4203, worldLength: 5600, tank: 128, recommended: 'mesange',
+  { n: 2, seed: 4203, worldLength: 5600, tank: 98, recommended: 'mesange',
     look: {
       style: 'paper', grain: 0.5,
       sky: [['#bfe0c8', '#f4f6dc'], ['#a9d3bd', '#f7f1cf']], mid: '#4f8a66', ground: '#17402e', obs: '#0f2f22', rim: '#9fd8ad', accent: '#ffd166',
@@ -49,7 +49,7 @@ export const RESCUE_LEVELS = [
     hazards: [{ type: 'flyer', x0: 900, x1: 1400, y: 360, speed: 60 }, { type: 'flyer', x0: 3200, x1: 3700, y: 300, speed: 70, phase: 0.5 }, { type: 'gust', x: 2200, w: 500, fx: -110, period: 6, on: 0.35 }],
     victims: [{ type: 'animal', variant: 'dog', size: 'small', col: '#c98a4b', x: 4605, zoneWidth: 110, side: -1 }],
     stars: { time: 155, maxHits: 1 } },
-  { n: 3, seed: 4304, worldLength: 5200, tank: 200, recommended: 'mesange',
+  { n: 3, seed: 4304, worldLength: 5200, tank: 164, recommended: 'mesange',
     look: {
       style: 'flat',
       sky: [['#6fd0de', '#e6fbf2'], ['#58bfd4', '#fff1cf']], mid: '#79c5c7', ground: '#3d5a6c', obs: '#2f4a5a', rim: '#f4f1de', accent: '#ffd166',
@@ -64,22 +64,22 @@ export const RESCUE_LEVELS = [
     hazards: [{ type: 'gust', x: 1700, w: 520, fx: -150, period: 5, on: 0.35 }, { type: 'flyer', x0: 2450, x1: 2900, y: 360, speed: 80 }, { type: 'debris', x0: 3380, x1: 3620, look: 'log' }],
     victims: [{ type: 'person', variant: 'walker', col: '#e76f51', hat: '#264653', x: 3900, zoneWidth: 150, side: 1 }, { type: 'person', variant: 'walker', col: '#2a9d8f', hat: '#e9c46a', x: 3900, zoneWidth: 150, side: 1 }],
     stars: { time: 345, maxHits: 1 } },
-  { n: 4, seed: 4405, worldLength: 5600, tank: 80, recommended: 'chamois',
+  { n: 4, seed: 4405, worldLength: 5600, tank: 63, recommended: 'chamois',
     look: {
       style: 'facet',
       sky: [['#9fd0ea', '#f4fbff'], ['#7fb4dc', '#e8f4fc']], mid: '#8fb9de', ground: '#dcebf8', groundDeep: '#8fb2d8', obs: '#4f78ae', rim: '#ffffff', accent: '#8ff0ff',
       sun: { c: '#ffffff', x: 0.6, y: [0.14, 0.18], r: 28 }, layers: ['jag', 'jag', 'jag'], extras: ['clouds'], weather: 'snow',
       theme: { tree: ['crystal'] }, music: { root: 59, scale: 'maj', bpm: 58 },
     },
-    terrain: [[0, 690], [500, 690], [900, 600], [1300, 520], [1800, 440], [2100, 400], [2130, 620], [2200, 620], [2230, 395], [2800, 360], [3300, 330], [3600, 320], [3630, 560], [3690, 560], [3720, 318], [3990, 318], [4020, 560], [4080, 560], [4110, 322], [4700, 300], [5600, 280]], rough: 5,
+    terrain: [[0, 690], [500, 690], [900, 600], [1300, 520], [1800, 440], [2100, 400], [2130, 620], [2200, 620], [2230, 395], [2800, 360], [3300, 330], [3745, 318], [3780, 606], [3855, 612], [3930, 606], [3965, 318], [4250, 316], [4280, 540], [4340, 540], [4370, 318], [4700, 300], [5600, 280]], rough: 5,
     base: { x: 250 },
     thinAir: { above: 480, span: 300, loss: 0.34 },
-    props: [{ type: 'spire', x: 1500, w: 60, h: 180, st: 'ice' }, { type: 'spire', x: 2500, w: 70, h: 200, st: 'ice' }],
-    hazards: [{ type: 'faller', x: 1100, period: 3.6, phase: 0.1 }, { type: 'faller', x: 1750, period: 3.2, phase: 0.6 }, { type: 'faller', x: 2650, period: 3.4, phase: 0.3 }, { type: 'faller', x: 3250, period: 3 }, { type: 'faller', x: 4450, period: 3.3, phase: 0.5 },
+    props: [{ type: 'spire', x: 1500, w: 60, h: 180, st: 'ice' }, { type: 'spire', x: 2500, w: 70, h: 200, st: 'ice' }, { type: 'ledge', x: 3781, y: 470, w: 34 }],
+    hazards: [{ type: 'faller', x: 1100, period: 3.6, phase: 0.1 }, { type: 'faller', x: 1750, period: 3.2, phase: 0.6 }, { type: 'faller', x: 2650, period: 3.4, phase: 0.3 }, { type: 'faller', x: 3250, period: 3 }, { type: 'faller', x: 4550, period: 3.3, phase: 0.5 },
       { type: 'gust', x: 2900, w: 600, fx: -130, period: 6, on: 0.4 }],
-    victims: [{ type: 'person', variant: 'climber', col: '#f4a261', hat: '#e63946', limp: true, x: 3855, zoneWidth: 150, side: 1 }],
-    stars: { time: 125, maxHits: 1 } },
-  { n: 5, seed: 4506, worldLength: 6000, tank: 85, recommended: 'chamois',
+    victims: [{ type: 'person', variant: 'climber', col: '#f4a261', hat: '#e63946', limp: true, x: 3855, zoneWidth: 110, side: 1 }],
+    stars: { time: 135, maxHits: 1 } },
+  { n: 5, seed: 4506, worldLength: 6000, tank: 66, recommended: 'chamois',
     look: {
       style: 'wash', grain: 0.6,
       sky: [['#6f8796', '#c9d6dc'], ['#5c7384', '#b9c7cf']], mid: '#6f8a96', ground: '#33424c', obs: '#44545e', rim: '#cfdde3', accent: '#ffd98a',
@@ -96,7 +96,7 @@ export const RESCUE_LEVELS = [
       { type: 'strike', x: 2500, period: 6.5 }, { type: 'strike', x: 3750, period: 5.5, phase: 0.5 }, { type: 'gust', x: 900, w: 600, fx: 120, period: 6, on: 0.3 }],
     victims: [{ type: 'person', variant: 'resident', col: '#577590', hat: '#f9c74f', x: 4300, zoneWidth: 140, roof: 124, side: 1 }, { type: 'animal', variant: 'cat', size: 'small', col: '#3d3d3d', x: 4300, zoneWidth: 140, roof: 124, side: 1 }],
     stars: { time: 140, maxHits: 1 } },
-  { n: 6, seed: 4607, worldLength: 6400, tank: 122, recommended: 'chamois',
+  { n: 6, seed: 4607, worldLength: 6400, tank: 93, recommended: 'chamois',
     look: {
       style: 'pixel',
       sky: [['#f6b35e', '#fde8b8'], ['#e9824a', '#f8cf8f']], mid: '#d88a4f', ground: '#7a3b22', obs: '#8c4a2a', rim: '#ffd39a', accent: '#fff0b8',
@@ -111,7 +111,7 @@ export const RESCUE_LEVELS = [
       { type: 'flyer', x0: 3400, x1: 4000, y: 290, speed: 70 }],
     victims: [{ type: 'person', variant: 'hiker', col: '#e9c46a', hat: '#ffffff', x: 2915, zoneWidth: 170, side: 1 }, { type: 'person', variant: 'hiker', col: '#90be6d', hat: '#f94144', limp: true, x: 5205, zoneWidth: 110, side: -1 }],
     stars: { time: 195, maxHits: 1 } },
-  { n: 7, seed: 4708, worldLength: 6200, tank: 112, recommended: 'chamois',
+  { n: 7, seed: 4708, worldLength: 6200, tank: 84, recommended: 'chamois',
     look: {
       style: 'flat',
       sky: [['#2a1410', '#e2581c'], ['#1a0d0c', '#ff8a3a']], mid: '#7a2a14', ground: '#150a08', obs: '#0d0605', rim: '#ff9a3c', accent: '#ffe08a',
@@ -128,7 +128,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'forester', col: '#f4a261', hat: '#e9c46a', x: 3300, zoneWidth: 170, side: 1 },
       { type: 'animal', variant: 'deer', size: 'medium', col: '#a8703f', x: 4900, zoneWidth: 190, side: -1 }, { type: 'animal', variant: 'fawn', size: 'small', col: '#c99364', x: 4900, zoneWidth: 190, side: -1 }],
     stars: { time: 325, maxHits: 1 } },
-  { n: 8, seed: 4809, worldLength: 6000, tank: 101, recommended: 'mouette',
+  { n: 8, seed: 4809, worldLength: 6000, tank: 77, recommended: 'mouette',
     look: {
       style: 'flat',
       sky: [['#3fb6a8', '#f3f7b0'], ['#2fa08f', '#ffe9a0']], mid: '#2f9e6a', ground: '#0f4a33', obs: '#0b3a28', rim: '#b9f28a', accent: '#ffd166',
@@ -144,7 +144,7 @@ export const RESCUE_LEVELS = [
       { type: 'strike', x: 3300, period: 6 }, { type: 'gust', x: 4200, w: 400, fx: 110, period: 6, on: 0.3 }, { type: 'debris', x0: 2450, x1: 2950, look: 'log' }],
     victims: [{ type: 'person', variant: 'biologist', col: '#52b788', hat: '#f1faee', x: 4905, zoneWidth: 120, side: 1 }, { type: 'animal', variant: 'orangutan', size: 'small', col: '#c8632b', x: 4905, zoneWidth: 120, side: 1 }],
     stars: { time: 165, maxHits: 1 } },
-  { n: 9, seed: 4910, worldLength: 5600, tank: 80, recommended: 'mouette', mod: { windX: -30 },
+  { n: 9, seed: 4910, worldLength: 5600, tank: 61, recommended: 'mouette', mod: { windX: -30 },
     look: {
       style: 'flat',
       sky: [['#1b2a5e', '#7fb8d8'], ['#141f4a', '#a9d0e0']], mid: '#9fc4e0', ground: '#dcebf8', groundDeep: '#9fbcd8', obs: '#5f86b8', rim: '#ffffff', accent: '#b9ffcf',
@@ -160,7 +160,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'explorer', col: '#e76f51', hat: '#ffb703', x: 3900, zoneWidth: 170, side: 1, floe: { x0: 3750, x1: 4350, speed: 14 } },
       { type: 'animal', variant: 'husky', size: 'small', col: '#d9dde3', x: 3900, zoneWidth: 170, side: 1, floe: { x0: 3750, x1: 4350, speed: 14 } }],
     stars: { time: 130, maxHits: 1 } },
-  { n: 10, seed: 5011, worldLength: 6200, tank: 91, recommended: 'chamois',
+  { n: 10, seed: 5011, worldLength: 6200, tank: 74, recommended: 'chamois',
     look: {
       style: 'flat',
       sky: [['#160a10', '#6b1f1a'], ['#220b0b', '#b8401c']], mid: '#4a1717', ground: '#0f0507', obs: '#1b090c', rim: '#ff7a2a', accent: '#ffc24a',
@@ -174,7 +174,7 @@ export const RESCUE_LEVELS = [
       { type: 'thermal', x: 4490, w: 130, fy: -170 }, { type: 'smoke', density: 0.35 }],
     victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'volcanologist', col: ['#adb5bd', '#ced4da', '#868e96'][k], hat: ['#ffd166', '#ef476f', '#06d6a0'][k], x: 4720, zoneWidth: 190, side: 1 })),
     stars: { time: 285, maxHits: 1 } },
-  { n: 11, seed: 5112, worldLength: 5600, tank: 89, recommended: 'sentinelle',
+  { n: 11, seed: 5112, worldLength: 5600, tank: 68, recommended: 'sentinelle',
     look: {
       style: 'hatch', grain: 0.6,
       sky: [['#cbb08a', '#f2e3c4'], ['#b89a72', '#ecd9b4']], mid: '#a8875c', ground: '#4a3522', obs: '#5c442c', rim: '#f2dfb8', accent: '#ffe9a8',
@@ -191,7 +191,7 @@ export const RESCUE_LEVELS = [
       { type: 'smoke', density: 0.3, col: '#cbb08a' }],
     victims: [{ type: 'person', variant: 'child', col: '#ef476f', hat: '#118ab2', x: 3900, zoneWidth: 140, roof: 110, side: 1 }, { type: 'animal', variant: 'dog', size: 'small', col: '#8d6e4b', x: 3900, zoneWidth: 140, roof: 110, side: 1 }],
     stars: { time: 140, maxHits: 1 } },
-  { n: 12, seed: 5213, worldLength: 6400, tank: 107, recommended: 'sentinelle', radar: true,
+  { n: 12, seed: 5213, worldLength: 6400, tank: 82, recommended: 'sentinelle', radar: true,
     look: {
       style: 'flat', grain: 0.4,
       sky: [['#2f6fb0', '#fbe6c0'], ['#3f80c0', '#ffd9a0']], mid: '#7fa8d8', ground: '#dcebf8', groundDeep: '#9fbcd8', obs: '#2f4f80', rim: '#ffffff', accent: '#ff6b3d',
@@ -206,7 +206,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'skier', col: '#e63946', hat: '#1d3557', x: 1760, zoneWidth: 150, side: 1 }, { type: 'person', variant: 'skier', col: '#ffb703', hat: '#023047', x: 2660, zoneWidth: 150, side: -1 },
       { type: 'person', variant: 'skier', col: '#8ecae6', hat: '#fb8500', limp: true, x: 4640, zoneWidth: 110, side: 1 }],
     stars: { time: 265, maxHits: 1 } },
-  { n: 13, seed: 5314, worldLength: 5600, tank: 96, recommended: 'mouette',
+  { n: 13, seed: 5314, worldLength: 5600, tank: 73, recommended: 'mouette',
     look: {
       style: 'wash', grain: 0.5,
       sky: [['#7f9a8c', '#dfe8d8'], ['#6f8c80', '#e6e3c8']], mid: '#6f9080', ground: '#2f4a3c', obs: '#243a30', rim: '#cfe3d2', accent: '#ffd98a',
@@ -223,7 +223,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'fisherman', col: '#e9c46a', hat: '#264653', x: 2950, zoneWidth: 150, side: 1, dock: true },
       { type: 'animal', variant: 'flamingo', size: 'small', col: '#ff8fab', x: 4400, zoneWidth: 170, side: 1, onWater: true }],
     stars: { time: 160, maxHits: 1 } },
-  { n: 14, seed: 5415, worldLength: 6000, tank: 90, recommended: 'sentinelle', mod: { windX: -40 },
+  { n: 14, seed: 5415, worldLength: 6000, tank: 68, recommended: 'sentinelle', mod: { windX: -40 },
     look: {
       style: 'flat',
       sky: [['#0c0f14', '#3a424d'], ['#0a0c10', '#4a5360']], mid: '#2f3640', ground: '#14181e', obs: '#1d232b', rim: '#cfd6de', accent: '#ffffff',
@@ -239,7 +239,7 @@ export const RESCUE_LEVELS = [
       { type: 'debris', x0: 3700, x1: 4000 }, { type: 'debris', x0: 4950, x1: 5300, look: 'log', phase: 0.5 }, { type: 'gust', x: 1900, w: 600, fx: -150, period: 5, on: 0.4 }],
     victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'sailor', col: ['#f4a261', '#e76f51', '#2a9d8f'][k], hat: '#f1faee', x: 4400, zoneWidth: 190, side: 1, floe: { x0: 4250, x1: 4750, speed: 10, bob: 11, raft: true } })),
     stars: { time: 250, maxHits: 1 } },
-  { n: 15, seed: 5516, worldLength: 6400, tank: 78, recommended: 'tandem',
+  { n: 15, seed: 5516, worldLength: 6400, tank: 60, recommended: 'tandem',
     look: {
       style: 'flat', grain: 0.4,
       sky: [['#f2793a', '#ffd27a'], ['#c9503a', '#f8b060']], mid: '#c9643a', ground: '#3a1a0c', obs: '#4a2412', rim: '#ffc27a', accent: '#fff0b0',
@@ -256,7 +256,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'ranger', col: '#8a9a5b', hat: '#c2b280', x: 3700, zoneWidth: 170, side: 1 },
       { type: 'animal', variant: 'elephant', size: 'big', col: '#8d8f96', x: 5250, zoneWidth: 210, side: 1 }],
     stars: { time: 185, maxHits: 1 } },
-  { n: 16, seed: 5617, worldLength: 5600, tank: 94, recommended: 'sentinelle', mod: { dark: 1 },
+  { n: 16, seed: 5617, worldLength: 5600, tank: 72, recommended: 'sentinelle', mod: { dark: 1 },
     look: {
       style: 'flat',
       sky: [['#05060c', '#141a2a'], ['#04050a', '#1a2236']], mid: '#1c2436', ground: '#0a0d14', obs: '#111624', rim: '#8fa3c0', accent: '#ffe9a8',
@@ -271,7 +271,7 @@ export const RESCUE_LEVELS = [
       { type: 'gust', x: 1200, w: 500, fx: -110, period: 6, on: 0.35 }],
     victims: [{ type: 'person', variant: 'caver', col: '#f77f00', hat: '#ffd166', x: 4000, zoneWidth: 110, side: 1 }, { type: 'person', variant: 'caver', col: '#4ea8de', hat: '#ffd166', limp: true, x: 4000, zoneWidth: 110, side: 1 }],
     stars: { time: 140, maxHits: 1 } },
-  { n: 17, seed: 5718, worldLength: 5600, tank: 62, recommended: 'tandem',
+  { n: 17, seed: 5718, worldLength: 5600, tank: 47, recommended: 'tandem',
     look: {
       style: 'hatch', grain: 0.5,
       sky: [['#cfd6da', '#f2f4f2'], ['#b9c2c8', '#e6eaea']], mid: '#8e9aa0', ground: '#20262a', obs: '#2c3438', rim: '#ffffff', accent: '#ffd98a',
@@ -288,7 +288,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'farmer', col: '#bc6c25', hat: '#dda15e', x: 4100, zoneWidth: 230, side: 1 }, { type: 'animal', variant: 'horse', size: 'big', col: '#6f4e37', x: 4100, zoneWidth: 230, side: 1 },
       { type: 'animal', variant: 'goat', size: 'small', col: '#e9e5dc', x: 4100, zoneWidth: 230, side: 1 }],
     stars: { time: 145, maxHits: 1 } },
-  { n: 18, seed: 5819, worldLength: 6000, tank: 71, recommended: 'tandem',
+  { n: 18, seed: 5819, worldLength: 6000, tank: 54, recommended: 'tandem',
     look: {
       style: 'flat',
       sky: [['#3fa7d6', '#fff3c4'], ['#59c3e8', '#ffe8a8']], mid: '#59c9a5', ground: '#2d6a4f', obs: '#1f4f3a', rim: '#fff1b8', accent: '#ff9f1c',
@@ -308,7 +308,7 @@ export const RESCUE_LEVELS = [
     victims: [{ type: 'person', variant: 'islander', col: '#ef476f', hat: '#ffd166', x: 3820, zoneWidth: 190, side: 1 }, { type: 'person', variant: 'islander', col: '#118ab2', hat: '#06d6a0', x: 3820, zoneWidth: 190, side: 1 },
       { type: 'animal', variant: 'turtle', size: 'small', col: '#52796f', x: 5050, zoneWidth: 160, side: -1 }],
     stars: { time: 170, maxHits: 1 } },
-  { n: 19, seed: 5920, worldLength: 6600, tank: 100, recommended: 'chamois', timeLimit: 330,
+  { n: 19, seed: 5920, worldLength: 6600, tank: 78, recommended: 'chamois', timeLimit: 330,
     look: {
       style: 'flat', grain: 0.5,
       sky: [['#f3e9d2', '#f7d9b0'], ['#e8dcc0', '#f4c095']], mid: '#4a6fa5', ground: '#22355c', obs: '#1a2947', rim: '#ffffff', accent: '#e63946',
@@ -323,7 +323,7 @@ export const RESCUE_LEVELS = [
       { type: 'gust', x: 4200, w: 500, fx: -120, period: 6, on: 0.35, y0: 118 }],
     victims: [0, 1, 2].map((k) => ({ type: 'person', variant: 'climber', col: ['#e63946', '#ffb703', '#2a9d8f'][k], hat: ['#1d3557', '#023047', '#e9c46a'][k], limp: k === 2, x: 5350, zoneWidth: 200, side: 1 })),
     stars: { time: 300, maxHits: 1 } },
-  { n: 20, seed: 6021, worldLength: 7000, tank: 124, recommended: 'sentinelle', mod: { dark: 1, windX: -25 },
+  { n: 20, seed: 6021, worldLength: 7000, tank: 95, recommended: 'sentinelle', mod: { dark: 1, windX: -25 },
     look: {
       style: 'flat',
       sky: [['#05070d', '#1b2233'], ['#04060a', '#252e44']], mid: '#161c2b', ground: '#07090e', obs: '#0d111a', rim: '#aab6cc', accent: '#ffe9a8',

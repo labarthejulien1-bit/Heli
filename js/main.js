@@ -13,7 +13,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.7.0';
+const VERSION = '2.8.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -191,7 +191,7 @@ function go(screen) {
   if (screen !== 'home') guardBack();
 }
 // Accueil : le décor animé en fond, et en bas les deux mondes côte à côte. Toucher une bulle choisit le monde
-// (le décor s'adapte) ; « Entrer » ouvre le monde choisi.
+// (le décor et le bandeau du bas s'adaptent) ; le bandeau reste visible pour naviguer.
 function home() {
   if (!save.pilot) return welcome();
   S.screen = 'home';
@@ -207,9 +207,8 @@ function home() {
     <div class="title"><h1>HELI<span>${w === 'rescue' ? 'RESCUE' : 'ADVENTURE'}</span></h1><p>${t('tagline')}</p></div>
     <div class="homebot">
       <div class="worlds">${bubble('adv', t('adventure'), `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, rsky)}</div>
-      <button class="btn primary" data-go="${w === 'rescue' ? 'rmap' : 'levels'}">${ICON.play}${t('enter')} · ${w === 'rescue' ? 'Heli Rescue' : t('adventure')}</button>
     </div>
-  </section>`;
+  </section>${(S.navWorld = w, nav('home'))}`;
   ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? myRescueHeli() : heliOf(save.heli)).look, 1.05));
 }
 // Missions Heli Rescue : même présentation que les niveaux de l'Aventure (bannières aux couleurs de la mission,

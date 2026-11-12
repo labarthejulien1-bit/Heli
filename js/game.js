@@ -200,8 +200,19 @@ export class Game {
     for (const [ox, oy, r] of HIT) {
       const cx = h.x + (ox * ca - oy * sa) * h.dir, cy = h.y + ox * sa + oy * ca;
       // sol
-      let s = L.groundSlope(cx), k = 1 / Math.sqrt(1 + s * s), d = (L.groundAt(cx) - cy) * k;
-      if (r - d > pen) { pen = r - d; nx = s * k; ny = -k; hz = 0; px = cx; py = cy + r; isGround = true; }
+      let s = L.groundSlope(cx), k = 1 / Math.sqrt(1 + s * s), gy = L.groundAt(cx), d = (gy - cy) * k, gnx = s * k, gny = -k;
+      if (Math.abs(s) > 0.8 && cy < gy && d < r) {
+        // Paroi raide (bord de crevasse) : l'estimation par la pente voit un mur là où il n'y en a pas.
+        // On mesure la vraie distance au profil du sol, segment par segment, autour du point.
+        let best = 1e9, bx = 0, by = 0;
+        for (let xa = cx - r - 6; xa < cx + r + 6; xa += 6) {
+          const ya = L.groundAt(xa), ex = 6, ey = L.groundAt(xa + 6) - ya, q = clamp(((cx - xa) * ex + (cy - ya) * ey) / (ex * ex + ey * ey), 0, 1);
+          const qx = xa + ex * q, qy = ya + ey * q, dd = Math.hypot(cx - qx, cy - qy);
+          if (dd < best) { best = dd; bx = qx; by = qy; }
+        }
+        d = best; if (best > 1e-6) { gnx = (cx - bx) / best; gny = (cy - by) / best; }
+      }
+      if (r - d > pen) { pen = r - d; nx = gnx; ny = gny; hz = 0; px = cx - gnx * r; py = cy - gny * r; isGround = true; }
       // plafond
       const cl = L.ceilAt(cx);
       if (cl > -200) {
