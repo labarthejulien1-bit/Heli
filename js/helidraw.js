@@ -57,13 +57,25 @@ export function drawRescueCross(c, x, y, s, style = 'white') {
 }
 // Équipement commun des appareils de secours : hublots (derrière lesquels s'afficheront les passagers),
 // croix, gyrophare clignotant et treuil replié sur le flanc.
+let _pax = null; // passagers à afficher pendant le dessin en cours
 function rescueFit(c, look, t, cross, beacon, winch) {
+  const pax = _pax;
   for (const [x, y, r] of look.seats) {
     rrect(c, x - r, y - r, r * 2, r * 2, r * 0.75, '#22303a');
-    rrect(c, x - r + 0.6, y - r + 0.6, r * 2 - 1.2, r * 2 - 1.2, r * 0.65, look.glass);
+    const who = pax && pax.seats[look.seats.findIndex((q) => q[0] === x && q[1] === y)];
+    if (who) { // passager découpé à la forme du hublot, derrière une vitre légèrement teintée
+      rrect(c, x - r + 0.6, y - r + 0.6, r * 2 - 1.2, r * 2 - 1.2, r * 0.65, '#3d4f5c');
+      c.save(); c.beginPath(); c.rect(x - r + 0.6, y - r + 0.6, r * 2 - 1.2, r * 2 - 1.2); c.clip();
+      drawOccupant(c, x, y, r, who, t); c.restore();
+      c.globalAlpha = 0.28; rrect(c, x - r + 0.6, y - r + 0.6, r * 2 - 1.2, r * 2 - 1.2, r * 0.65, look.glass); c.globalAlpha = 1;
+    } else rrect(c, x - r + 0.6, y - r + 0.6, r * 2 - 1.2, r * 2 - 1.2, r * 0.65, look.glass);
     c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.moveTo(x - r + 1, y - r + 1); c.lineTo(x - r + 2.6, y - r + 1); c.lineTo(x - r + 1, y + r * 0.2); c.fill(); // reflet
   }
-  if (look.cargo) { const [x, y, r] = look.cargo; rrect(c, x - r + 0.8, y - r + 0.8, r * 2 - 1.6, r * 2 - 1.6, 2, look.glass); }
+  if (look.cargo) {
+    const [x, y, r] = look.cargo;
+    if (pax && pax.cargo) { rrect(c, x - r + 0.8, y - r + 0.8, r * 2 - 1.6, r * 2 - 1.6, 2, '#3d4f5c'); c.save(); c.beginPath(); c.rect(x - r + 0.8, y - r + 0.8, r * 2 - 1.6, r * 2 - 1.6); c.clip(); drawOccupant(c, x, y, r, pax.cargo, t); c.restore(); c.globalAlpha = 0.25; }
+    rrect(c, x - r + 0.8, y - r + 0.8, r * 2 - 1.6, r * 2 - 1.6, 2, look.glass); c.globalAlpha = 1;
+  }
   drawRescueCross(c, cross[0], cross[1], cross[2], look.cross);
   const on = Math.sin(t * 11) > 0, bc = on ? '#ff3b3b' : '#3b8bff';
   c.fillStyle = bc; c.globalAlpha = 0.28; c.beginPath(); c.arc(beacon[0], beacon[1], 5, 0, 6.2832); c.fill(); c.globalAlpha = 1;
@@ -72,7 +84,31 @@ function rescueFit(c, look, t, cross, beacon, winch) {
   c.lineWidth = 1; c.beginPath(); c.moveTo(winch[0] + 4, winch[1]); c.lineTo(winch[0] + 4, winch[1] + 2.5); c.stroke();
 }
 
-export function drawHeli(c, look, t = 0, power = 0.6) {
+// Tête et épaules d'un passager, centrées en (x, y) dans un hublot de rayon r.
+// p = { type, variant, col (veste), sway (balancement selon l'accélération) }.
+export function drawOccupant(c, x, y, r, p, t) {
+  const sw = clamp1(p.sway || 0) * r * 0.25, blink = (t * 0.7 + (p.seed || 0)) % 3 < 0.12;
+  const dot = (dx, dy, rr, col) => { c.fillStyle = col; c.beginPath(); c.arc(x + dx + sw, y + dy, rr, 0, 6.2832); c.fill(); };
+  if (p.type === 'person') {
+    c.fillStyle = p.col || '#2a9d8f'; c.beginPath(); c.ellipse(x + sw * 0.5, y + r * 1.05, r * 0.95, r * 0.7, 0, 0, 6.2832); c.fill(); // épaules
+    dot(0, -r * 0.05, r * 0.52, '#f1c9a5');
+    c.fillStyle = p.hat || '#e76f51'; c.beginPath(); c.arc(x + sw, y - r * 0.12, r * 0.56, Math.PI, 0); c.fill(); // bonnet ou casque
+    if (!blink) { dot(-r * 0.2, -r * 0.02, r * 0.07, '#1b1b26'); dot(r * 0.2, -r * 0.02, r * 0.07, '#1b1b26'); }
+  } else {
+    const fur = p.col || '#b5835a', ear = Math.sin(t * 5 + (p.seed || 0) * 9) * 0.25;
+    dot(0, r * 0.15, r * 0.6, fur);
+    c.fillStyle = fur;
+    if (p.variant === 'cat') { for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(x + sw + sx * r * 0.55, y - r * 0.1); c.lineTo(x + sw + sx * r * 0.42, y - r * 0.75 + ear * r * 0.2); c.lineTo(x + sw + sx * r * 0.12, y - r * 0.3); c.fill(); } }
+    else { for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(x + sw + sx * r * 0.58, y - r * 0.05 + ear * r * 0.3, r * 0.2, r * 0.42, sx * 0.4, 0, 6.2832); c.fill(); } }
+    dot(0, r * 0.38, r * 0.22, '#f3e3d0'); dot(0, r * 0.3, r * 0.09, '#1b1b26');
+    if (!blink) { dot(-r * 0.24, r * 0.02, r * 0.08, '#1b1b26'); dot(r * 0.24, r * 0.02, r * 0.08, '#1b1b26'); }
+  }
+}
+const clamp1 = (v) => (v < -1 ? -1 : v > 1 ? 1 : v);
+
+// pax (facultatif, appareils de secours) : { seats: [passager ou null, ...], cargo: passager ou null }
+export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
+  _pax = pax;
   const { c1, c2, glass } = look, dark = '#1b1b26';
   c.save();
   c.lineJoin = 'round';

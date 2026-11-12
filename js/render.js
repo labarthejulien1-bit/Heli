@@ -39,7 +39,8 @@ export class Renderer {
     const c = this.c, L = this.L, def = this.def, s = this.s, vh = this.vh, h = g.heli;
     const p = clamp(h.x / L.length, 0, 1);
     // caméra
-    const tx = clamp(h.x - VW * 0.3 + clamp(h.vx * 0.22, -40, 70), 0, L.length - VW);
+    // l'appareil est décalé du côté opposé à son nez, pour voir devant lui (dans les deux sens en Heli Rescue)
+    const tx = clamp(h.x - VW * (0.5 - 0.2 * h.dir) + clamp(h.vx * 0.22, h.dir > 0 ? -40 : -70, h.dir > 0 ? 70 : 40), 0, L.length - VW);
     // Sur les écrans hauts, on montre jusqu'à 110 unités de terre sous le monde : le sol paraît plus haut et le bas de l'écran reste libre pour le pouce.
     const ty = vh >= WORLD_H - 10 ? WORLD_H - vh + clamp(vh - 790, 0, 110) : clamp(h.y - vh * 0.45, 0, WORLD_H - vh);
     const ocx = this.camX;
@@ -159,6 +160,7 @@ export class Renderer {
     }
     this.terrain(c, L, def, x0, x1, camY, vh);
     this.pads(c, L, def, g, time, x0, x1);
+    if (L.rescue) this.rescue(c, L, def, g, time, x0, x1);
     this.items(c, L, def, g, time, x0, x1);
     this.traffic(c, L, def, g, time, camX);
 
@@ -179,7 +181,7 @@ export class Renderer {
     if (!opts.hideHeli) {
       const gy = L.groundAt(h.x);
       if (h.power > 0.3 && gy - h.y < 70 && Math.random() < 0.5) this.spawn(h.x + (Math.random() - 0.5) * 40, gy - 2, 1, { a: -Math.PI / 2, spread: 2.4, v: 50, col: rgba(def.rim, 0.5), life: 0.5, size: 1.6 });
-      if (look.trail && h.power > 0.4 && Math.random() < 0.6) this.spawn(h.x - 26, h.y, 1, { v: 8, vx: -30, col: look.flame ? (Math.random() < 0.5 ? '#ffb703' : '#ff5a1f') : look.trail, life: 0.6, size: 2.4 });
+      if (look.trail && h.power > 0.4 && Math.random() < 0.6) this.spawn(h.x - 26 * h.dir, h.y, 1, { v: 8, vx: -30 * h.dir, col: look.flame ? (Math.random() < 0.5 ? '#ffb703' : '#ff5a1f') : look.trail, life: 0.6, size: 2.4 });
       // État de l'appareil : intact, fumée légère (choc doux), fumée noire et étincelles (gros choc), flammes (dernier point).
       const mh = g.maxHp, lost = mh - h.hp;
       if (g.state === 'fly' && lost > 0) {
@@ -190,9 +192,10 @@ export class Renderer {
       }
       c.save();
       c.translate(h.x, h.y);
+      c.scale(h.dir, 1);
       c.rotate(h.tilt * DEG + (g.state === 'dead' ? h.spin : 0));
       if (h.inv > 0 && g.state === 'fly' && Math.sin(time * 40) > 0) c.globalAlpha = 0.45;
-      drawHeli(c, look, time, g.state === 'ready' ? 0.8 : h.power);
+      drawHeli(c, look, time, g.state === 'ready' ? 0.8 : h.power, g.vs ? this.pax(g, look) : null);
       c.restore();
     }
 
@@ -320,6 +323,17 @@ export class Renderer {
   pads(c, L, def, g, time, x0, x1) {
     const GREEN = '#6ee7a0';
     for (const pad of L.pads) {
+      if (pad.kind === 'zone') { // zone de pose d'une victime : cercle « H » en pointillés, à même le sol
+        if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
+        const here = g.onPad === pad.i, left = g.vs && g.vs.some((v) => v.zone === pad.i && (v.state === 'wait' || v.state === 'walk'));
+        if (!left) continue;
+        c.strokeStyle = rgba(here ? '#6ee7a0' : '#ffffff', 0.85); c.lineWidth = 2; c.setLineDash([7, 6]); c.lineDashOffset = -time * 14;
+        c.beginPath(); c.ellipse(pad.x, pad.y + 1, pad.w / 2, 7, 0, 0, TAU); c.stroke(); c.setLineDash([]);
+        c.fillStyle = rgba('#ffffff', 0.85); c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillText('H', pad.x, pad.y + 5);
+        const gr = c.createLinearGradient(0, pad.y - 120, 0, pad.y); gr.addColorStop(0, rgba('#ffffff', 0)); gr.addColorStop(1, rgba('#ffffff', 0.12 + 0.05 * Math.sin(time * 3)));
+        c.fillStyle = gr; c.fillRect(pad.x - pad.w / 2, pad.y - 120, pad.w, 120);
+        continue;
+      }
       if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
       const y = pad.y, end = pad.kind === 'end', fuel = pad.kind === 'fuel', hw = pad.w / 2;
       const col = end ? def.accent : fuel ? GREEN : def.rim, here = g.onPad === pad.i;
@@ -359,6 +373,73 @@ export class Renderer {
         c.fillStyle = col; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText('H', pad.x, y + 14);
       }
     }
+  }
+
+  // Passagers à dessiner derrière les hublots (appareils de secours).
+  pax(g, look) {
+    const sway = clamp(-(g.heli.vx - (this._pvx ?? g.heli.vx)) * 0.2 * g.heli.dir, -1, 1); this._pvx = g.heli.vx;
+    this._sway = lerp(this._sway || 0, sway, 0.15);
+    const as = (v) => ({ type: v.type, variant: v.variant, col: v.col, hat: v.hat, seed: v.zone + v.x, sway: this._sway });
+    const seats = look.seats.map(() => null); let cargo = null;
+    for (const v of g.vs) if (v.state === 'aboard') { if (v.seat === 'cargo') cargo = as(v); else if (v.seat >= 0) seats[v.seat] = as(v); }
+    return { seats, cargo };
+  }
+
+  // Monde Heli Rescue : poste de secours à la base, victimes au sol, jauge d'embarquement, remerciements.
+  rescue(c, L, def, g, time, x0, x1) {
+    const b = L.rescue.base;
+    if (b.x + 200 > x0 && b.x - 200 < x1) {
+      const bx = b.x + 112, by = b.y;
+      c.fillStyle = '#f4f1de'; c.fillRect(bx - 26, by - 34, 58, 34); c.fillStyle = '#d62828'; c.fillRect(bx - 30, by - 40, 66, 8);
+      c.fillStyle = '#9ad1e6'; c.fillRect(bx - 20, by - 26, 12, 10); c.fillRect(bx + 14, by - 26, 12, 10); c.fillStyle = '#7a5a3c'; c.fillRect(bx - 3, by - 20, 10, 20);
+      c.fillStyle = '#ffffff'; c.beginPath(); c.arc(bx + 3, by - 36, 5.5, 0, TAU); c.fill(); c.fillStyle = '#d62828'; c.fillRect(bx + 2, by - 39.5, 2, 7); c.fillRect(bx - 0.5, by - 37, 7, 2);
+      c.fillStyle = def.obs; c.fillRect(bx + 40, by - 60, 2.5, 60); // manche à air
+      c.fillStyle = '#ff7b2e'; c.beginPath(); c.moveTo(bx + 42, by - 60); c.lineTo(bx + 62, by - 55 + Math.sin(time * 4) * 2); c.lineTo(bx + 42, by - 50); c.fill();
+    }
+    for (const v of g.vs) {
+      if (v.state === 'aboard' || v.state === 'saved' || v.px < x0 - 30 || v.px > x1 + 30) continue;
+      const gy = L.groundAt(v.px), moving = v.state === 'walk' && Math.abs(g.heli.x - v.px) > 9 || v.state === 'out' || (v.state === 'wait' && Math.abs(v.px - v.x) > 1);
+      const face = v.state === 'out' ? 1 : Math.sign(g.heli.x - v.px) || 1;
+      this.figure(c, v, v.px, gy, time, moving, face, v.state === 'wait' && Math.abs(g.heli.x - v.px) < 420);
+      if (v.state === 'walk' && v.board > 0) { // jauge circulaire au-dessus de la porte
+        const hx = g.heli.x, hy = g.heli.y - 34;
+        c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(hx, hy, 9, 0, TAU); c.stroke();
+        c.strokeStyle = '#6ee7a0'; c.beginPath(); c.arc(hx, hy, 9, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, v.board)); c.stroke();
+      }
+      if (v.state === 'out' && v.t < 1.6) { // petit cœur de remerciement
+        const k = v.t / 1.6, hx = v.px, hy = gy - 30 - k * 16;
+        c.globalAlpha = 1 - k; c.fillStyle = '#ff5d73';
+        c.beginPath(); c.moveTo(hx, hy + 4); c.bezierCurveTo(hx - 8, hy - 2, hx - 4, hy - 8, hx, hy - 3); c.bezierCurveTo(hx + 4, hy - 8, hx + 8, hy - 2, hx, hy + 4); c.fill(); c.globalAlpha = 1;
+      }
+    }
+  }
+
+  // Petite silhouette au sol : personne (veste colorée, bonnet) ou animal à quatre pattes.
+  figure(c, v, x, gy, time, moving, face, wave) {
+    const ph = moving ? time * (v.limp ? 7 : 11) : 0, bob = moving ? Math.abs(Math.sin(ph)) * (v.limp ? 2.2 : 1.2) : 0;
+    c.save(); c.translate(x, gy - bob); c.scale(face, 1); c.lineCap = 'round';
+    if (v.type === 'person') {
+      const leg = moving ? Math.sin(ph) * 4 : 0;
+      c.strokeStyle = '#2b2d42'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-1, -8); c.lineTo(-1 - leg, 0); c.moveTo(1, -8); c.lineTo(1 + leg * (v.limp ? 0.3 : 1), 0); c.stroke();
+      c.strokeStyle = v.col || '#2a9d8f'; c.lineWidth = 6; c.beginPath(); c.moveTo(0, -9); c.lineTo(0, -16); c.stroke();
+      c.lineWidth = 2.2; c.beginPath();
+      if (wave) { const a = Math.sin(time * 9) * 0.5; c.moveTo(0, -16); c.lineTo(5 + a * 3, -24); c.moveTo(0, -16); c.lineTo(-5 + a * 3, -24); } // fait signe
+      else { c.moveTo(0, -15); c.lineTo(4, -10 + leg * 0.4); c.moveTo(0, -15); c.lineTo(-4, -10 - leg * 0.4); }
+      c.stroke();
+      c.fillStyle = '#f1c9a5'; c.beginPath(); c.arc(0, -21, 3.6, 0, TAU); c.fill();
+      c.fillStyle = v.hat || '#e76f51'; c.beginPath(); c.arc(0, -22, 3.8, Math.PI, 0); c.fill();
+      if (v.variant === 'hiker') { c.fillStyle = '#6b4f2a'; c.fillRect(-5.5, -17, 3.4, 7); } // sac à dos
+    } else {
+      const s = v.size === 'big' ? 1.9 : v.size === 'medium' ? 1.3 : 0.8, leg = moving ? Math.sin(ph) * 2.2 : 0, fur = v.col || '#b5835a';
+      c.scale(s, s);
+      c.strokeStyle = fur; c.lineWidth = 1.8; c.beginPath(); c.moveTo(-5, -5); c.lineTo(-5 - leg, 0); c.moveTo(-2, -5); c.lineTo(-2 + leg, 0); c.moveTo(3, -5); c.lineTo(3 - leg, 0); c.moveTo(6, -5); c.lineTo(6 + leg, 0); c.stroke();
+      c.fillStyle = fur; c.beginPath(); c.ellipse(0.5, -7.5, 7.5, 3.6, 0, 0, TAU); c.fill();
+      c.beginPath(); c.arc(8.5, -10.5, 3.2, 0, TAU); c.fill();
+      c.beginPath(); c.ellipse(7, -13.5, 1.2, 2.4, -0.4, 0, TAU); c.fill();
+      c.lineWidth = 1.6; c.beginPath(); c.moveTo(-7, -8); c.quadraticCurveTo(-11, -10 + Math.sin(time * 9) * 2, -10, -14); c.stroke(); // queue qui remue
+      c.fillStyle = '#1b1b26'; c.beginPath(); c.arc(9.6, -11, 0.6, 0, TAU); c.fill();
+    }
+    c.restore();
   }
 
   // Trafic à contresens : avion, hélicoptère ou soucoupe, avec un chevron d'alerte tant qu'il est hors champ.

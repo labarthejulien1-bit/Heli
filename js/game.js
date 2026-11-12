@@ -64,7 +64,8 @@ export class Game {
       L.items.forEach((it, i) => { if (it.type === 'star') { if (this.owned & (1 << k)) { this.taken[i] = 1; this.stats.stars++; } k++; } });
     } else this.stats.respawns++;
     const p = L.pads[this.padIdx];
-    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: this.maxHp, inv: 0, grounded: true, spin: 0, air: 0 };
+    this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: this.maxHp, inv: 0, grounded: true, spin: 0, air: 0, dir: 1 };
+    this.mass = 1; // 1 = à vide ; les passagers (monde Heli Rescue) l'alourdissent
     this.fuel = 1; this.onPad = this.padIdx; this.dryT = 0; this.botDone = this.padIdx;
     this.state = 'fly';
     this.stateT = 0; this.padT = 0; this.o0 = 0;
@@ -88,16 +89,24 @@ export class Game {
     const thrust = fly && inp.thrust && this.fuel > 0;
     h.power += ((thrust ? 1 : 0) - h.power) * Math.min(1, dt * (thrust ? 9 : 6));
     if (fly) {
-      const tt = h.grounded && !thrust ? 0 : clamp(inp.tilt, MIN_TILT, MAX_TILT);
-      h.tilt += clamp(tt - h.tilt, -H.agility * dt, H.agility * dt);
+      let tt;
+      if (L.twoWay) {
+        // Vol dans les deux sens (Heli Rescue) : inp.tilt est l'inclinaison à l'écran (positive = vers la droite).
+        // Une inclinaison franche du côté opposé au nez retourne l'appareil.
+        const lean = clamp(inp.tilt, -MAX_TILT, MAX_TILT);
+        if (thrust && ((lean < -18 && h.dir > 0) || (lean > 18 && h.dir < 0))) { h.dir = -h.dir; h.tilt = -h.tilt; }
+        tt = h.grounded && !thrust ? 0 : lean * h.dir;
+      } else tt = h.grounded && !thrust ? 0 : clamp(inp.tilt, MIN_TILT, MAX_TILT);
+      const agi = H.agility / this.mass;
+      h.tilt += clamp(tt - h.tilt, -agi * dt, agi * dt);
     } else { h.spin += dt * 9; }
     if (h.inv > 0) h.inv -= dt;
-    if (fly && this.fuel > 0 && !this.freeFuel) { this.fuel -= (h.power * dt) / (L.tank * this.D.tank); if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
+    if (fly && this.fuel > 0 && !this.freeFuel) { this.fuel -= (h.power * dt) / (L.tank * this.D.tank * (H.fuel || 1)); if (this.fuel <= 0) { this.fuel = 0; this.ev.push({ type: 'nofuel' }); } }
 
     // Forces : poussée du rotor le long de l'axe de l'appareil, gravité, traînée, vent.
     const mod = L.def.mod || {}, Gl = G * (mod.grav || 1);
-    const T = H.power * Gl * h.power, a = h.tilt * DEG;
-    let ax = T * Math.sin(a) - H.drag * h.vx + (h.grounded ? 0 : mod.windX || 0), ay = -T * Math.cos(a) + Gl - 0.9 * h.vy;
+    const T = (H.power * Gl * h.power) / this.mass, a = h.tilt * DEG;
+    let ax = T * Math.sin(a) * h.dir - H.drag * h.vx + (h.grounded ? 0 : mod.windX || 0), ay = -T * Math.cos(a) + Gl - 0.9 * h.vy;
     for (const z of L.zones) {
       if (h.x > z.x && h.x < z.x + z.w && h.y > z.y0 && h.y < z.y1) {
         const e = Math.min(1, (h.x - z.x) / 40, (z.x + z.w - h.x) / 40);
@@ -163,7 +172,7 @@ export class Game {
       if (p.kind === 'end') {
         this.padT += dt;
         if (this.padT > 0.3) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
-      } else if (this.fuel < 1 && h.power < 0.15) { // rotor à l'arrêt pour faire le plein
+      } else if (p.kind !== 'zone' && this.fuel < 1 && h.power < 0.15) { // rotor à l'arrêt pour faire le plein (pas sur une simple zone de pose)
         if (this.refuelFrom == null) this.refuelFrom = this.fuel;
         this.fuel = Math.min(1, this.fuel + dt / 1.6);
         if (this.fuel === 1) { if (this.refuelFrom < 0.95) this.ev.push({ type: 'fueled' }); this.refuelFrom = null; }
@@ -188,7 +197,7 @@ export class Game {
     while (this.o0 < obs.length && obs[this.o0].maxX < h.x - 500) this.o0++;
     while (this.o0 > 0 && obs[this.o0 - 1].maxX > h.x - 500) this.o0--;
     for (const [ox, oy, r] of HIT) {
-      const cx = h.x + ox * ca - oy * sa, cy = h.y + ox * sa + oy * ca;
+      const cx = h.x + (ox * ca - oy * sa) * h.dir, cy = h.y + ox * sa + oy * ca;
       // sol
       let s = L.groundSlope(cx), k = 1 / Math.sqrt(1 + s * s), d = (L.groundAt(cx) - cy) * k;
       if (r - d > pen) { pen = r - d; nx = s * k; ny = -k; hz = 0; px = cx; py = cy + r; isGround = true; }

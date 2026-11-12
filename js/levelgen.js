@@ -20,7 +20,7 @@ const SPEC = {
   geysers: { dx: 450, lo: 350, hi: 500, dy: 60, hug: 0.15, gap: 210 },
   wind: { dx: 340, lo: 250, hi: 550, dy: 170, hug: 0.7 },
 };
-const TREE = {
+export const TREE = {
   pine: { h: [70, 190], wr: 0.42, sh: 'tri' },
   round: { h: [70, 160], wr: 0.5, sh: 'lol', wmax: 70 },
   cactus: { h: [45, 120], wr: 0.22, sh: 'col', wmin: 12, wmax: 22 },
