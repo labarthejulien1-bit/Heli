@@ -90,7 +90,10 @@ h2.top{align-items:center}
 .bubble{position:relative;width:min(35vmin,150px);aspect-ratio:1;border-radius:50%;margin-bottom:8px;overflow:hidden;display:grid;place-items:center;
   box-shadow:0 10px 26px rgba(0,0,0,.35),inset 0 -10px 22px rgba(0,0,0,.18);border:3px solid rgba(255,255,255,.35);animation:bob 2s ease-in-out infinite alternate;transition:transform .1s,border-color .2s,opacity .2s}
 .bubble canvas{width:86%;height:54%}
-.world:not(.sel) .bubble{opacity:.72}
+.world{padding:8px 0 0}
+/* monde non choisi : assombri par un voile intérieur (une opacité sur la bulle animée la rognait en haut et en bas sur Android) */
+.world:not(.sel) .bubble{animation:none}
+.world:not(.sel) .bubble::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(24,28,48,.34)}
 .world.sel .bubble{border-color:#fff;box-shadow:0 10px 26px rgba(0,0,0,.35),0 0 0 4px var(--accent)}
 .world:active .bubble{transform:scale(.95);animation:none}
 @keyframes bob{from{transform:scale(1)}to{transform:scale(1.04)}}

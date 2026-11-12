@@ -13,7 +13,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.9.0';
+const VERSION = '2.10.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -192,7 +192,7 @@ function go(screen) {
   if (screen !== 'home') guardBack();
 }
 // Accueil : le décor animé en fond, et en bas les deux mondes côte à côte. Toucher une bulle choisit le monde
-// (le décor et le bandeau du bas s'adaptent) ; le bandeau reste visible pour naviguer.
+// et ouvre la liste de ses niveaux ; le bandeau du bas reste visible pour naviguer.
 function home() {
   if (!save.pilot) return welcome();
   S.screen = 'home';
@@ -469,7 +469,7 @@ ui.addEventListener('click', (e) => {
   const d = b.dataset;
   if (d.act === 'closeSheet' && e.target !== b) { if (!e.target.closest('button')) return; }
   if (b.tagName === 'BUTTON') snd.sfx('ui');
-  if (d.world) { if (save.world !== d.world) { save.world = d.world; persist(); vibe(15); } return home(); }
+  if (d.world) { if (save.world !== d.world) { save.world = d.world; persist(); vibe(15); } return go(d.world === 'rescue' ? 'rmap' : 'levels'); } // la bulle choisit le monde et ouvre ses niveaux
   if (d.go) return go(d.go);
   if (d.play) return startLevel(+d.play);
   if (d.level) return levelSheet(+d.level);

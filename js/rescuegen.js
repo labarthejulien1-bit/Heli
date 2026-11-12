@@ -109,7 +109,12 @@ export function buildRescueLevel(cfg) {
   const fire = (cfg.hazards || []).find((h) => h.type === 'firefront') || null, quake = (cfg.hazards || []).find((h) => h.type === 'quake') || null;
   const smoke = (cfg.hazards || []).find((h) => h.type === 'smoke') || null;
   // bancs de fumée épaisse en altitude : on ne voit plus l'appareil qui passe derrière (y : bas du banc)
-  const clouds = (cfg.hazards || []).filter((h) => h.type === 'cloud').map((h) => ({ x: h.x, w: h.w, y: h.y ?? groundAt(h.x + h.w / 2) - 150, col: h.col }));
+  // Le banc occupe une tranche d'altitude (de y - thick à y) : couloir libre dessous pour voler, ciel dégagé au-dessus.
+  // speed : le banc dérive (tempête de sable) et revient par l'autre bout de sa course x0..x1.
+  const clouds = (cfg.hazards || []).filter((h) => h.type === 'cloud').map((h) => {
+    const mid = h.speed ? (h.x0 + h.x1) / 2 : h.x + h.w / 2, y = h.y ?? groundAt(mid) - 150, span = h.speed ? h.x1 - h.x0 + h.w : 0;
+    return { w: h.w, y, top: y - (h.thick ?? 190), col: h.col, x: h.x, xAt: h.speed ? (t) => h.x1 - ((((h.speed * t + (h.phase || 0) * span) % span) + span) % span) : () => h.x };
+  });
   obs.sort((p, q) => p.minX - q.minX);
 
   // --- Altitude de croisière (pour le pilote automatique) : au-dessus du relief et des arbres alentour
@@ -143,7 +148,9 @@ export function buildRescueLevel(cfg) {
       for (let i = 0; i < 5; i++, x += 30) {
         const g = waterAt ? Math.min(groundAt(x), waterAt(0) - 44) : groundAt(x);
         const y = m < 0.55 ? g - 26 : m < 0.8 ? g - 70 - 30 * Math.sin(i * 1.3) : samp(cruise)(x) - 60; // ras du sol, ondulation basse, ou très haut
-        if (x < LEN - 140 && free(x, y)) coins.push({ type: 'orb', x, y });
+        let cy = y; // jamais sous la ramure d'un arbre ni au pied d'un rocher : la pièce passe au-dessus
+        for (const o of obs) if ((o.kind === 'tree' || (o.kind === 'pillar' && o.st !== 'ledge')) && Math.abs(o.x - x) < o.w / 2 + 48 && o.y - 44 < cy) cy = o.y - 44;
+        if (x < LEN - 140 && free(x, cy)) coins.push({ type: 'orb', x, y: cy });
       }
     }
   }

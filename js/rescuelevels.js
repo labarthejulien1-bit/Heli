@@ -18,7 +18,8 @@
 // - timeLimit : fenêtre météo (s) ; au-delà, la mission est perdue. smoke.col : couleur du voile (brume, poussière).
 // - waves : crêtes qui parcourent la mer entre x0 et x1 (height, speed, spacing, width) et frappent un appareil trop bas.
 // - 'firewall' : barrière de feu qui s'embrase par périodes (x, height, period) ; 'strike' : foudre (x, period) ; 'faller' : bloc venu du ciel par la droite.
-// - 'cloud' : banc de fumée épaisse en altitude (x, w, y facultatif : bas du banc) qui cache l'appareil et pousse à voler bas.
+// - 'cloud' : banc de fumée épaisse (x, w ; y facultatif : bas du banc ; thick : épaisseur) qui cache l'appareil. Il laisse un couloir
+//   libre au ras du relief et le ciel dégagé au-dessus. Avec x0, x1 et speed, le banc dérive : tempête de sable (col).
 // - props : 'spire' (aiguille rocheuse : x, w, h), 'ledge' (corniche ancrée à la paroi : x dans le puits, side -1/1, y, w), 'hang' (masse suspendue), 'house' (ruin : en ruine), décor 'pole', 'boat', 'wreck', 'fence', 'stump', 'cow'.
 // - Chaque mission contient 100 pièces, placées par le constructeur hors de la route directe.
 // - stars : temps à battre (s) et nombre de chocs toléré pour les 2e et 3e étoiles.
@@ -80,7 +81,7 @@ export const RESCUE_LEVELS = [
       { type: 'gust', x: 2900, w: 600, fx: -130, period: 6, on: 0.4 }],
     victims: [{ type: 'person', variant: 'climber', col: '#f4a261', hat: '#e63946', limp: true, x: 3855, zoneWidth: 110, side: 1 }],
     stars: { time: 135, maxHits: 1 } },
-  { n: 5, seed: 4506, worldLength: 6000, tank: 66, recommended: 'chamois',
+  { n: 5, seed: 4506, worldLength: 6000, tank: 69, recommended: 'chamois',
     look: {
       style: 'wash', grain: 0.6,
       sky: [['#6f8796', '#c9d6dc'], ['#5c7384', '#b9c7cf']], mid: '#6f8a96', ground: '#33424c', obs: '#44545e', rim: '#cfdde3', accent: '#ffd98a',
@@ -94,9 +95,9 @@ export const RESCUE_LEVELS = [
       { type: 'house', x: 4120, w: 110, h: 196 }, { type: 'house', x: 4480, w: 110, h: 190 }, { type: 'house', x: 5000, w: 130, h: 100 },
       { type: 'pole', x: 1350 }, { type: 'pole', x: 1950, flip: true }, { type: 'pole', x: 3050 }, { type: 'pole', x: 3800, flip: true }, { type: 'boat', x: 5480 }, { type: 'wreck', x: 5650 }],
     hazards: [{ type: 'debris', x0: 1250, x1: 1500, look: 'car' }, { type: 'debris', x0: 1760, x1: 2080, look: 'roof', speed: 46, phase: 0.7 }, { type: 'debris', x0: 2950, x1: 3250, look: 'log' }, { type: 'debris', x0: 3560, x1: 3980, look: 'car', col: '#2980b9', speed: 30 },
-      { type: 'strike', x: 2500, period: 6.5 }, { type: 'strike', x: 3750, period: 5.5, phase: 0.5 }, { type: 'gust', x: 900, w: 600, fx: 120, period: 6, on: 0.3 }],
+      { type: 'strike', x: 1180, period: 6, phase: 0.2 }, { type: 'strike', x: 1900, period: 5.2, phase: 0.7 }, { type: 'strike', x: 2500, period: 6.5 }, { type: 'strike', x: 3180, period: 5, phase: 0.35 }, { type: 'strike', x: 3750, period: 5.5, phase: 0.5 }, { type: 'strike', x: 4760, period: 5.8, phase: 0.1 }, { type: 'gust', x: 900, w: 600, fx: 120, period: 6, on: 0.3 }],
     victims: [{ type: 'person', variant: 'resident', col: '#577590', hat: '#f9c74f', x: 4300, zoneWidth: 140, roof: 124, side: 1 }, { type: 'animal', variant: 'cat', size: 'small', col: '#3d3d3d', x: 4300, zoneWidth: 140, roof: 124, side: 1 }],
-    stars: { time: 140, maxHits: 1 } },
+    stars: { time: 145, maxHits: 1 } },
   { n: 6, seed: 4607, worldLength: 6400, tank: 93, recommended: 'chamois',
     look: {
       style: 'pixel',
@@ -109,7 +110,8 @@ export const RESCUE_LEVELS = [
     trees: { every: [240, 400], scale: 0.7 },
     props: [{ type: 'spire', x: 1600, w: 60, h: 150, st: 'mesa' }, { type: 'spire', x: 4200, w: 70, h: 170, st: 'mesa' }, { type: 'ledge', x: 5200, side: -1, y: 520, w: 42 }, { type: 'ledge', x: 5200, side: 1, y: 615, w: 42 }],
     hazards: [{ type: 'thermal', x: 2640, w: 230, fy: -170 }, { type: 'thermal', x: 3520, w: 260, fy: 140 }, { type: 'faller', x: 2200, period: 3.6, col: '#a05a34' }, { type: 'faller', x: 4700, period: 3.2, phase: 0.5, col: '#a05a34' },
-      { type: 'flyer', x0: 3400, x1: 4000, y: 290, speed: 70 }],
+      { type: 'flyer', x0: 3400, x1: 4000, y: 290, speed: 70 },
+      { type: 'cloud', x0: 600, x1: 2500, w: 520, speed: 70, y: 330, thick: 135, col: '#b98a55' }, { type: 'cloud', x0: 3300, x1: 5000, w: 600, speed: 90, y: 300, thick: 130, col: '#b98a55', phase: 0.4 }, { type: 'cloud', x0: 5350, x1: 6300, w: 420, speed: 60, y: 310, thick: 130, col: '#b98a55', phase: 0.7 }],
     victims: [{ type: 'person', variant: 'hiker', col: '#e9c46a', hat: '#ffffff', x: 2915, zoneWidth: 170, side: 1 }, { type: 'person', variant: 'hiker', col: '#90be6d', hat: '#f94144', limp: true, x: 5205, zoneWidth: 110, side: -1 }],
     stars: { time: 195, maxHits: 1 } },
   { n: 7, seed: 4708, worldLength: 6200, tank: 80, recommended: 'chamois',

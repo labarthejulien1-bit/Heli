@@ -13,7 +13,18 @@ export function makeHazard(hz, L) {
       shapesAt(t) { const p = pos(t); return p ? [{ c: [p[0], p[1], r], hz: 16 }] : []; },
       safeAt(t, y, x) { const p = pos(t); return !p || Math.hypot(p[0] - x, p[1] - y) > 95; },
       draw(c, t, time) {
-        const p = pos(t); if (!p) return;
+        const p = pos(t);
+        const u0 = t / per + ph;
+        if (!p && u0 >= 1) { // impact au sol : éclair bref, onde de poussière, éclats qui retombent
+          const k = ((u0 % 1) / 0.25), col = hz.col || '#eaf6ff';
+          if (k < 0.2) { c.fillStyle = 'rgba(255,255,255,' + 0.5 * (1 - k / 0.2) + ')'; c.beginPath(); c.arc(hz.x, g - 4, 34 + 60 * k, Math.PI, 0); c.fill(); }
+          c.strokeStyle = 'rgba(255,255,255,' + 0.6 * (1 - k) + ')'; c.lineWidth = 3 * (1 - k) + 0.5; c.beginPath(); c.ellipse(hz.x, g, 14 + 70 * k, 4 + 12 * k, 0, Math.PI, 0); c.stroke();
+          c.fillStyle = col; c.globalAlpha = 1 - k * k;
+          for (let i = 0; i < 9; i++) { const a = -Math.PI * (0.12 + 0.76 * hash(i, hz.x)), v = 90 + 110 * hash(i, hz.x + 3), tt = k * 0.85, sx2 = hz.x + Math.cos(a) * v * tt, sy2 = g + Math.sin(a) * v * tt + 260 * tt * tt, s2 = (2 + 3.5 * hash(i, 7)) * (1 - k * 0.5); c.fillRect(sx2 - s2 / 2, Math.min(sy2, g) - s2 / 2, s2, s2); }
+          c.globalAlpha = 0.35 * (1 - k); for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(hz.x + (i - 1.5) * 16 * (1 + k), g - 6 - 14 * k, 9 + 12 * k, 0, TAU); c.fill(); }
+          c.globalAlpha = 1;
+        }
+        if (!p) return;
         c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath(); c.moveTo(p[0] + r * 0.6, p[1] - r); c.lineTo(p[0] + 46, p[1] - 30); c.lineTo(p[0] + r, p[1] + r * 0.3); c.fill(); // traînée
         c.fillStyle = hz.col || '#eaf6ff'; c.beginPath();
         for (let k = 0; k < 7; k++) { const a = (k / 7) * TAU + time * 3, q = r * (0.8 + 0.35 * hash(k, hz.x)); c.lineTo(p[0] + Math.cos(a) * q, p[1] + Math.sin(a) * q); }

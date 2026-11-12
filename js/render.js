@@ -204,15 +204,17 @@ export class Renderer {
     }
 
     // bancs de fumée épaisse (missions en feu) : au premier plan, ils cachent l'appareil qui vole trop haut
+    // Chaque banc tient dans une tranche d'altitude : couloir dégagé au ras du relief, ciel libre au-dessus.
     for (const q of L.clouds || []) {
-      if (q.x > camX + VW + 120 || q.x + q.w < camX - 120) continue;
-      const col = q.col || '#241a18', n = Math.ceil(q.w / 46);
-      c.fillStyle = rgba(col, 0.94); c.fillRect(q.x + 30, camY - 40, q.w - 60, q.y - 44 - camY + 40);
-      for (let pass = 0; pass < 2; pass++) for (let k = 0; k <= n; k++) {
-        const px = q.x + (k / n) * q.w, e = Math.min(1, k / 2, (n - k) / 2), r = 40 + 26 * hash(k, q.x + pass * 7), py = q.y - 34 - (1 - e) * 60 + Math.sin(time * 0.5 + k * 1.7 + pass) * 5 - pass * 30;
-        c.fillStyle = pass ? rgba(mix(col, '#ff7a3a', 0.1), 0.6) : rgba(col, 0.95);
-        c.beginPath(); c.arc(px + pass * 17, py, r, 0, TAU); c.fill();
-        if (!pass) c.fillRect(px - r, camY - 40, r * 2, Math.max(0, py - camY + 40));
+      const qx = q.xAt(g.t);
+      if (qx > camX + VW + 120 || qx + q.w < camX - 120) continue;
+      const col = q.col || '#241a18', n = Math.ceil(q.w / 46), mid = (q.top + q.y) / 2, half = (q.y - q.top) / 2;
+      c.fillStyle = rgba(col, 0.95); c.fillRect(qx + 50, q.top + 34, q.w - 100, q.y - q.top - 68);
+      for (let pass = 0; pass < 2; pass++) for (const sd of [1, -1]) for (let k = 0; k <= n; k++) {
+        const e = Math.min(1, k / 2.5, (n - k) / 2.5), r = 36 + 22 * hash(k, q.w + pass * 7 + sd), px = qx + (k / n) * q.w + pass * 17;
+        const py = mid + sd * (half - r) * e + Math.sin(time * 0.5 + k * 1.7 + pass + sd) * 4 - pass * sd * 16;
+        c.fillStyle = pass ? rgba(mix(col, '#ffffff', 0.09), 0.55) : rgba(col, 0.95);
+        c.beginPath(); c.arc(px, py, r, 0, TAU); c.fill();
       }
     }
     // --- premier plan (écran)
@@ -221,8 +223,9 @@ export class Renderer {
     if (L.smoke) { // fumée ou cendres : nappes sombres qui dérivent et masquent une partie de la vue
       c.fillStyle = L.smoke.col ? rgba(L.smoke.col, 0.5 * L.smoke.density) : `rgba(30,22,20,${0.5 * L.smoke.density})`; // col : brume claire, poussière...
       for (let k = 0; k < 7; k++) {
-        const sx2 = ((((hash(k, 21) * 700 - camX * 0.5 - time * (14 + k * 3)) % 700) + 700) % 700) - 150, sy2 = 120 + hash(k, 22) * (vh - 320), w2 = 110 + hash(k, 23) * 90;
-        c.beginPath(); c.ellipse(sx2, sy2, w2, w2 * 0.42, 0, 0, TAU); c.fill();
+        // les nappes restent dans une tranche du haut de l'écran : ni sur l'affichage tout en haut, ni dans le couloir de vol près du relief
+        const sx2 = ((((hash(k, 21) * 700 - camX * 0.5 - time * (14 + k * 3)) % 700) + 700) % 700) - 150, sy2 = vh * (0.24 + 0.2 * hash(k, 22)), w2 = 110 + hash(k, 23) * 90;
+        c.beginPath(); c.ellipse(sx2, sy2, w2, w2 * 0.36, 0, 0, TAU); c.fill();
       }
     }
     if (L.rescue && L.rescue.cfg.radar && g.vs) { // détecteur de victimes : flèche vers la plus proche encore ensevelie
