@@ -48,6 +48,30 @@ function kit(c) {
   return { F, S, E, wheel };
 }
 
+// Croix de secours réutilisable. On n'emploie jamais la croix rouge sur fond blanc carré (emblème protégé) :
+// 'white' = croix blanche aux branches arrondies sur la carrosserie ; 'disc' = croix rouge arrondie dans un rond blanc.
+export function drawRescueCross(c, x, y, s, style = 'white') {
+  if (style === 'disc') { c.fillStyle = '#ffffff'; c.beginPath(); c.arc(x, y, s * 1.5, 0, 6.2832); c.fill(); }
+  const col = style === 'disc' ? '#d62828' : '#ffffff', a = s * 0.36;
+  rrect(c, x - s, y - a, s * 2, a * 2, a * 0.7, col); rrect(c, x - a, y - s, a * 2, s * 2, a * 0.7, col);
+}
+// Équipement commun des appareils de secours : hublots (derrière lesquels s'afficheront les passagers),
+// croix, gyrophare clignotant et treuil replié sur le flanc.
+function rescueFit(c, look, t, cross, beacon, winch) {
+  for (const [x, y, r] of look.seats) {
+    rrect(c, x - r, y - r, r * 2, r * 2, r * 0.75, '#22303a');
+    rrect(c, x - r + 0.6, y - r + 0.6, r * 2 - 1.2, r * 2 - 1.2, r * 0.65, look.glass);
+    c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.moveTo(x - r + 1, y - r + 1); c.lineTo(x - r + 2.6, y - r + 1); c.lineTo(x - r + 1, y + r * 0.2); c.fill(); // reflet
+  }
+  if (look.cargo) { const [x, y, r] = look.cargo; rrect(c, x - r + 0.8, y - r + 0.8, r * 2 - 1.6, r * 2 - 1.6, 2, look.glass); }
+  drawRescueCross(c, cross[0], cross[1], cross[2], look.cross);
+  const on = Math.sin(t * 11) > 0, bc = on ? '#ff3b3b' : '#3b8bff';
+  c.fillStyle = bc; c.globalAlpha = 0.28; c.beginPath(); c.arc(beacon[0], beacon[1], 5, 0, 6.2832); c.fill(); c.globalAlpha = 1;
+  c.beginPath(); c.arc(beacon[0], beacon[1], 1.9, Math.PI, 0); c.fill();
+  c.strokeStyle = '#1b1b26'; c.lineWidth = 1.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(winch[0], winch[1] + 2); c.lineTo(winch[0], winch[1]); c.lineTo(winch[0] + 4, winch[1]); c.stroke();
+  c.lineWidth = 1; c.beginPath(); c.moveTo(winch[0] + 4, winch[1]); c.lineTo(winch[0] + 4, winch[1] + 2.5); c.stroke();
+}
+
 export function drawHeli(c, look, t = 0, power = 0.6) {
   const { c1, c2, glass } = look, dark = '#1b1b26';
   c.save();
@@ -219,6 +243,69 @@ export function drawHeli(c, look, t = 0, power = 0.6) {
         c.fillStyle = on ? '#ffffff' : c2; c.beginPath(); c.arc(lx, 0.5 + Math.abs(k - 3) * -0.35 + 1, 1.7, 0, 7); c.fill();
       }
       c.strokeStyle = '#6b7484'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-12, 6); c.lineTo(-16, 11.4); c.moveTo(12, 6); c.lineTo(16, 11.4); c.moveTo(-19, 11.4); c.lineTo(-13, 11.4); c.moveTo(13, 11.4); c.lineTo(19, 11.4); c.stroke();
+      break;
+    }
+    // --- Appareils de secours (monde Heli Rescue) : hublots latéraux, croix, gyrophare, treuil replié.
+    case 'r_light': { // monorotor léger
+      const { F, S } = kit(c);
+      skids(c, dark);
+      F('M19,1 Q15,-8 5,-9 L-6,-9 Q-10,-8 -11,-3 L-33,-5.5 L-33,-3.500 L-11,3 Q0,7 12,6 Q18,5 19,1Z', c1);
+      F('M-29,-5.5 L-36,-16 L-33,-16 L-27,-5.500Z', c1); F('M-25,-5 L-19,-4.500 L-19,-3.300 L-25,-3.800Z', c2);
+      F('M18,0.5 Q14.500,-7 6.500,-8 L6,-0.500Z', glass); F('M-11,-0.5 L18.500,1.500 L17.500,3 L-11.500,1Z', c2);
+      rescueFit(c, look, t, [-1.5, 3.2, 2.6], [3, -11], [-7, -9.5]);
+      tailRotor(c, -33, -5, t, power, dark);
+      rotor(c, 0, -15, 31, t, power, dark);
+      break;
+    }
+    case 'r_mountain': { // monorotor de montagne à fenestron
+      const { F, S, E } = kit(c);
+      skids(c, dark);
+      F('M-10,-10 L-31,-9 L-31,-5.5 L-12,-4Z', c1); F('M-28,-9 L-35,-19 L-31,-19 L-25,-9Z', look.c2);
+      E(-31, -6, 6, 6, c1); E(-31, -6, 4.2, 4.2, dark); S('M-34.5,-6 L-27.500,-6', '#8a8f9c', 1);
+      F('M19,2 Q19,-8 9,-10 L-7,-10 Q-12,-10 -13,-4 L-13,4 Q0,8 12,7 Q18,6 19,2Z', c1);
+      F('M-13,1 L19,2.6 Q18,6 12,7 Q0,8 -13,4Z', look.c2);
+      F('M-9,-10 L-8,-14 L5,-14 L7,-10Z', '#3a3f4a');
+      F('M18.5,1 Q18.500,-7 9.500,-9 L8,0Z', glass);
+      rescueFit(c, look, t, [-2, 0, 2.5], [-2, -16], [-11.5, -11]);
+      rotor(c, 0, -18, 32, t, power, dark);
+      break;
+    }
+    case 'r_float': { // amphibie à flotteurs
+      const { F, S } = kit(c);
+      F('M20,1 Q16,-8 6,-10 L-6,-10 Q-11,-9 -12,-3 L-33,-6 L-33,-4 L-12,3 Q0,7 12,6 Q19,5 20,1Z', c1);
+      F('M-29,-6 L-36,-17 L-33,-17 L-27,-6Z', c1); F('M-25,-5.6 L-19,-5 L-19,-3.800 L-25,-4.400Z', look.c2);
+      F('M19,0.5 Q15.500,-7.500 7,-9 L6.500,-1Z', glass); F('M-12,0 L19.500,1.600 L18.500,3.200 L-12,1.600Z', look.c2);
+      S('M-5,5 L-7,9 M9,5.5 L11,9 M-5,5 L11,9', dark, 1.3);
+      F('M-15,8.5 L20,8.500 Q23,8.500 22,10.500 Q20,13.500 14,13.500 L-9,13.500 Q-15,13.500 -15,8.500Z', '#f8f9fa'); F('M-14,11.4 L21.500,11.400 Q20,13.500 14,13.500 L-9,13.500 Q-13.500,13.500 -14,11.400Z', '#d62828');
+      rescueFit(c, look, t, [-2, 2.6, 2.7], [2, -12], [-10, -10.5]);
+      tailRotor(c, -33, -6, t, power, dark);
+      rotor(c, 0, -16, 32, t, power, dark);
+      break;
+    }
+    case 'r_coax': { // birotor coaxial, sans rotor de queue, projecteur sous le nez
+      const { F, S, E } = kit(c);
+      skids(c, dark);
+      F('M-10,-7 L-27,-5 L-27,-1 L-12,3Z', c1); F('M-24,-12 L-30,-13 L-30,5 L-24,3Z', c1); F('M-32,-5 L-22,-4.5 L-22,-2.500 L-32,-3Z', look.c2);
+      F('M20,2 Q19,-7 10,-9 L-6,-9 Q-12,-8 -13,-3 L-13,4 Q0,8 12,7 Q18,6 20,2Z', c1);
+      F('M19.5,1 Q18.500,-6 10.500,-8 L9,0Z', glass); F('M-13,1.2 L20,2.800 L19,4.400 L-13,2.800Z', look.c2);
+      E(14, 7.5, 2.4, 1.8, '#3a3f4a'); E(15, 7.8, 1.3, 1.1, '#fff3b0');
+      rescueFit(c, look, t, [-1.5, -0.2, 2.5], [-6, -11], [8, -10]);
+      F('M0,-9 L1.2,-23 L3.800,-23 L5,-9Z', c1);
+      rotor(c, 2.5, -17.5, 29, t, power, dark);
+      rotor(c, 2.5, -24.5, 29, -t * 1.07 + 0.8, power, dark);
+      break;
+    }
+    case 'r_tandem': { // birotor en tandem, gros porteur avec porte cargo arrière
+      const { F, S, E, wheel } = kit(c);
+      rrect(c, -31, -7, 52, 15, 7, c1);
+      F('M-31,-4 L-27,-18 L-17,-18 L-15,-7Z', c1); F('M9,-7 L11,-13 L18,-13 L20,-5Z', c1);
+      F('M-31,2.5 L21,2.500 L21,4.500 L-31,4.500Z', look.c2);
+      F('M21,0 Q20,-6 14,-6.2 L14,0Z', glass);
+      if (look.cargo) { const [gx, gy, gr] = look.cargo; rrect(c, gx - gr - 1.5, gy - gr - 1, gr * 2 + 3, gr * 2 + 2, 2.5, '#5f1212'); }
+      rescueFit(c, look, t, [-10.5, -1.5, 3.4], [2, -9], [15, -8]);
+      wheel(-20, 9.5, 2.6, -20, 6); wheel(10, 9.5, 2.600, 10, 6);
+      rotor(c, -22, -23, 23, t, power, dark);
+      rotor(c, 14, -18, 23, -t + 0.4, power, dark);
       break;
     }
     case 'floats': { // hydravion : cabine classique posée sur deux grands flotteurs

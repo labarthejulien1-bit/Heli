@@ -158,6 +158,10 @@ h2.top{align-items:center}
 .req small{opacity:.65;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:10px}
 .hcard .btn{width:100%;margin-top:12px}
 
+.perk{margin:-4px 0 10px;font-size:13px;line-height:1.35;opacity:.85;min-height:36px}
+.seats{flex:1;display:flex;gap:5px;align-items:center}
+.seats u{width:12px;height:12px;border-radius:50%;background:var(--accent)}
+.seats u.big{width:22px;border-radius:7px;opacity:.7}
 /* Profil et réglages */
 .row{display:flex;align-items:center;gap:12px;min-height:54px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);font-weight:600;font-size:15px}
 .row:last-child{border:0}.row>span{flex:1}

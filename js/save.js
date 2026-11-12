@@ -6,7 +6,7 @@ export function defaults() {
   return {
     v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false,
     world: 'adv', // monde affiché à l'accueil : 'adv' (Aventure) ou 'rescue' (Heli Rescue)
-    heliRescue: { levels: {}, heli: null, helis: [] }, // progression du monde Heli Rescue, indépendante de l'Aventure
+    heliRescue: { levels: {}, heli: 'mesange' }, // progression du monde Heli Rescue, indépendante de l'Aventure
     coins: 0, starsSpent: 0, // porte-monnaie : pièces cumulées, étoiles dépensées
     levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, sm (masque des étoiles trouvées) }
     stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },

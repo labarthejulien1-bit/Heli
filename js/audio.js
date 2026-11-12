@@ -49,6 +49,7 @@ export class Sound {
       retro: { f: 190, chop: 10.5, q: 2.2, wave: 'square' }, coax: { f: 160, chop: 14, dual: 1 }, rescue: { f: 130, chop: 10, whine: [380, 0.015] },
       crane: { f: 95, chop: 7.5, wave: 'square', q: 1.2 }, tilt: { f: 185, chop: 16, dual: 1, whine: [540, 0.03] },
       drone: { f: 520, chop: 34, q: 3, vol: 0.8, whine: [330, 0.05, 'sawtooth'] }, manta: { f: 285, chop: 19, q: 0.6, whine: [840, 0.03] },
+      r_light: { f: 195, chop: 14 }, r_mountain: { f: 170, chop: 12.5, whine: [560, 0.02] }, r_float: { f: 175, chop: 12 }, r_coax: { f: 160, chop: 13, dual: 1 }, r_tandem: { f: 105, chop: 8, dual: 1 },
       floats: { f: 180, chop: 12.5 }, amphib: { f: 150, chop: 11, whine: [420, 0.02] }, seaking: { f: 125, chop: 9.5, whine: [360, 0.015] }, mi8: { f: 100, chop: 8, wave: 'square' },
       shark: { f: 140, chop: 11, q: 1.3, whine: [300, 0.03] }, dragon: { f: 135, chop: 10, q: 1.6, whine: [110, 0.06, 'sawtooth'] }, ufo: { ufo: 1 },
     }[heli?.look?.body] || { f: 170, chop: 13 };

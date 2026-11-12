@@ -8,8 +8,9 @@ import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
+import { RESCUE_HELIS, rescueHeli, rescueUnlocked } from './rescue.js';
 
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -59,13 +60,14 @@ function heliCanvas(cvs, look, scale = 1) {
 // ---------- Démo de fond et lancement des niveaux
 // Décor de fond des menus : il suit le monde affiché (Aventure : prochain niveau et appareil choisi ;
 // Heli Rescue : un décor côtier et un appareil de secours, en attendant les niveaux du monde).
-const RESCUE_DEMO = { level: 4, heli: 'albatros' };
+const RESCUE_DEMO = { level: 4 };
+const myRescueHeli = () => { const h = rescueHeli(save.heliRescue.heli); return rescueUnlocked(save, h) ? h : RESCUE_HELIS[0]; };
 const inRescue = () => ['rmap', 'rhangar'].includes(S.screen) || (S.screen === 'home' && save.world === 'rescue');
 function setDemo(id) {
   const rescue = id == null && inRescue();
   id = id ?? (rescue ? RESCUE_DEMO.level : nextLevelId());
   S.mode = 'demo'; S.levelId = id; S.level = getLevel(id); S.demoRescue = rescue;
-  S.game = new Game(S.level, heliOf(rescue ? RESCUE_DEMO.heli : save.heli));
+  S.game = new Game(S.level, rescue ? myRescueHeli() : heliOf(save.heli));
   R.setLevel(S.level); theme(S.level.def);
   hud.hidden = true; S.touch = null;
   snd.rotorStop(); snd.playMusic(S.level.def.music);
@@ -173,7 +175,7 @@ function home() {
   const m = medalCount(save), w = save.world, id = nextLevelId();
   if (S.mode !== 'demo' || S.demoRescue !== (w === 'rescue') || (w === 'adv' && S.levelId !== id)) setDemo();
   const bubble = (k, title, prog, sky) => `<button class="world ${w === k ? 'sel' : ''}" data-world="${k}">
-      <span class="bubble" style="background:linear-gradient(${sky[0]},${sky[1]})"><canvas data-bubble="${k}"></canvas>${k === 'rescue' ? '<i class="beacon"></i>' : ''}</span>
+      <span class="bubble" style="background:linear-gradient(${sky[0]},${sky[1]})"><canvas data-bubble="${k}"></canvas></span>
       <b>${title}</b><small>${prog}</small></button>`;
   ui.innerHTML = `<section class="screen home">
     <div class="top"><button class="chip" data-go="profile"><span class="avatar">${esc(save.pilot[0].toUpperCase())}</span><span><b>${esc(save.pilot)}</b><small>${t('rank' + rankIdx(m))} · ${m}/${TOTAL_MEDALS}</small></span></button>
@@ -184,7 +186,7 @@ function home() {
       <button class="btn primary" data-go="${w === 'rescue' ? 'rmap' : 'levels'}">${ICON.play}${t('enter')} · ${w === 'rescue' ? 'Heli Rescue' : t('adventure')}</button>
     </div>
   </section>`;
-  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, heliOf(c.dataset.bubble === 'rescue' ? RESCUE_DEMO.heli : save.heli).look, 1.05));
+  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? myRescueHeli() : heliOf(save.heli)).look, 1.05));
 }
 // Carte du monde Heli Rescue : un chemin sinueux de 20 pastilles (les niveaux arrivent avec les phases suivantes).
 function rmap() {
@@ -197,8 +199,23 @@ function rmap() {
   </div></section>${nav('rmap')}`;
   const sc = $('#rmapScroll'); sc.scrollTop = sc.scrollHeight;
 }
+// Hangar Heli Rescue : carrousel des appareils de secours, barres de caractéristiques, déblocage par niveau réussi.
 function rhangar() {
-  ui.innerHTML = `<section class="screen scrim"><h2>${t('hangar')} · Heli Rescue</h2><div class="panel" style="text-align:center;padding:40px 16px;font-weight:700">${t('soon')}</div><div style="flex:1"></div></section>${nav('rhangar')}`;
+  const cur = myRescueHeli().id;
+  ui.innerHTML = `<section class="screen scrim"><h2>${t('hangar')} · Heli Rescue</h2><div class="cards">${RESCUE_HELIS.map((h) => {
+    const own = rescueUnlocked(save, h), sel = cur === h.id;
+    const bar = (lb, v) => `<div class="bar"><span>${t(lb)}</span><i><b style="width:${Math.round(clamp(v, 0.08, 1) * 100)}%"></b></i></div>`;
+    return `<div class="hcard panel ${own ? '' : 'locked'}" id="rh-${h.id}">
+      <canvas data-rheli="${h.id}"></canvas><h4>${h.name}</h4>
+      <p class="perk">${t(h.perk)}</p>
+      ${bar('stat_power', h.thrust / 1.5)}${bar('stat_agility', h.handling / 1.3)}${bar('r_fuel', h.fuel / 1.4)}${bar('r_wind', h.wind / 1.5)}
+      <div class="bar"><span>${t('places')}</span><em class="seats">${'<u></u>'.repeat(h.places)}${h.heavyLift ? '<u class="big"></u>' : ''}</em></div>
+      ${own ? `<button class="btn ${sel ? 'ghost' : 'primary'}" data-rheli-sel="${h.id}" ${sel ? 'disabled' : ''}>${sel ? '✓ ' + t('selected') : t('select')}</button>`
+        : `<div class="req"><small>${ICON.lock.replace('<svg', '<svg style="width:12px;height:12px"')} ${t('toUnlock')}</small>${t('r_unlock', h.unlock)}</div>`}
+    </div>`;
+  }).join('')}</div></section>${nav('rhangar')}`;
+  ui.querySelectorAll('canvas[data-rheli]').forEach((c) => heliCanvas(c, rescueHeli(c.dataset.rheli).look, 0.95));
+  $('#rh-' + cur)?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 function welcome() {
   ui.innerHTML = `<div class="overlay center"><div class="sheet col">
@@ -385,6 +402,7 @@ ui.addEventListener('click', (e) => {
     if (!buy(save, h)) return toast(t('notEnough'));
     save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
+  if (d.rheliSel) { save.heliRescue.heli = d.rheliSel; persist(); snd.preview(rescueHeli(d.rheliSel)); setDemo(); return rhangar(); }
   if (d.heliSel) { save.heli = d.heliSel; persist(); snd.preview(heliOf(d.heliSel)); setDemo(S.levelId); return hangar(); }
   if (d.diff) {
     save.settings.diff = d.diff; persist();
