@@ -38,5 +38,36 @@ export function makeHazard(hz, L) {
       },
     };
   }
+  if (hz.type === 'flyer') {
+    // Oiseau (ou chauve-souris) qui fait des allers-retours à altitude fixe entre x0 et x1.
+    const span = hz.x1 - hz.x0, sp = hz.speed ?? 60;
+    const st = (t) => { const u = ((t * sp) / span + (hz.phase ?? 0)) % 2; return { x: hz.x0 + span * (u < 1 ? u : 2 - u), dir: u < 1 ? 1 : -1 }; };
+    return {
+      kind: 'hazard', dyn: 1, x: (hz.x0 + hz.x1) / 2, minX: hz.x0 - 16, maxX: hz.x1 + 16, flyY: hz.y,
+      shapesAt(t) { return [{ c: [st(t).x, hz.y, 9], hz: 10 }]; },
+      safeAt(t, y, x) { return Math.abs(hz.y - y) > 46 || Math.abs(st(t).x - x) > 90; },
+      draw(c, t, time, def) {
+        const s = st(t), f = Math.sin(time * 10 + hz.x0) * 9;
+        c.save(); c.translate(s.x, hz.y); c.scale(s.dir, 1);
+        c.fillStyle = hz.col || def.obs; c.beginPath(); c.ellipse(0, 0, 10, 4.5, 0, 0, TAU); c.fill();
+        c.beginPath(); c.moveTo(-3, 0); c.lineTo(-1, -7 - f); c.lineTo(13, -f * 1.2 - 4); c.lineTo(5, 0); c.fill();
+        c.fillStyle = def.accent; c.beginPath(); c.moveTo(9, -1.5); c.lineTo(15, 0.5); c.lineTo(9, 1.5); c.fill();
+        c.restore();
+      },
+    };
+  }
   return null;
+}
+
+// Plaque de glace dérivante servant de zone de pose : la zone (pad) se déplace avec elle.
+export function makeFloe(pad, L) {
+  const w = pad.w + 26;
+  return {
+    kind: 'hazard', dyn: 1, x: (pad.floe.x0 + pad.floe.x1) / 2, minX: pad.floe.x0 - w, maxX: pad.floe.x1 + w,
+    shapesAt() { return [{ p: [pad.x - w / 2, pad.y, pad.x + w / 2, pad.y, pad.x + w / 2 - 8, pad.y + 22, pad.x - w / 2 + 8, pad.y + 22] }]; },
+    draw(c, t, time, def) {
+      c.fillStyle = '#f4faff'; c.beginPath(); c.moveTo(pad.x - w / 2, pad.y); c.lineTo(pad.x + w / 2, pad.y); c.lineTo(pad.x + w / 2 - 8, pad.y + 22); c.lineTo(pad.x - w / 2 + 8, pad.y + 22); c.fill();
+      c.fillStyle = 'rgba(120,170,220,.5)'; c.fillRect(pad.x - w / 2 + 4, pad.y + 9, w - 8, 3);
+    },
+  };
 }

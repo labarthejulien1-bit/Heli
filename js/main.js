@@ -13,7 +13,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.3.0';
+const VERSION = '2.4.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -411,7 +411,7 @@ function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorS
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
   const dry = S.game.fuel <= 0, canRe = S.game.D.respawn && S.game.padIdx > 0; // mode facile : reprise au dernier ravitaillement
-  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${S.game.failReason === 'tide' ? t('r_tide') : dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${levelTitle()}</p>
+  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${S.game.failReason === 'tide' ? t('r_tide') : S.game.failReason === 'fire' ? t('r_fire') : dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${levelTitle()}</p>
     ${canRe ? `<button class="btn primary" data-act="respawn">${t('fromPad')}</button>` : ''}
     <button class="btn ${canRe ? '' : 'primary'}" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button></div></div>`;
@@ -583,6 +583,9 @@ function events() {
       case 'aboard': R.spawn(e.x, e.y - 20, 10, { a: -Math.PI / 2, spread: 2.4, v: 70, col: '#7dffb0', life: 0.6 }); if (play) { toast('● ' + t('r_aboard')); snd.sfx('cp'); vibe(25); } break;
       case 'saved': R.spawn(e.x, e.y, 12, { a: -Math.PI / 2, spread: 2.2, v: 80, col: '#ff8fa3', life: 0.8 }); if (play) { toast('♥ ' + t('r_thanks')); snd.sfx('repair'); vibe(20); } break;
       case 'bark': if (play) snd.sfx('bark'); break;
+      case 'quake': R.shake = 30; if (play) { snd.sfx('thunder'); vibe([40, 30, 40, 30, 60]); } break;
+      case 'beep': if (play) snd.tone(e.d < 300 ? 1100 : 820, 0.06, 'square', 0.09); break;
+      case 'found': R.spawn(e.x, e.y - 10, 14, { a: -Math.PI / 2, spread: 2.6, v: 90, col: '#ffffff', life: 0.6 }); if (play) { toast('● ' + t('r_found')); snd.sfx('cp'); vibe(25); } break;
       case 'splash': R.spawn(e.x, e.y, 18, { a: -Math.PI / 2, spread: 1.6, v: 190, col: 'rgba(220,245,255,.8)', life: 0.7, g: 420, size: 2 }); if (play) snd.sfx('splash'); break;
       case 'cancel': if (play) { toast(t('r_cancel')); snd.sfx('bump'); } break;
       case 'note': if (play) toast(t(e.kind === 'needBig' ? 'r_needBig' : 'r_full')); break;

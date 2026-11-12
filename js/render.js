@@ -202,6 +202,25 @@ export class Renderer {
     // --- premier plan (écran)
     c.setTransform(s, 0, 0, s, 0, 0);
     this.weather(c, def, vh, time, dt, camDX);
+    if (L.smoke) { // fumée ou cendres : nappes sombres qui dérivent et masquent une partie de la vue
+      c.fillStyle = `rgba(30,22,20,${0.5 * L.smoke.density})`;
+      for (let k = 0; k < 7; k++) {
+        const sx2 = ((((hash(k, 21) * 700 - camX * 0.5 - time * (14 + k * 3)) % 700) + 700) % 700) - 150, sy2 = 120 + hash(k, 22) * (vh - 320), w2 = 110 + hash(k, 23) * 90;
+        c.beginPath(); c.ellipse(sx2, sy2, w2, w2 * 0.42, 0, 0, TAU); c.fill();
+      }
+    }
+    if (L.rescue && L.rescue.cfg.radar && g.vs) { // détecteur de victimes : flèche vers la plus proche encore ensevelie
+      let best = null;
+      for (const v of g.vs) if (v.state === 'wait' && !v.found && (!best || Math.abs(v.px - h.x) < Math.abs(best.px - h.x))) best = v;
+      if (best) {
+        const d = best.px - h.x, pulse = 0.55 + 0.45 * Math.sin(time * clamp(1800 / Math.abs(d), 3, 22)), ax = VW / 2 + Math.sign(d) * 60, ay = 150;
+        c.fillStyle = 'rgba(12,13,32,.6)'; c.beginPath(); c.arc(VW / 2, ay, 30, 0, TAU); c.fill();
+        c.strokeStyle = `rgba(110,231,160,${pulse})`; c.lineWidth = 2.5; c.beginPath(); c.arc(VW / 2, ay, 12 + 14 * ((time * 1.4) % 1), 0, TAU); c.stroke();
+        c.fillStyle = '#6ee7a0'; c.beginPath(); c.arc(VW / 2, ay, 4, 0, TAU); c.fill();
+        c.beginPath(); c.moveTo(ax + Math.sign(d) * 12, ay); c.lineTo(ax - Math.sign(d) * 4, ay - 11); c.lineTo(ax - Math.sign(d) * 4, ay + 11); c.fill();
+        c.font = 'bold 13px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.fillText(Math.round(Math.abs(d) / 10) + ' m', VW / 2, ay + 50);
+      }
+    }
     if (def.grain && hi) { // grain de papier (styles aquarelle et papier découpé)
       if (!this._grain) {
         const g2 = document.createElement('canvas'); g2.width = g2.height = 96; const q = g2.getContext('2d'), im = q.createImageData(96, 96);
@@ -279,11 +298,21 @@ export class Renderer {
       else if (st === 'dunes') hh = amp * (0.12 + 0.8 * Math.abs(Math.sin(u / 200 + seed * 1.3)) * (0.45 + 0.55 * noise1(u / 520, seed)));
       else if (st === 'spires') hh = amp * (0.25 * fbm(u / 200, seed) + 1.15 * Math.pow(noise1(u / 46, seed + 3), 3));
       else { const n = fbm(u / 210, seed, 2); hh = amp * (Math.floor(n * 6) / 6 * 1.1 + 0.15 * n); }
-      c.lineTo(x, base - hh + amp * 0.3);
+      const ly = style === 'pixel' ? Math.round((base - hh + amp * 0.3) / 7) * 7 : base - hh + amp * 0.3;
+      if (style === 'pixel' && x > -step) c.lineTo(x, this._py ?? ly); // marche d'escalier : façon pixel art
+      this._py = ly;
+      c.lineTo(x, ly);
       if (this._ridge) this._ridge.push(x, base - hh + amp * 0.3);
     }
     c.lineTo(VW + 8, vh); c.fill();
     c.globalAlpha = 1;
+    if (style === 'hatch' && !this._inShadow) { // gravure : hachures obliques dans la matière de la couche
+      c.save(); c.clip();
+      c.strokeStyle = 'rgba(40,24,10,.22)'; c.lineWidth = 1; c.beginPath();
+      const off = -((u0 * 1) % 9);
+      for (let hx = off - vh; hx < VW + 20; hx += 9) { c.moveTo(hx, base - amp); c.lineTo(hx + vh * 0.6, base - amp + vh * 0.6); }
+      c.stroke(); c.restore();
+    }
     if (this._ridge) { // facettes : pans alternés clairs et sombres sous la crête, arêtes nettes
       const P = this._ridge;
       for (let k = 0; k + 5 < P.length; k += 4) {
@@ -351,7 +380,7 @@ export class Renderer {
     for (const pad of L.pads) {
       if (pad.kind === 'zone') { // zone de pose d'une victime : cercle « H » en pointillés, à même le sol
         if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
-        const here = g.onPad === pad.i, left = g.vs && g.vs.some((v) => v.zone === pad.i && (v.state === 'wait' || v.state === 'walk'));
+        const here = g.onPad === pad.i, left = g.vs && g.vs.some((v) => v.zone === pad.i && (v.state === 'wait' || v.state === 'walk') && (v.found || !L.rescue.cfg.radar));
         if (!left) continue;
         c.strokeStyle = rgba(here ? '#6ee7a0' : '#ffffff', 0.85); c.lineWidth = 2; c.setLineDash([7, 6]); c.lineDashOffset = -time * 14;
         c.beginPath(); c.ellipse(pad.x, pad.y + 1, pad.w / 2, 7, 0, 0, TAU); c.stroke(); c.setLineDash([]);
@@ -424,6 +453,20 @@ export class Renderer {
       for (let x = Math.floor(x0 / 16) * 16; x <= x1 + 16; x += 16) c.lineTo(x, wy + Math.sin(x * 0.045 + time * 1.8) * 2.4);
       c.stroke();
     }
+    if (L.fire) { // front de feu : flammes dansantes, lueur, et terre brûlée derrière lui
+      const F = L.fire, fx = F.x + F.speed * g.t, gy = L.groundAt(fx), back = F.speed < 0 ? 1 : -1;
+      if (fx > x0 - 400 && fx < x1 + 400) {
+        c.fillStyle = 'rgba(20,6,4,.45)'; c.fillRect(back > 0 ? fx : x0, 0, back > 0 ? x1 - fx + 40 : fx - x0, 900);
+        const gl = c.createRadialGradient(fx, gy - 80, 10, fx, gy - 80, 300);
+        gl.addColorStop(0, 'rgba(255,150,40,.55)'); gl.addColorStop(1, 'rgba(255,90,20,0)');
+        c.fillStyle = gl; c.fillRect(fx - 300, gy - 380, 600, 500);
+        for (let k = 0; k < 9; k++) {
+          const px = fx + (k - 4) * 9 + Math.sin(time * 5 + k) * 5, hgt = (F.height || 230) * (0.45 + 0.55 * Math.abs(Math.sin(time * 3.3 + k * 1.7)));
+          c.fillStyle = k % 2 ? '#ff5a1f' : '#ffb703';
+          c.beginPath(); c.moveTo(px - 13, gy + 6); c.quadraticCurveTo(px - 8, gy - hgt * 0.5, px, gy - hgt); c.quadraticCurveTo(px + 8, gy - hgt * 0.5, px + 13, gy + 6); c.fill();
+        }
+      }
+    }
     for (const q of L.gusts) { // rafale : traînées d'embruns pendant qu'elle souffle
       if (q.x > x1 || q.x + q.w < x0 || ((g.t / q.period + (q.phase || 0)) % 1) >= q.on) continue;
       c.strokeStyle = rgba('#ffffff', 0.5); c.lineWidth = 1.5; c.lineCap = 'round'; c.beginPath();
@@ -440,6 +483,7 @@ export class Renderer {
     }
     for (const v of g.vs) {
       if (v.state === 'aboard' || v.state === 'saved' || v.px < x0 - 30 || v.px > x1 + 30) continue;
+      if (L.rescue.cfg.radar && v.state === 'wait' && !v.found) continue; // enseveli : invisible tant que le détecteur ne l'a pas trouvé
       const gy = L.groundAt(v.px), moving = v.state === 'walk' && Math.abs(g.heli.x - v.px) > 9 || v.state === 'out' || (v.state === 'wait' && Math.abs(v.px - v.x) > 1);
       const face = v.state === 'out' ? 1 : Math.sign(g.heli.x - v.px) || 1;
       const py = v.state === 'out' || Math.abs(v.px - L.pads[v.zone].x) > L.pads[v.zone].w / 2 + 4 ? gy : L.pads[v.zone].y; // sur un toit, on reste à hauteur du toit

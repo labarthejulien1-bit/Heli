@@ -19,7 +19,8 @@ next ctlTitle ctl1 ctl2 ctl3 landTitle land1 land2 land3 shopTitle shop1 shop2 s
 home adventure map soon enter
 places r_fuel r_wind r_unlock p_agile p_alt p_water p_wind p_heavy
 r_lvl1 r_uni1 r_victims r_reco r_aboard r_thanks r_full r_needBig r_cancel r_done r_star1 r_star2 r_star3 r_tut1 r_tut2 r_tut3 r_tut4 r_v_hiker
-r_lvl2 r_lvl3 r_lvl4 r_lvl5 r_uni2 r_uni3 r_uni4 r_uni5 r_v_dog r_v_walker r_v_climber r_v_resident r_v_cat r_tide r_missions`.split(/\s+/);
+r_lvl2 r_lvl3 r_lvl4 r_lvl5 r_uni2 r_uni3 r_uni4 r_uni5 r_v_dog r_v_walker r_v_climber r_v_resident r_v_cat r_tide r_missions
+r_lvl6 r_lvl7 r_lvl8 r_lvl9 r_lvl10 r_lvl11 r_lvl12 r_uni6 r_uni7 r_uni8 r_uni9 r_uni10 r_uni11 r_uni12 r_v_forester r_v_deer r_v_fawn r_v_biologist r_v_orangutan r_v_explorer r_v_husky r_v_volcanologist r_v_child r_v_skier r_fire r_found`.split(/\s+/);
 
 const T = {
   fr: `Jouer|Niveaux|Hangar|Profil|Réglages|Niveau|Pilote|Maîtrise la gravité|Bienvenue, pilote|Choisis ton nom de pilote. Ta progression est enregistrée uniquement sur cet appareil.|Ton nom de pilote|Décoller
@@ -41,7 +42,8 @@ Suivant|Les commandes|Appuie : le rotor tourne, l'appareil monte|Relâche : la g
 Accueil|Aventure|Carte|Bientôt disponible|Entrer
 Places|Autonomie|Tenue au vent|Réussis le niveau {v} de Heli Rescue|Très agile, idéal pour apprendre|Aucune perte de portance en altitude|Peut se poser sur l'eau|Très stable dans le vent, projecteur pour la nuit|Seul à pouvoir porter les gros animaux
 Premier envol|Alpage d'été|À secourir|Appareil conseillé|À bord|Merci !|Appareil complet : retourne à la base|Il faut le Tandem pour cet animal|Embarquement annulé : reste posé|Mission accomplie !|Tout le monde est sauf|En moins de {v}|{v} choc au plus|Pose-toi dans le cercle, près du randonneur|Reste posé pendant qu'il monte à bord|Glisse le pouce à gauche pour faire demi-tour, puis rentre à la base|Pose-toi sur la base pour le débarquer|Randonneur
-Le chien égaré|Marée montante|Crevasse|Toits sous l'eau|Forêt de sapins|Côte et falaises|Glacier de haute montagne|Village inondé|Chien|Promeneur|Alpiniste|Habitante|Chat|L'eau est montée trop vite|Missions`,
+Le chien égaré|Marée montante|Crevasse|Toits sous l'eau|Forêt de sapins|Côte et falaises|Glacier de haute montagne|Village inondé|Chien|Promeneur|Alpiniste|Habitante|Chat|L'eau est montée trop vite|Missions
+Soif de canyon|Rideau de feu|Canopée|Banquise|Souffle du volcan|Répliques|Avalanche|Canyon désertique|Forêt en feu|Jungle tropicale|Arctique|Volcan en éruption|Village après un séisme|Station de ski, hors-piste|Forestier|Biche|Faon|Biologiste|Bébé orang-outan|Explorateur|Husky|Volcanologue|Enfant|Skieur|Le feu a atteint la zone|Victime localisée`,
   en: `Play|Levels|Hangar|Profile|Settings|Level|Pilot|Master gravity|Welcome, pilot|Choose your pilot name. Your progress is saved on this device only.|Your pilot name|Take off
 Alpine Dawn|Misty Forest|Ochre Canyon|Turquoise Coast|Dusk Metropolis|Frozen Peaks|Temple Valley|Heart of the Volcano|Neon Night|Sky Archipelago
 Finish the level|Collect {v}% of the coins|Finish in under {v}|Finish with at least {v}% armour|{v} collisions at most|Finish without crashing|Soft landing|Fly through every ring|Earn {v} medals
@@ -61,7 +63,8 @@ Next|Controls|Press: the rotor spins and the aircraft climbs|Release: gravity pu
 Home|Adventure|Map|Coming soon|Enter
 Seats|Range|Wind handling|Complete Heli Rescue level {v}|Very agile, ideal for learning|No loss of lift at altitude|Can land on water|Very stable in wind, searchlight for night flights|The only one able to carry large animals
 First Flight|Summer pasture|To rescue|Recommended aircraft|On board|Thank you!|Aircraft full: return to base|This animal needs the Tandem|Boarding cancelled: stay landed|Mission accomplished!|Everyone is safe|In under {v}|{v} knock at most|Land in the circle, next to the hiker|Stay landed while he climbs aboard|Slide your thumb left to turn around, then head back to base|Land on the base to drop him off|Hiker
-The Lost Dog|Rising Tide|Crevasse|Rooftops Under Water|Pine forest|Coast and cliffs|High mountain glacier|Flooded village|Dog|Walker|Climber|Resident|Cat|The water rose too fast|Missions`,
+The Lost Dog|Rising Tide|Crevasse|Rooftops Under Water|Pine forest|Coast and cliffs|High mountain glacier|Flooded village|Dog|Walker|Climber|Resident|Cat|The water rose too fast|Missions
+Canyon Thirst|Wall of Fire|Canopy|Pack Ice|Breath of the Volcano|Aftershocks|Avalanche|Desert canyon|Forest on fire|Tropical jungle|Arctic|Erupting volcano|Village after an earthquake|Ski resort, off-piste|Forester|Doe|Fawn|Biologist|Baby orangutan|Explorer|Husky|Volcanologist|Child|Skier|The fire reached the zone|Victim located`,
   es: `Jugar|Niveles|Hangar|Perfil|Ajustes|Nivel|Piloto|Domina la gravedad|Bienvenido, piloto|Elige tu nombre de piloto. Tu progreso se guarda solo en este dispositivo.|Tu nombre de piloto|Despegar
 Amanecer alpino|Bosque de niebla|Cañón ocre|Costa turquesa|Metrópolis al atardecer|Picos helados|Valle de los templos|Corazón del volcán|Noche de neón|Archipiélago celeste
 Terminar el nivel|Recoger el {v} % de las monedas|Terminar en menos de {v}|Terminar con al menos {v} % de blindaje|{v} colisiones como máximo|Terminar sin estrellarse|Aterrizaje suave|Atravesar todos los anillos|Conseguir {v} medallas
@@ -81,7 +84,8 @@ Siguiente|Los controles|Pulsa: el rotor gira y el aparato sube|Suelta: la graved
 Inicio|Aventura|Mapa|Próximamente|Entrar
 Plazas|Autonomía|Resistencia al viento|Completa el nivel {v} de Heli Rescue|Muy ágil, ideal para aprender|Sin pérdida de sustentación en altitud|Puede posarse en el agua|Muy estable con viento, foco para la noche|El único capaz de llevar animales grandes
 Primer vuelo|Pasto de verano|A rescatar|Aparato recomendado|A bordo|¡Gracias!|Aparato completo: vuelve a la base|Este animal necesita el Tandem|Embarque cancelado: quédate posado|¡Misión cumplida!|Todos a salvo|En menos de {v}|{v} golpe como máximo|Pósate en el círculo, junto al excursionista|Quédate posado mientras sube a bordo|Desliza el pulgar a la izquierda para dar media vuelta y vuelve a la base|Pósate en la base para desembarcarlo|Excursionista
-El perro perdido|Marea creciente|Grieta|Tejados bajo el agua|Bosque de abetos|Costa y acantilados|Glaciar de alta montaña|Pueblo inundado|Perro|Paseante|Alpinista|Vecina|Gato|El agua subió demasiado rápido|Misiones`,
+El perro perdido|Marea creciente|Grieta|Tejados bajo el agua|Bosque de abetos|Costa y acantilados|Glaciar de alta montaña|Pueblo inundado|Perro|Paseante|Alpinista|Vecina|Gato|El agua subió demasiado rápido|Misiones
+Sed de cañón|Cortina de fuego|Dosel|Banquisa|Aliento del volcán|Réplicas|Avalancha|Cañón desértico|Bosque en llamas|Selva tropical|Ártico|Volcán en erupción|Pueblo tras un seísmo|Estación de esquí, fuera de pista|Guardabosques|Cierva|Cervatillo|Bióloga|Cría de orangután|Explorador|Husky|Vulcanólogo|Niño|Esquiador|El fuego alcanzó la zona|Víctima localizada`,
   pt: `Jogar|Níveis|Hangar|Perfil|Definições|Nível|Piloto|Domina a gravidade|Bem-vindo, piloto|Escolhe o teu nome de piloto. O teu progresso é guardado apenas neste dispositivo.|O teu nome de piloto|Descolar
 Aurora alpina|Floresta da névoa|Desfiladeiro ocre|Costa turquesa|Metrópole ao entardecer|Picos gelados|Vale dos templos|Coração do vulcão|Noite de néon|Arquipélago celeste
 Terminar o nível|Recolher {v} % das moedas|Terminar em menos de {v}|Terminar com pelo menos {v} % de blindagem|{v} colisões no máximo|Terminar sem se despenhar|Aterragem suave|Atravessar todos os anéis|Obter {v} medalhas
@@ -101,7 +105,8 @@ Seguinte|Os controlos|Prime: o rotor gira e o aparelho sobe|Solta: a gravidade p
 Início|Aventura|Mapa|Em breve|Entrar
 Lugares|Autonomia|Resistência ao vento|Termina o nível {v} de Heli Rescue|Muito ágil, ideal para aprender|Sem perda de sustentação em altitude|Pode pousar na água|Muito estável ao vento, projetor para a noite|O único capaz de levar animais grandes
 Primeiro voo|Pastagem de verão|A resgatar|Aparelho recomendado|A bordo|Obrigado!|Aparelho cheio: regressa à base|Este animal precisa do Tandem|Embarque cancelado: fica pousado|Missão cumprida!|Todos a salvo|Em menos de {v}|{v} choque no máximo|Pousa no círculo, junto ao caminhante|Fica pousado enquanto ele sobe a bordo|Desliza o polegar para a esquerda para dar meia-volta e regressa à base|Pousa na base para o desembarcar|Caminhante
-O cão perdido|Maré a subir|Fenda|Telhados debaixo de água|Floresta de abetos|Costa e falésias|Glaciar de alta montanha|Aldeia inundada|Cão|Passeante|Alpinista|Moradora|Gato|A água subiu depressa demais|Missões`,
+O cão perdido|Maré a subir|Fenda|Telhados debaixo de água|Floresta de abetos|Costa e falésias|Glaciar de alta montanha|Aldeia inundada|Cão|Passeante|Alpinista|Moradora|Gato|A água subiu depressa demais|Missões
+Sede de desfiladeiro|Cortina de fogo|Copa das árvores|Banquisa|Sopro do vulcão|Réplicas|Avalanche|Desfiladeiro desértico|Floresta em chamas|Selva tropical|Ártico|Vulcão em erupção|Aldeia após um sismo|Estância de esqui, fora de pista|Guarda-florestal|Corça|Cria de veado|Bióloga|Bebé orangotango|Explorador|Husky|Vulcanólogo|Criança|Esquiador|O fogo chegou à zona|Vítima localizada`,
   de: `Spielen|Level|Hangar|Profil|Einstellungen|Level|Pilot|Meistere die Schwerkraft|Willkommen, Pilot|Wähle deinen Pilotennamen. Dein Fortschritt wird nur auf diesem Gerät gespeichert.|Dein Pilotenname|Abheben
 Alpenmorgen|Nebelwald|Ockercanyon|Türkisküste|Metropole in der Dämmerung|Eisgipfel|Tal der Tempel|Herz des Vulkans|Neonnacht|Himmelsarchipel
 Level abschließen|{v} % der Münzen einsammeln|In unter {v} abschließen|Mit mindestens {v} % Panzerung abschließen|Höchstens {v} Kollisionen|Ohne Absturz abschließen|Sanfte Landung|Durch alle Ringe fliegen|{v} Medaillen verdienen
@@ -121,7 +126,8 @@ Weiter|Die Steuerung|Drücken: Der Rotor dreht, die Maschine steigt|Loslassen: D
 Start|Abenteuer|Karte|Demnächst verfügbar|Los
 Plätze|Reichweite|Windfestigkeit|Schließe Heli-Rescue-Level {v} ab|Sehr wendig, ideal zum Lernen|Kein Auftriebsverlust in der Höhe|Kann auf dem Wasser landen|Sehr stabil bei Wind, Scheinwerfer für die Nacht|Als einziger kann er große Tiere tragen
 Erster Flug|Sommeralm|Zu retten|Empfohlene Maschine|An Bord|Danke!|Maschine voll: zurück zur Basis|Dieses Tier braucht den Tandem|Einstieg abgebrochen: bleib am Boden|Mission erfüllt!|Alle in Sicherheit|In unter {v}|Höchstens {v} Stoß|Lande im Kreis neben dem Wanderer|Bleib am Boden, während er einsteigt|Wische nach links, um zu wenden, und flieg zur Basis zurück|Lande auf der Basis, um ihn abzusetzen|Wanderer
-Der verirrte Hund|Steigende Flut|Gletscherspalte|Dächer unter Wasser|Tannenwald|Küste und Klippen|Hochgebirgsgletscher|Überflutetes Dorf|Hund|Spaziergänger|Bergsteiger|Bewohnerin|Katze|Das Wasser ist zu schnell gestiegen|Missionen`,
+Der verirrte Hund|Steigende Flut|Gletscherspalte|Dächer unter Wasser|Tannenwald|Küste und Klippen|Hochgebirgsgletscher|Überflutetes Dorf|Hund|Spaziergänger|Bergsteiger|Bewohnerin|Katze|Das Wasser ist zu schnell gestiegen|Missionen
+Durst im Canyon|Feuerwand|Blätterdach|Packeis|Atem des Vulkans|Nachbeben|Lawine|Wüstencanyon|Brennender Wald|Tropischer Dschungel|Arktis|Ausbrechender Vulkan|Dorf nach einem Erdbeben|Skigebiet, abseits der Piste|Förster|Hirschkuh|Kitz|Biologin|Orang-Utan-Baby|Forscher|Husky|Vulkanologe|Kind|Skifahrer|Das Feuer hat die Zone erreicht|Opfer geortet`,
   it: `Gioca|Livelli|Hangar|Profilo|Impostazioni|Livello|Pilota|Domina la gravità|Benvenuto, pilota|Scegli il tuo nome da pilota. I tuoi progressi sono salvati solo su questo dispositivo.|Il tuo nome da pilota|Decolla
 Alba alpina|Foresta delle nebbie|Canyon ocra|Costa turchese|Metropoli al tramonto|Vette ghiacciate|Valle dei templi|Cuore del vulcano|Notte al neon|Arcipelago celeste
 Completa il livello|Raccogli il {v} % delle monete|Finisci in meno di {v}|Finisci con almeno il {v} % di corazza|Massimo {v} collisioni|Finisci senza schiantarti|Atterraggio morbido|Attraversa tutti gli anelli|Ottieni {v} medaglie
@@ -141,7 +147,8 @@ Avanti|I comandi|Premi: il rotore gira e il velivolo sale|Rilascia: la gravità 
 Home|Avventura|Mappa|Prossimamente|Entra
 Posti|Autonomia|Tenuta al vento|Completa il livello {v} di Heli Rescue|Molto agile, ideale per imparare|Nessuna perdita di portanza in quota|Può posarsi sull'acqua|Molto stabile nel vento, faro per la notte|L'unico in grado di portare animali grandi
 Primo volo|Alpeggio estivo|Da soccorrere|Velivolo consigliato|A bordo|Grazie!|Velivolo pieno: torna alla base|Per questo animale serve il Tandem|Imbarco annullato: resta a terra|Missione compiuta!|Tutti in salvo|In meno di {v}|Al massimo {v} urto|Atterra nel cerchio, vicino all'escursionista|Resta a terra mentre sale a bordo|Scorri il pollice a sinistra per fare dietrofront e torna alla base|Atterra sulla base per farlo scendere|Escursionista
-Il cane smarrito|Marea montante|Crepaccio|Tetti sott'acqua|Foresta di abeti|Costa e scogliere|Ghiacciaio d'alta montagna|Villaggio allagato|Cane|Passeggiatore|Alpinista|Abitante|Gatto|L'acqua è salita troppo in fretta|Missioni`,
+Il cane smarrito|Marea montante|Crepaccio|Tetti sott'acqua|Foresta di abeti|Costa e scogliere|Ghiacciaio d'alta montagna|Villaggio allagato|Cane|Passeggiatore|Alpinista|Abitante|Gatto|L'acqua è salita troppo in fretta|Missioni
+Sete di canyon|Muro di fuoco|Volta della foresta|Banchisa|Respiro del vulcano|Scosse di assestamento|Valanga|Canyon desertico|Foresta in fiamme|Giungla tropicale|Artico|Vulcano in eruzione|Villaggio dopo un terremoto|Stazione sciistica, fuoripista|Guardia forestale|Cerva|Cerbiatto|Biologa|Cucciolo di orango|Esploratore|Husky|Vulcanologo|Bambino|Sciatore|Il fuoco ha raggiunto la zona|Vittima localizzata`,
 };
 
 export const KEYS = K;
