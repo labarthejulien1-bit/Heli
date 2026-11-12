@@ -10,8 +10,8 @@ export const BASE_TILT = 14, MIN_TILT = -28, MAX_TILT = 38;
 const HIT = [[2, 0, 11], [-19, -2, 6]]; // cercles de collision (repère de l'appareil)
 const SOFT = 45; // vitesse d'impact sous laquelle on ne subit aucun dégât
 const HARD = 130; // au-delà : gros choc
-// État de l'appareil en points : choc doux = 1, gros choc = 3. Un appareil standard encaisse 6 points (2 gros chocs).
-export const maxHp = (H) => Math.max(4, Math.round((H.armor / 100) * 6));
+// État de l'appareil en points : choc doux = 1, gros choc = 3. Un appareil standard encaisse 7 points (deux gros chocs et un choc doux).
+export const maxHp = (H) => Math.max(5, Math.round((H.armor / 100) * 7));
 // Modes de difficulté : hp = résistance, tank = réservoir, land = vitesse de posé sans dégât,
 // padSafe = aucun dégât en se posant sur un héliport, respawn = reprise au dernier ravitaillement.
 export const DIFF = {
@@ -135,7 +135,11 @@ export class Game {
       const q = L.traffic[i];
       if (this.trafficT[i] < 0) { if (h.x > q.trig) this.trafficT[i] = this.t; continue; }
       const x = this.trafficX(i);
-      if (x > q.trig - 500 && Math.hypot(x - h.x, L.trafficY(x) - h.y) < 25) { this.damage(3, x, h.y); h.vx -= 120; h.vy += 90; }
+      const dx = h.x - x, dy = h.y - q.y, d = Math.hypot(dx, dy);
+      if (x > q.trig - 500 && d < 30) { // corps solide : dégâts et rebond, comme un obstacle du décor
+        this.damage(3, x, q.y);
+        const k = 1 / (d || 1); h.x += dx * k * (30 - d); h.y += dy * k * (30 - d); h.vx = -q.v * 0.6 + dx * k * 120; h.vy = dy * k * 160;
+      }
     }
 
     // Héliports : posé (ou quasi immobile au ras de la plateforme) = ravitaillement, reprise, arrivée.
@@ -288,7 +292,7 @@ export function autopilot(g) {
     }
     if (!safe) { vdes = dist < 80 ? -25 : 25; break; }
   }
-  for (let i = 0; i < L.traffic.length; i++) { const x = g.trafficX(i), q = L.traffic[i]; const qy = L.trafficY((x + h.x) / 2); if (x > h.x - 40 && x < h.x + 330 && ty < qy + 54) ty = qy + 54; }
+  for (let i = 0; i < L.traffic.length; i++) { const x = g.trafficX(i), q = L.traffic[i]; if (x > h.x - 50 && x < h.x + 360 && ty < q.y + 58) ty = q.y + 58; }
   const err = Math.abs(h.y - ty);
   if (err > 70) vdes = Math.min(vdes, 90);
   inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3 - (mod.windX || 0) * 0.16, -24, 32); // compense le vent du niveau

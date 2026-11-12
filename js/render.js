@@ -286,22 +286,23 @@ export class Renderer {
     c.beginPath();
     for (let i = i0; i <= i1; i++) c.lineTo(i * STEP, L.ground[i] + 1);
     c.strokeStyle = rgba(def.rim, 0.75); c.lineWidth = 2.2; c.lineJoin = 'round'; c.stroke();
-    // passages secrets : pénombre du tunnel, puis la voûte dans la matière du sol
+    // passages secrets : pénombre de la galerie, puis la voûte dans la matière du sol
     for (const q of L.tunnels) {
       if (q.x1 < x0 || q.x0 > x1) continue;
-      c.beginPath(); // pénombre limitée à l'intérieur de la colline
-      q.top.forEach((y, i) => c.lineTo(q.x0 + i * STEP, Math.max(y, q.roof)));
-      c.lineTo(q.x1, q.floor); c.lineTo(q.x0, q.floor); c.closePath();
-      c.fillStyle = 'rgba(0,0,10,.34)'; c.fill();
+      const n = q.top.length, X = (i) => q.x0 + i * STEP, has = (i) => q.top[i] < q.roof[i] - 10;
       c.beginPath();
-      q.top.forEach((y, i) => c.lineTo(q.x0 + i * STEP, y));
-      for (let i = q.top.length - 1; i >= 0; i--) c.lineTo(q.x0 + i * STEP, Math.max(q.top[i], q.top[i] < q.roof - 10 ? q.roof : q.top[i]));
+      for (let i = 0; i < n; i++) c.lineTo(X(i), Math.max(q.top[i], q.roof[i]));
+      for (let i = n - 1; i >= 0; i--) c.lineTo(X(i), L.ground[Math.round(q.x0 / STEP) + i] + 1);
+      c.closePath(); c.fillStyle = 'rgba(0,0,10,.36)'; c.fill();
+      c.beginPath();
+      for (let i = 0; i < n; i++) c.lineTo(X(i), q.top[i]);
+      for (let i = n - 1; i >= 0; i--) c.lineTo(X(i), has(i) ? q.roof[i] : q.top[i]);
       c.closePath(); c.fillStyle = gr; c.fill();
-      c.beginPath(); q.top.forEach((y, i) => c.lineTo(q.x0 + i * STEP, y + 1));
+      c.beginPath(); for (let i = 0; i < n; i++) c.lineTo(X(i), q.top[i] + 1);
       c.strokeStyle = rgba(def.rim, 0.75); c.lineWidth = 2.2; c.stroke();
       c.beginPath(); let pen = false;
-      q.top.forEach((y, i) => { if (y < q.roof - 10) { c[pen ? 'lineTo' : 'moveTo'](q.x0 + i * STEP, q.roof); pen = true; } else pen = false; });
-      c.strokeStyle = rgba(def.rim, 0.3); c.lineWidth = 1.5; c.stroke();
+      for (let i = 0; i < n; i++) { if (has(i)) { c[pen ? 'lineTo' : 'moveTo'](X(i), q.roof[i]); pen = true; } else pen = false; }
+      c.strokeStyle = rgba(def.rim, 0.35); c.lineWidth = 1.6; c.lineJoin = 'round'; c.stroke();
     }
     // plafond (grottes)
     let open = false;
@@ -367,13 +368,13 @@ export class Renderer {
       if (!(x > camX - 70)) continue;
       if (x > camX + VW + 30) {
         if (Math.sin(time * 14) > -0.2) {
-          const wy = L.trafficY(camX + VW), wx = camX + VW - 14;
+          const wy = q.y, wx = camX + VW - 14;
           c.fillStyle = '#ff5a5a'; c.beginPath(); c.moveTo(wx - 9, wy); c.lineTo(wx + 5, wy - 10); c.lineTo(wx + 5, wy + 10); c.fill();
           c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(wx - 4, wy); c.lineTo(wx + 2.5, wy - 5); c.lineTo(wx + 2.5, wy + 5); c.fill();
         }
         continue;
       }
-      const y = L.trafficY(x) + Math.sin(time * 2 + q.seed * 9) * 2;
+      const y = q.y;
       c.save(); c.translate(x, y); c.scale(-1, 1);
       if (q.kind === 'plane') {
         const col = mix(def.obs, def.rim, 0.22);
@@ -430,7 +431,7 @@ export class Renderer {
         case 'round': {
           const r = w / 2;
           c.fillRect(x - 3, top + r, 6, h);
-          c.beginPath(); c.arc(x, top + r, r, 0, 7); c.arc(x - r * 0.55, top + r * 1.35, r * 0.6, 0, 7); c.arc(x + r * 0.5, top + r * 1.4, r * 0.55, 0, 7); c.fill();
+          for (const [dx, dy, k] of [[0, 1, 1], [-0.55, 1.35, 0.6], [0.5, 1.4, 0.55]]) { c.beginPath(); c.arc(x + r * dx, top + r * dy, r * k, 0, TAU); c.fill(); }
           c.fillStyle = rgba(def.rim, 0.14); c.beginPath(); c.arc(x - r * 0.25, top + r * 0.7, r * 0.55, 0, 7); c.fill();
           break;
         }
@@ -586,24 +587,26 @@ export class Renderer {
       }
       return;
     }
-    if (o.kind === 'shelter' && o.st === 'building') {
-      const l = x - 100, top = o.y, neon = def.extras.includes('neon');
-      c.fillRect(l, top, 200, 62); c.fillRect(l + 176, top, 24, o.g + 24 - top); c.fillRect(l + 60, top - 12, 3, 12);
-      c.fillStyle = rgba('#000000', 0.25); c.fillRect(l, top + 62, 176, o.g - top - 62);
-      for (let r = 0; r < 3; r++) for (let k = 0; k < 9; k++) {
-        const hv = hash(r * 11 + k, o.v * 60);
-        if (hv > 0.4) { c.fillStyle = rgba(neon && hv > 0.75 ? def.rim : def.accent, 0.75); c.fillRect(l + 8 + k * 21, top + 9 + r * 17, 13, 7); }
+    if (o.kind === 'shelter') { // abri traversant : une dalle portée par deux piliers d'arrière-plan (on passe devant)
+      const l = x - 100, top = o.y, built = o.st === 'building', neon = def.extras.includes('neon');
+      c.fillStyle = mix(def.obs, '#000000', 0.35);
+      for (const px of [l + 4, l + 182]) c.fillRect(px, top + 60, 14, o.g + 24 - top - 60); // piliers (décor, sans collision)
+      c.fillStyle = rgba('#000000', 0.2); c.fillRect(l + 18, top + 62, 164, o.g - top - 62);
+      c.fillStyle = col;
+      if (built) {
+        c.fillRect(l, top, 200, 62); c.fillRect(l + 60, top - 12, 3, 12);
+        for (let r = 0; r < 3; r++) for (let k = 0; k < 9; k++) {
+          const hv = hash(r * 11 + k, o.v * 60);
+          if (hv > 0.4) { c.fillStyle = rgba(neon && hv > 0.75 ? def.rim : def.accent, 0.75); c.fillRect(l + 8 + k * 21, top + 9 + r * 17, 13, 7); }
+        }
+        c.fillStyle = neon ? def.rim : rgba(def.rim, 0.5); c.fillRect(l, top, 200, 2); c.fillRect(l, top + 60, 200, 2);
+      } else {
+        const j = (k) => hash(k, o.v * 91) * 8;
+        c.beginPath(); c.moveTo(l - 5, top + 46); c.lineTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.lineTo(l + 205, top + 44);
+        c.quadraticCurveTo(l + 196, top + 62, l + 180, top + 62); c.lineTo(l + 20, top + 62); c.quadraticCurveTo(l + 2, top + 62, l - 5, top + 46); c.fill();
+        c.strokeStyle = rgba(def.rim, 0.5); c.lineWidth = 2; c.beginPath(); c.moveTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.stroke();
+        c.strokeStyle = rgba(def.rim, 0.25); c.lineWidth = 1.5; c.beginPath(); c.moveTo(l + 20, top + 62); c.lineTo(l + 180, top + 62); c.stroke();
       }
-      c.fillStyle = neon ? def.rim : rgba(def.rim, 0.5); c.fillRect(l, top, 200, 2); c.fillRect(l, top + 60, 176, 2);
-      return;
-    }
-    if (o.kind === 'shelter') {
-      const l = x - 100, top = o.y, j = (k) => hash(k, o.v * 91) * 8;
-      c.beginPath(); c.moveTo(l - 6, top + 50); c.lineTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.lineTo(l + 204, o.g + 24);
-      c.lineTo(l + 176, o.g + 24); c.lineTo(l + 176, top + 62); c.lineTo(l, top + 62); c.fill();
-      c.fillStyle = rgba('#000000', 0.22); c.fillRect(l, top + 62, 176, o.g - top - 62);
-      c.strokeStyle = rgba(def.rim, 0.5); c.lineWidth = 2; c.beginPath(); c.moveTo(l, top + 8 + j(1)); c.lineTo(l + 50, top - 4 + j(2)); c.lineTo(l + 120, top - 6); c.lineTo(l + 196, top + 2 + j(3)); c.stroke();
-      c.strokeStyle = rgba(def.rim, 0.25); c.lineWidth = 1.5; c.beginPath(); c.moveTo(l, top + 62); c.lineTo(l + 176, top + 62); c.stroke();
       return;
     }
     if (o.kind === 'hang') {
@@ -624,13 +627,9 @@ export class Renderer {
           c.fillStyle = mix(col, def.rim, 0.3);
           for (let y = 30; y < bot; y += 46) { const sg = ((y / 46) & 1) ? 1 : -1; c.beginPath(); c.ellipse(x + sg * 7, y, 7, 3.4, sg * 0.6, 0, 7); c.fill(); }
           break;
-        case 'cloud': { // cumulonimbus : masse qui s'élargit vers le haut, volutes éclairées, base sombre et rideau de pluie
+        case 'cloud': { // masse nuageuse sombre : s'élargit vers le haut, volutes éclairées, base plate
           const r = w * 0.3, cc = mix(def.ground, '#5d6478', 0.6), hl = mix(cc, '#ffffff', 0.3), dk = mix(cc, '#000000', 0.3);
           const puff = (px, py, pr) => { c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill(); };
-          // pluie sous la base
-          c.strokeStyle = rgba('#dfe8ff', 0.28); c.lineWidth = 1; c.beginPath();
-          for (let k = 0; k < 9; k++) { const rx = x - w * 0.36 + (k / 8) * w * 0.72, ph = ((time * 1.6 + hash(k, o.v * 7)) % 1); c.moveTo(rx, bot + ph * 60); c.lineTo(rx - 3, bot + ph * 60 + 12); }
-          c.stroke();
           c.fillStyle = cc; c.fillRect(x - w * 0.36, -80, w * 0.72, bot - r + 80);
           for (let y = bot - r * 1.6, k = 0; y > -60; y -= r * 0.85, k++) {
             const grow = 1 + 0.5 * Math.min(1, (bot - y) / 260), pr = r * (0.62 + 0.2 * hash(k, o.v * 31)) * grow;

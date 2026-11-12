@@ -154,25 +154,35 @@ export function generateLevel(def) {
   const tunnels = [];
   {
     const bonus = secs.filter((q) => q.type === 'fuel' && (q.variant === 'trees' || q.variant === 'cave')).length;
-    const want = Math.min(def.id === 1 ? 1 : 2, 3 - bonus), H = 76;
+    const want = Math.min(def.id === 1 ? 1 : 2, 3 - bonus);
     for (const q of secs) {
       if (tunnels.length >= want || !['peaks', 'hills'].includes(q.type)) continue;
       const i0 = Math.ceil((q.x0 + 60) / STEP), i1 = Math.floor((q.x1 - 60) / STEP);
       let best = null;
       for (let p = i0 + 12; p < i1 - 12; p++) {
         if (ground[p] > ground[p - 1] || ground[p] > ground[p + 1]) continue; // sommet local
-        const floor = Math.min(ground[p] + 180, 716);
+        const floor = Math.min(ground[p] + 190, 700);
         let l = p, r = p;
         while (l > i0 && ground[l] < floor) l--;
         while (r < i1 && ground[r] < floor) r++;
         const w = (r - l) * STEP;
-        if (ground[l] < floor || ground[r] < floor || w < 200 || w > 600 || floor - ground[p] < 125) continue;
+        if (ground[l] < floor || ground[r] < floor || w < 230 || w > 640 || floor - ground[p] < 135) continue;
         if (!best || floor - ground[p] > best.depth) best = { l, r, p, floor, depth: floor - ground[p] };
       }
       if (!best) continue;
-      const top = Array.from(ground.subarray(best.l, best.r + 1));
-      for (let i = best.l; i <= best.r; i++) ground[i] = best.floor;
-      tunnels.push({ x0: best.l * STEP, x1: best.r * STEP, floor: best.floor, roof: best.floor - H, top, cx: ((best.l + best.r) / 2) * STEP });
+      const top = Array.from(ground.subarray(best.l, best.r + 1)), n = top.length, roof = new Array(n), sd = def.seed + best.l;
+      const ph = fbm(best.l / 7, sd) * 6, turns = 1.2 + fbm(best.l / 3, sd + 4) * 1.2;
+      for (let k = 0; k < n; k++) {
+        const u = k / (n - 1), edge = Math.min(1, u / 0.2, (1 - u) / 0.2), e = edge * edge * (3 - 2 * edge);
+        // galerie : axe sinueux, hauteur variable (cavités), bouche évasée
+        const mid = best.floor - 44 + e * (20 * Math.sin(u * turns * 6.283 + ph) + 16 * (fbm(u * 5, sd + 9) - 0.5));
+        const half = 38 + 16 * fbm(u * 4.2, sd + 15) + 5 * fbm(u * 17, sd + 21, 2) + (1 - e) * 22;
+        const fl = mid + half, orig = top[k];
+        ground[best.l + k] = Math.max(orig, fl * e + Math.max(orig, best.floor) * (1 - e)); // raccord progressif avec le flanc
+        roof[k] = mid - half;
+      }
+      const mi = (n / 2) | 0;
+      tunnels.push({ x0: best.l * STEP, x1: best.r * STEP, top, roof, cx: (best.l + mi) * STEP, cy: (ground[best.l + mi] + roof[mi]) / 2 + 10 });
     }
   }
 
@@ -254,13 +264,13 @@ export function generateLevel(def) {
           items.push({ type: 'star', x, y: gy - 30 });
           pad = { x, y: gy, w: Math.max(50, 66 * shrink) };
         } else if (v === 'cave') {
-          // abri ouvert à gauche : entrer sous la dalle, se poser, ressortir en marche arrière
+          // abri traversant : entrer sous la dalle d'un côté, se poser, ressortir de l'autre
           const clr = 88 - 2 * eid, top = gy - clr - 62;
           const built = ['building', 'neon', 'pagoda', 'lighthouse', 'castle', 'container', 'chimney', 'monolith'].includes(th.pillar[0]);
           push({ kind: 'shelter', st: built ? 'building' : 'rock', x, y: top, clr, w: 200, g: gy, minX: x - 100, maxX: x + 100,
-            shapes: [{ p: rectPoly(x - 100, top, 200, 62) }, { p: rectPoly(x + 76, top, 24, gy + 24 - top) }] });
-          items.push({ type: 'star', x: x + 22, y: gy - 24 }); // au fond de l'abri : se poser suffit à la prendre
-          pad = { x: x + 4, y: gy, w: 84 * shrink };
+            shapes: [{ p: rectPoly(x - 100, top, 200, 62) }] });
+          items.push({ type: 'star', x, y: gy - 26 }); // sous la dalle : se poser suffit à la prendre
+          pad = { x, y: gy, w: 84 * shrink };
         } else pad = { x, y: gy, w: 130 * shrink };
         pads.push({ ...pad, kind: 'fuel', variant: v, main: v === 'easy' || v === 'roof' || v === 'peak' });
         break;
@@ -333,13 +343,13 @@ export function generateLevel(def) {
   for (const q of tunnels) {
     const shapes = [];
     for (let i = 0; i < q.top.length - 1; i++) {
-      const xa = q.x0 + i * STEP, ya = q.top[i], yb = q.top[i + 1];
-      if (Math.max(ya, yb) > q.roof - 10) continue; // colline trop mince ici : l'entrée reste ouverte
-      shapes.push({ p: [xa, ya, xa + STEP, yb, xa + STEP, q.roof, xa, q.roof] });
+      const xa = q.x0 + i * STEP, ya = q.top[i], yb = q.top[i + 1], ra = q.roof[i], rb = q.roof[i + 1];
+      if (ya > ra - 10 || yb > rb - 10) continue; // colline trop mince ici : l'entrée reste ouverte
+      shapes.push({ p: [xa, ya, xa + STEP, yb, xa + STEP, rb, xa, ra] });
     }
     for (let i = obs.length - 1; i >= 0; i--) if (obs[i].maxX > q.x0 - 20 && obs[i].minX < q.x1 + 20) obs.splice(i, 1);
     push({ kind: 'tunnel', x: q.cx, shapes, minX: q.x0, maxX: q.x1 });
-    items.push({ type: 'star', x: q.cx, y: q.floor - 28 });
+    items.push({ type: 'star', x: q.cx, y: q.cy });
   }
   const need = 3 - items.filter((i) => i.type === 'star').length;
   for (let k = 0; k < need; k++) {
@@ -352,16 +362,19 @@ export function generateLevel(def) {
   obs.sort((p, q) => p.minX - q.minX);
 
   // Trafic aérien à contresens (certains niveaux) : un appareil part de la droite quand on franchit son déclencheur
-  // et longe le haut du couloir de vol (trafficY). Aucun obstacle suspendu sur sa route.
+  // et vole en ligne droite, juste au-dessus du point le plus haut du relief sur sa route. Aucun obstacle suspendu sur son trajet.
   const traffic = [];
   if (def.traffic) {
     for (const q of secs) {
-      if (traffic.length >= 4 || !['hills', 'peaks', 'forest', 'wind', 'open', 'towers', 'movers'].includes(q.type) || q.x0 < 900 || q.x1 > LEN - 900) continue;
+      if (traffic.length >= 4 || !['hills', 'peaks', 'forest', 'wind', 'open', 'towers'].includes(q.type) || q.x0 < 900 || q.x1 > LEN - 900) continue;
       if (R() < 0.35) continue;
-      const trig = q.x0 + rand(80, 200), xa = trig - 120, xb = trig + 560;
-      if (ceilAt(trig + 200) > -200 || tunnels.some((t) => t.x1 > xa && t.x0 < xb)) continue;
+      const trig = q.x0 + rand(80, 200), xa = trig - 220, xb = trig + 580;
+      let minB = 1e9, cave = false;
+      for (let x = xa; x <= xb; x += 16) { minB = Math.min(minB, bAt(x), groundAt(x)); if (ceilAt(x) > -200) cave = true; }
+      if (cave || minB < 130 || tunnels.some((t) => t.x1 > xa && t.x0 < xb)) continue;
+      if (obs.some((o) => (o.kind === 'mill' || o.kind === 'mover' || o.kind === 'geyser') && o.maxX > xa && o.minX < xb)) continue;
       for (let i = obs.length - 1; i >= 0; i--) if (obs[i].kind === 'hang' && obs[i].maxX > xa && obs[i].minX < xb) obs.splice(i, 1);
-      traffic.push({ trig, kind: def.traffic, v: 150 + rand(0, 50), seed: R() });
+      traffic.push({ trig, y: Math.max(64, minB - 52), kind: def.traffic, v: 150 + rand(0, 50), seed: R() });
     }
   }
 
@@ -430,7 +443,6 @@ export function generateLevel(def) {
     def, length: LEN, secs, obs, items, zones, pads, tank, tunnels, traffic,
     ground, ceil, groundAt, ceilAt, pathAt, gapAt, groundSlope: slope(ground), ceilSlope: slope(ceil),
     startX: 170, pad: endPad,
-    trafficY: (x) => Math.max(64, tAt(x) + 30),
     // largeur libre minimale au-dessus d'un point (sert à vérifier que les étoiles sont atteignables)
     clearAbove: (x, y) => { let m = 1e9; const sh0 = obs.some((o) => (o.kind === 'shelter' || o.kind === 'tunnel') && o.minX < x && o.maxX > x); for (let yy = sh0 ? y : y - 20; yy > (sh0 ? y - 5 : Math.max(60, y - 130)); yy -= 10) for (const o of obs) { if (o.dyn || o.maxX < x - 120 || o.minX > x + 120) continue; for (const sh of o.shapes) m = Math.min(m, ptDist(sh, x, yy)); } return m; },
     orbTotal: items.filter((i) => i.type === 'orb').length,
