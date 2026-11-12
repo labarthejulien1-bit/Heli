@@ -66,6 +66,7 @@ export class Game {
     const p = L.pads[this.padIdx];
     this.heli = { x: p.x, y: p.y - 11, vx: 0, vy: 0, tilt: 0, power: 0, hp: this.maxHp, inv: 0, grounded: true, spin: 0, air: 0, dir: 1 };
     this.mass = 1; // 1 = à vide ; les passagers (monde Heli Rescue) l'alourdissent
+    this.lift = 1; this.gustX = 0; // portance (air raréfié) et rafale en cours, pilotées par les missions Heli Rescue
     this.fuel = 1; this.onPad = this.padIdx; this.dryT = 0; this.botDone = this.padIdx;
     this.state = 'fly';
     this.stateT = 0; this.padT = 0; this.o0 = 0;
@@ -105,8 +106,8 @@ export class Game {
 
     // Forces : poussée du rotor le long de l'axe de l'appareil, gravité, traînée, vent.
     const mod = L.def.mod || {}, Gl = G * (mod.grav || 1);
-    const T = (H.power * Gl * h.power) / this.mass, a = h.tilt * DEG;
-    let ax = T * Math.sin(a) * h.dir - H.drag * h.vx + (h.grounded ? 0 : mod.windX || 0), ay = -T * Math.cos(a) + Gl - 0.9 * h.vy;
+    const T = (H.power * Gl * h.power * this.lift) / this.mass, a = h.tilt * DEG;
+    let ax = T * Math.sin(a) * h.dir - H.drag * h.vx + (h.grounded ? 0 : ((mod.windX || 0) + this.gustX) / (H.wind || 1)), ay = -T * Math.cos(a) + Gl - 0.9 * h.vy;
     for (const z of L.zones) {
       if (h.x > z.x && h.x < z.x + z.w && h.y > z.y0 && h.y < z.y1) {
         const e = Math.min(1, (h.x - z.x) / 40, (z.x + z.w - h.x) / 40);
@@ -211,7 +212,7 @@ export class Game {
         const o = obs[i];
         if (o.minX > cx + 30) break;
         if (o.maxX < cx - 30) continue;
-        const shapes = o.dyn ? dynShapes(o, this.t) : o.shapes;
+        const shapes = o.dyn ? (o.shapesAt ? o.shapesAt(this.t) : dynShapes(o, this.t)) : o.shapes;
         for (const sh of shapes) {
           let dd;
           if (sh.c) {

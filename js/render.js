@@ -156,7 +156,7 @@ export class Renderer {
     for (const o of L.obs) {
       if (o.minX > x1 + 60) break;
       if (o.maxX < x0 - 60) continue;
-      this.obstacle(c, o, g.t, time, def, hi);
+      if (o.draw) o.draw(c, g.t, time, def); else this.obstacle(c, o, g.t, time, def, hi);
     }
     this.terrain(c, L, def, x0, x1, camY, vh);
     this.pads(c, L, def, g, time, x0, x1);
@@ -202,6 +202,14 @@ export class Renderer {
     // --- premier plan (écran)
     c.setTransform(s, 0, 0, s, 0, 0);
     this.weather(c, def, vh, time, dt, camDX);
+    if (def.grain && hi) { // grain de papier (styles aquarelle et papier découpé)
+      if (!this._grain) {
+        const g2 = document.createElement('canvas'); g2.width = g2.height = 96; const q = g2.getContext('2d'), im = q.createImageData(96, 96);
+        for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 26; }
+        q.putImageData(im, 0, 0); this._grain = c.createPattern(g2, 'repeat');
+      }
+      c.globalAlpha = def.grain; c.fillStyle = this._grain; c.fillRect(0, 0, VW, vh); c.globalAlpha = 1;
+    }
     gr = c.createRadialGradient(VW / 2, vh / 2, vh * 0.35, VW / 2, vh / 2, vh * 0.75);
     gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,10,.28)');
     c.fillStyle = gr; c.fillRect(0, 0, VW, vh);
@@ -221,6 +229,15 @@ export class Renderer {
   }
 
   layer(c, st, u0, base, amp, col, vh, def, idx, time, hi) {
+    const style = def.style;
+    if (style === 'paper' && !this._inShadow) { // papier découpé : chaque couche projette une ombre sur la suivante
+      this._inShadow = true; c.save(); c.translate(4, 7); this.layer(c, st, u0, base, amp, 'rgba(0,0,0,.2)', vh, def, idx, time, false); c.restore(); this._inShadow = false;
+    }
+    if (style === 'wash' && !this._inShadow) { // aquarelle : un halo plus clair qui déborde, puis la couche en transparence
+      this._inShadow = true; c.save(); c.translate(0, -5); c.globalAlpha = 0.3; this.layer(c, st, u0, base, amp, mix(col, '#ffffff', 0.35), vh, def, idx, time, false); c.restore(); this._inShadow = false;
+      c.globalAlpha = 0.86;
+    }
+    this._ridge = style === 'facet' && !this._inShadow ? [] : null;
     c.fillStyle = col;
     const seed = def.seed + idx * 7;
     if (st === 'city') {
@@ -263,8 +280,17 @@ export class Renderer {
       else if (st === 'spires') hh = amp * (0.25 * fbm(u / 200, seed) + 1.15 * Math.pow(noise1(u / 46, seed + 3), 3));
       else { const n = fbm(u / 210, seed, 2); hh = amp * (Math.floor(n * 6) / 6 * 1.1 + 0.15 * n); }
       c.lineTo(x, base - hh + amp * 0.3);
+      if (this._ridge) this._ridge.push(x, base - hh + amp * 0.3);
     }
     c.lineTo(VW + 8, vh); c.fill();
+    c.globalAlpha = 1;
+    if (this._ridge) { // facettes : pans alternés clairs et sombres sous la crête, arêtes nettes
+      const P = this._ridge;
+      for (let k = 0; k + 5 < P.length; k += 4) {
+        c.fillStyle = (k / 4) % 2 ? 'rgba(255,255,255,.2)' : 'rgba(20,40,80,.14)';
+        c.beginPath(); c.moveTo(P[k], P[k + 1]); c.lineTo(P[k + 4], P[k + 5]); c.lineTo(P[k + 2], Math.max(P[k + 1], P[k + 5]) + 46); c.fill();
+      }
+    }
   }
 
   sea(c, y, vh, time, skyB, def) {
@@ -388,6 +414,22 @@ export class Renderer {
   // Monde Heli Rescue : poste de secours à la base, victimes au sol, jauge d'embarquement, remerciements.
   rescue(c, L, def, g, time, x0, x1) {
     const b = L.rescue.base;
+    if (L.waterAt) { // eau : nappe translucide par-dessus le relief immergé, crête de vagues animée
+      const wy = L.waterAt(g.t), wc = mix(def.mid, '#1c6f8f', 0.55);
+      c.fillStyle = rgba(wc, 0.62);
+      c.beginPath(); c.moveTo(x0, wy);
+      for (let x = Math.floor(x0 / 16) * 16; x <= x1 + 16; x += 16) c.lineTo(x, wy + Math.sin(x * 0.045 + time * 1.8) * 2.4);
+      c.lineTo(x1 + 16, wy + 400); c.lineTo(x0, wy + 400); c.fill();
+      c.strokeStyle = rgba('#ffffff', 0.55); c.lineWidth = 1.6; c.beginPath();
+      for (let x = Math.floor(x0 / 16) * 16; x <= x1 + 16; x += 16) c.lineTo(x, wy + Math.sin(x * 0.045 + time * 1.8) * 2.4);
+      c.stroke();
+    }
+    for (const q of L.gusts) { // rafale : traînées d'embruns pendant qu'elle souffle
+      if (q.x > x1 || q.x + q.w < x0 || ((g.t / q.period + (q.phase || 0)) % 1) >= q.on) continue;
+      c.strokeStyle = rgba('#ffffff', 0.5); c.lineWidth = 1.5; c.lineCap = 'round'; c.beginPath();
+      for (let k = 0; k < 22; k++) { const gx = q.x + ((hash(k, 5) * q.w + time * q.fx * 1.6) % q.w + q.w) % q.w, gy = 120 + hash(k, 9) * 560; c.moveTo(gx, gy); c.lineTo(gx - Math.sign(q.fx) * 26, gy + 3); }
+      c.stroke();
+    }
     if (b.x + 200 > x0 && b.x - 200 < x1) {
       const bx = b.x + 112, by = b.y;
       c.fillStyle = '#f4f1de'; c.fillRect(bx - 26, by - 34, 58, 34); c.fillStyle = '#d62828'; c.fillRect(bx - 30, by - 40, 66, 8);
@@ -400,7 +442,13 @@ export class Renderer {
       if (v.state === 'aboard' || v.state === 'saved' || v.px < x0 - 30 || v.px > x1 + 30) continue;
       const gy = L.groundAt(v.px), moving = v.state === 'walk' && Math.abs(g.heli.x - v.px) > 9 || v.state === 'out' || (v.state === 'wait' && Math.abs(v.px - v.x) > 1);
       const face = v.state === 'out' ? 1 : Math.sign(g.heli.x - v.px) || 1;
-      this.figure(c, v, v.px, gy, time, moving, face, v.state === 'wait' && Math.abs(g.heli.x - v.px) < 420);
+      const py = v.state === 'out' || Math.abs(v.px - L.pads[v.zone].x) > L.pads[v.zone].w / 2 + 4 ? gy : L.pads[v.zone].y; // sur un toit, on reste à hauteur du toit
+      const near = v.state === 'wait' && Math.abs(g.heli.x - v.px) < 520;
+      this.figure(c, v, v.px, py, time, moving, face, near);
+      if (near && v.variant === 'dog' && (time * 0.6) % 1 < 0.45) { // aboiement : petits arcs au-dessus du chien
+        c.strokeStyle = '#ffffff'; c.lineWidth = 1.6; c.lineCap = 'round';
+        for (const r of [7, 12]) { c.beginPath(); c.arc(v.px + face * 9, py - 16, r, -1.1 + (face < 0 ? Math.PI : 0), 0.3 + (face < 0 ? Math.PI : 0)); c.stroke(); }
+      }
       if (v.state === 'walk' && v.board > 0) { // jauge circulaire au-dessus de la porte
         const hx = g.heli.x, hy = g.heli.y - 34;
         c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(hx, hy, 9, 0, TAU); c.stroke();
@@ -628,6 +676,14 @@ export class Renderer {
           for (let y = top + 10; y < top + h; y += 30) c.fillRect(l, y, w, 5 + 6 * hash(y, o.v));
           c.fillStyle = rgba(def.rim, 0.5); c.fillRect(l, top, w, 2.5);
           break;
+        case 'house': { // maison : murs clairs, toit en léger débord, fenêtres éclairées, cheminée
+          c.fillStyle = mix(col, '#ffffff', 0.45); c.fillRect(l, top + 10, w, h - 10);
+          c.fillStyle = mix(col, '#7a2f2a', 0.6); c.fillRect(l - 5, top, w + 10, 11); c.fillRect(l + w * 0.72, top - 13, 9, 14);
+          c.fillStyle = rgba(def.accent, 0.85);
+          for (let k = 0; k < Math.floor(w / 34); k++) c.fillRect(l + 12 + k * 34, top + 26, 13, 15);
+          c.fillStyle = mix(col, '#000000', 0.3); c.fillRect(l + w / 2 - 7, top + h - 24 - 30, 14, 30);
+          break;
+        }
         case 'castle':
           for (let k = 0; k < 4; k++) c.fillRect(l - 4 + (k * (w + 8)) / 4 + 1, top - 9, (w + 8) / 4 - 4, 10);
           c.fillRect(l - 4, top, w + 8, 12);

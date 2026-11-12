@@ -143,6 +143,8 @@ export class Sound {
       case 'win': [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => this.tone(mtof(69 + n), 0.5, 'triangle', 0.22, i * 0.11)); break;
       case 'medal': this.tone(mtof(84), 0.4, 'triangle', 0.25); this.tone(mtof(91), 0.5, 'sine', 0.18, 0.08); break;
       case 'ui': this.tone(660, 0.06, 'triangle', 0.12); break;
+      case 'bark': this.tone(430, 0.09, 'sawtooth', 0.16, 0, 0.6); this.tone(390, 0.1, 'sawtooth', 0.14, 0.16, 0.6); break;
+      case 'splash': this.burst(0.5, 1400, 0.5); break;
       case 'thunder': this.burst(1.6, 300, 0.35); break;
     }
   }

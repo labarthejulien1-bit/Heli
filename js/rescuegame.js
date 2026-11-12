@@ -18,15 +18,27 @@ export class RescueGame extends Game {
     } else {
       for (const v of this.vs) if (v.state === 'walk' || v.state === 'aboard') { v.state = 'wait'; v.px = v.x; v.board = 0; v.seat = -1; } // reprise : retour au point d'attente
     }
-    this.unloadT = 0; this.winT = 0; this.warned = '';
+    this.unloadT = 0; this.winT = 0; this.warned = ''; this.failReason = '';
   }
 
   get aboard() { return this.vs.filter((v) => v.state === 'aboard'); }
   get savedCount() { return this.vs.filter((v) => v.state === 'out' || v.state === 'saved').length; }
 
   step(dt) {
+    const cfg = this.L.rescue.cfg, hh = this.heli;
+    // Air raréfié : la poussée baisse avec l'altitude, sauf pour les appareils de montagne
+    this.lift = 1;
+    if (cfg.thinAir && !this.H.noAltLoss) this.lift = 1 - cfg.thinAir.loss * clamp((cfg.thinAir.above - hh.y) / cfg.thinAir.span, 0, 1);
+    // Rafales périodiques (embruns, vent) : une poussée latérale tant que la rafale souffle
+    this.gustX = 0;
+    for (const q of this.L.gusts) if (hh.x > q.x && hh.x < q.x + q.w && ((this.t / q.period + (q.phase || 0)) % 1) < q.on) this.gustX += q.fx;
     super.step(dt);
     if (this.state !== 'fly') return;
+    this.water(dt);
+    if (this.state !== 'fly') return;
+    // un chien perdu aboie quand l'appareil approche
+    this.barkT = (this.barkT || 0) - dt;
+    if (this.barkT <= 0) { const d = this.vs.find((v) => v.variant === 'dog' && v.state === 'wait' && Math.abs(v.px - hh.x) < 520); if (d) { this.barkT = 1.7; this.ev.push({ type: 'bark', x: d.px, y: d.y }); } }
     const h = this.heli, H = this.H, L = this.L, pad = this.onPad >= 0 ? L.pads[this.onPad] : null;
     const still = h.grounded && Math.abs(h.vx) < 20 && h.power < 0.5 && Math.abs(h.tilt) < 12;
     const aboard = this.aboard, big = (v) => v.size === 'big';
@@ -75,6 +87,20 @@ export class RescueGame extends Game {
     }
   }
 
+  // Eau : seul un amphibie peut s'y poser ; les autres sont rejetés et abîmés. Si la marée recouvre une zone
+  // où quelqu'un attend encore, la mission est perdue.
+  water(dt) {
+    const L = this.L, h = this.heli;
+    if (!L.waterAt) return;
+    const wy = L.waterAt(this.t);
+    if (h.y + 11 > wy) {
+      if (this.H.amphibious) { h.y = wy - 11; if (h.vy > 0) h.vy = 0; h.grounded = true; h.vx -= h.vx * Math.min(1, 3 * dt); }
+      else { this.damage(3, h.x, wy); h.y = wy - 12; h.vy = -190; this.ev.push({ type: 'splash', x: h.x, y: wy }); }
+    }
+    for (const v of this.vs) if ((v.state === 'wait' || v.state === 'walk') && wy < L.pads[v.zone].y - 2) return this.fail('tide');
+  }
+  fail(reason) { this.failReason = reason; this.heli.hp = 0; this.state = 'dead'; this.stateT = 0; this.ev.push({ type: 'crash', x: this.heli.x, y: this.heli.y }); }
+
   warn(kind) { if (this.warned !== kind) { this.warned = kind; this.ev.push({ type: 'note', kind }); } }
 
   // Les trois étoiles : tout le monde sauvé, temps, chocs.
@@ -100,10 +126,16 @@ export function rescueAutopilot(g) {
   const dxp = P.x - h.x, dir = Math.sign(dxp) || 1;
   let ty = L.pathAt(h.x + dir * 60), vdes = clamp(dxp * 0.9, -150, 150), landing = false;
   if (Math.abs(dxp) < 380) {
+    // on reste à l'altitude de croisière jusqu'à l'aplomb de la zone, puis on descend à la verticale
     if (Math.abs(dxp) < P.w * 0.22 && Math.abs(h.vx) < 45) landing = true;
-    else ty = Math.min(Math.max(ty, P.y - 150), P.y - 67);
   }
-  if (Math.abs(h.y - ty) > 70 && Math.abs(dxp) > 200) vdes = clamp(vdes, -90, 90);
+  if (h.y > ty + 45 && Math.abs(dxp) > 60) vdes = clamp(vdes, -25, 25); // trop bas : on monte d'abord, presque à la verticale
+  else if (Math.abs(h.y - ty) > 70 && Math.abs(dxp) > 200) vdes = clamp(vdes, -90, 90);
+  for (const o of L.obs) { // danger périodique droit devant : on patiente
+    if (!o.safeAt) continue;
+    const d = (o.x - h.x) * dir;
+    if (d > 10 && d < 100) { let safe = true; for (let t = 0; t < 1.1; t += 0.1) if (!o.safeAt(g.t + t, h.y)) safe = false; if (!safe) vdes = -25 * dir; }
+  }
   inp.tilt = clamp(vdes * 0.08 + (vdes - h.vx) * 0.3, -32, 32);
-  inp.thrust = landing ? h.vy > 34 : h.grounded || h.y + h.vy * 0.26 > ty;
+  inp.thrust = landing ? h.vy > (h.y < P.y - 75 ? 95 : 34) : h.grounded || h.y + h.vy * 0.26 > ty;
 }

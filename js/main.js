@@ -13,7 +13,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -179,7 +179,7 @@ function releaseWake() { try { wake?.release(); } catch { /* déjà libéré */ 
 function nav(cur) {
   const world = ['rmap', 'rhangar'].includes(cur) || (S.navWorld === 'rescue' && !['levels', 'hangar'].includes(cur)) ? 'rescue' : 'adv';
   S.navWorld = world;
-  const items = world === 'rescue' ? [['home', 'home', 'home'], ['rmap', 'levels', 'map'], ['rhangar', 'hangar', 'hangar']] : [['home', 'home', 'home'], ['levels', 'levels', 'levels'], ['hangar', 'hangar', 'hangar']];
+  const items = world === 'rescue' ? [['home', 'home', 'home'], ['rmap', 'levels', 'r_missions'], ['rhangar', 'hangar', 'hangar']] : [['home', 'home', 'home'], ['levels', 'levels', 'levels'], ['hangar', 'hangar', 'hangar']];
   items.push(['profile', 'profile', 'profile'], ['settings', 'settings', 'settings']);
   return `<nav class="nav">${items.map(([k, ic, lb]) => `<button data-go="${k}" class="${k === cur ? 'on' : ''}">${ICON[ic]}<span>${t(lb)}</span></button>`).join('')}</nav>`;
 }
@@ -211,19 +211,19 @@ function home() {
   </section>`;
   ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? myRescueHeli() : heliOf(save.heli)).look, 1.05));
 }
-// Carte du monde Heli Rescue : un chemin sinueux de 20 pastilles (les niveaux arrivent avec les phases suivantes).
+// Missions Heli Rescue : même présentation que les niveaux de l'Aventure (bannières aux couleurs de la mission,
+// étoiles, record) ; les missions pas encore livrées sont annoncées en grisé.
 function rmap() {
-  const N = 20, pos = (i) => [50 + 30 * Math.sin(i * 1.15), 96 - i * 4.75];
-  const pts = Array.from({ length: N }, (_, i) => pos(i));
-  const path = pts.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + (y * 3).toFixed(1)).join(' ');
-  ui.innerHTML = `<section class="screen scrim"><h2 class="top">Heli Rescue<span class="wallet"><b>★ ${rescueStars(save)}/60</b></span></h2><div class="scroll" id="rmapScroll">
-    <div class="rmap"><svg viewBox="0 0 100 300" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.6" stroke-dasharray="1 3.2" stroke-linecap="round" vector-effect="non-scaling-stroke" style="stroke-width:5px"/></svg>
-    ${pts.map(([x, y], i) => { const n = i + 1, st = save.heliRescue.levels[n]?.stars || 0;
-      return `<button class="node ${rescueOpen(n) ? '' : 'locked'}" ${rescueLevel(n) && rescueOpen(n) ? `data-rlevel="${n}"` : 'data-act="soon"'} style="left:${x}%;top:${y}%"><b>${n}</b><small>${'★'.repeat(st)}${'☆'.repeat(3 - st)}</small></button>`; }).join('')}</div>
-  </div></section>${nav('rmap')}`;
-  const sc = $('#rmapScroll'); sc.scrollTop = sc.scrollHeight;
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('r_missions')}<span class="wallet"><b>★ ${rescueStars(save)}/60</b></span></h2><div class="scroll">${Array.from({ length: 20 }, (_, i) => {
+    const n = i + 1, cfg = rescueLevel(n), open = cfg && rescueOpen(n), rec = save.heliRescue.levels[n], st = rec?.stars || 0;
+    const k = cfg ? cfg.look : { sky: [['#3a3f52', '#5a6076']], ground: '#22263a' };
+    return `<button class="lvl ${open ? '' : 'locked'}" ${open ? `data-rlevel="${n}"` : cfg ? `data-rlock="${n}"` : 'data-act="soon"'} style="--a:${k.sky[0][0]};--b:${k.sky[0][1]};--gr:${k.ground}">
+      <span class="n">${n}</span>
+      <span class="name">${cfg ? t('r_lvl' + n) : '···'}<small>${!cfg ? t('soon') : open ? `${t('r_uni' + n)}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('lockedLevel', n - 1)}</small></span>
+      ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal ${st > q ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
+    </button>`;
+  }).join('')}</div></section>${nav('rmap')}`;
 }
-// Hangar Heli Rescue : carrousel des appareils de secours, barres de caractéristiques, déblocage par niveau réussi.
 // Fiche d'une mission avant le lancement : nom, univers, victimes, appareil conseillé, record.
 function rescueSheet(n) {
   const cfg = rescueLevel(n), rec = save.heliRescue.levels[n], st = rec?.stars || 0;
@@ -256,7 +256,7 @@ function showRescueResult() {
     <div class="col" style="margin-top:14px">
       ${hasNext ? `<button class="btn primary" data-rplay="${n + 1}">${ICON.play}${t('next')}</button>` : ''}
       <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
-      <button class="btn ghost" data-act="quit">${t('map')}</button>
+      <button class="btn ghost" data-act="quit">${t('r_missions')}</button>
     </div></div></div>`;
   stars.forEach((f, i) => f && setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + i * 250));
 }
@@ -411,7 +411,7 @@ function resume() { ui.innerHTML = ''; S.mode = 'play'; snd.resume(); snd.rotorS
 function showCrash() {
   S.ended = true; save.stats.crashes++; persist();
   const dry = S.game.fuel <= 0, canRe = S.game.D.respawn && S.game.padIdx > 0; // mode facile : reprise au dernier ravitaillement
-  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${levelTitle()}</p>
+  ui.innerHTML = `<div class="overlay center"><div class="sheet col"><h2>${S.game.failReason === 'tide' ? t('r_tide') : dry ? t('noFuel') : t('crashed')}</h2><p class="sub">${levelTitle()}</p>
     ${canRe ? `<button class="btn primary" data-act="respawn">${t('fromPad')}</button>` : ''}
     <button class="btn ${canRe ? '' : 'primary'}" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button></div></div>`;
@@ -463,6 +463,7 @@ ui.addEventListener('click', (e) => {
     save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
   if (d.rlevel) return rescueSheet(+d.rlevel);
+  if (d.rlock) return toast(t('lockedLevel', +d.rlock - 1));
   if (d.rplay) return startRescue(+d.rplay);
   if (d.rheliSel) { save.heliRescue.heli = d.rheliSel; persist(); snd.preview(rescueHeli(d.rheliSel)); setDemo(); return rhangar(); }
   if (d.heliSel) { save.heli = d.heliSel; persist(); snd.preview(heliOf(d.heliSel)); setDemo(S.levelId); return hangar(); }
@@ -581,6 +582,8 @@ function events() {
       case 'bump': if (play) snd.sfx('bump'); break;
       case 'aboard': R.spawn(e.x, e.y - 20, 10, { a: -Math.PI / 2, spread: 2.4, v: 70, col: '#7dffb0', life: 0.6 }); if (play) { toast('● ' + t('r_aboard')); snd.sfx('cp'); vibe(25); } break;
       case 'saved': R.spawn(e.x, e.y, 12, { a: -Math.PI / 2, spread: 2.2, v: 80, col: '#ff8fa3', life: 0.8 }); if (play) { toast('♥ ' + t('r_thanks')); snd.sfx('repair'); vibe(20); } break;
+      case 'bark': if (play) snd.sfx('bark'); break;
+      case 'splash': R.spawn(e.x, e.y, 18, { a: -Math.PI / 2, spread: 1.6, v: 190, col: 'rgba(220,245,255,.8)', life: 0.7, g: 420, size: 2 }); if (play) snd.sfx('splash'); break;
       case 'cancel': if (play) { toast(t('r_cancel')); snd.sfx('bump'); } break;
       case 'note': if (play) toast(t(e.kind === 'needBig' ? 'r_needBig' : 'r_full')); break;
       case 'land': R.spawn(g.heli.x, g.heli.y + 11, 8, { a: -Math.PI / 2, spread: 3, v: 60, col: 'rgba(255,255,255,.5)', life: 0.5 }); break;

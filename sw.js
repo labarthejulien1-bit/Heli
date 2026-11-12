@@ -1,9 +1,9 @@
 // Service worker : tout le jeu est mis en cache à l'installation, puis servi hors ligne.
 // Incrémenter VERSION à chaque mise à jour pour renouveler le cache.
-const VERSION = 'heli-2.2.0';
+const VERSION = 'heli-2.3.0';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
-  'js/main.js', 'js/util.js', 'js/data.js', 'js/levelgen.js', 'js/game.js', 'js/render.js', 'js/helidraw.js', 'js/audio.js', 'js/i18n.js', 'js/save.js', 'js/rescue.js', 'js/rescuelevels.js', 'js/rescuegen.js', 'js/rescuegame.js',
+  'js/main.js', 'js/util.js', 'js/data.js', 'js/levelgen.js', 'js/game.js', 'js/render.js', 'js/helidraw.js', 'js/audio.js', 'js/i18n.js', 'js/save.js', 'js/rescue.js', 'js/rescuelevels.js', 'js/rescuegen.js', 'js/rescuegame.js', 'js/rescuehazards.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
 ];
 self.addEventListener('install', (e) => {
