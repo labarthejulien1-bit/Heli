@@ -6,10 +6,10 @@ import { Renderer } from './render.js';
 import { drawHeli } from './helidraw.js';
 import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
-import { load, store, defaults, importSave, medalCount, starCount, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
+import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy } from './save.js';
 import { clamp, fmtTime } from './util.js';
 
-const VERSION = '1.9.0';
+const VERSION = '2.0.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -57,9 +57,15 @@ function heliCanvas(cvs, look, scale = 1) {
 }
 
 // ---------- Démo de fond et lancement des niveaux
-function setDemo(id = nextLevelId()) {
-  S.mode = 'demo'; S.levelId = id; S.level = getLevel(id);
-  S.game = new Game(S.level, heliOf(save.heli));
+// Décor de fond des menus : il suit le monde affiché (Aventure : prochain niveau et appareil choisi ;
+// Heli Rescue : un décor côtier et un appareil de secours, en attendant les niveaux du monde).
+const RESCUE_DEMO = { level: 4, heli: 'albatros' };
+const inRescue = () => ['rmap', 'rhangar'].includes(S.screen) || (S.screen === 'home' && save.world === 'rescue');
+function setDemo(id) {
+  const rescue = id == null && inRescue();
+  id = id ?? (rescue ? RESCUE_DEMO.level : nextLevelId());
+  S.mode = 'demo'; S.levelId = id; S.level = getLevel(id); S.demoRescue = rescue;
+  S.game = new Game(S.level, heliOf(rescue ? RESCUE_DEMO.heli : save.heli));
   R.setLevel(S.level); theme(S.level.def);
   hud.hidden = true; S.touch = null;
   snd.rotorStop(); snd.playMusic(S.level.def.music);
@@ -145,25 +151,54 @@ async function requestWake() { try { wake = await navigator.wakeLock?.request('s
 function releaseWake() { try { wake?.release(); } catch { /* déjà libéré */ } wake = null; }
 
 // ---------- Écrans
+// Barre du bas, à l'intérieur d'un monde : accueil, écrans du monde, profil, réglages.
 function nav(cur) {
-  return `<nav class="nav">${['home', 'levels', 'hangar', 'profile', 'settings'].map((k) =>
-    `<button data-go="${k}" class="${k === cur ? 'on' : ''}">${ICON[k]}<span>${t(k === 'home' ? 'play' : k)}</span></button>`).join('')}</nav>`;
+  const world = ['rmap', 'rhangar'].includes(cur) || (S.navWorld === 'rescue' && !['levels', 'hangar'].includes(cur)) ? 'rescue' : 'adv';
+  S.navWorld = world;
+  const items = world === 'rescue' ? [['home', 'home', 'home'], ['rmap', 'levels', 'map'], ['rhangar', 'hangar', 'hangar']] : [['home', 'home', 'home'], ['levels', 'levels', 'levels'], ['hangar', 'hangar', 'hangar']];
+  items.push(['profile', 'profile', 'profile'], ['settings', 'settings', 'settings']);
+  return `<nav class="nav">${items.map(([k, ic, lb]) => `<button data-go="${k}" class="${k === cur ? 'on' : ''}">${ICON[ic]}<span>${t(lb)}</span></button>`).join('')}</nav>`;
 }
 function go(screen) {
   S.screen = screen;
-  if (S.mode !== 'demo') setDemo();
-  ({ home, levels, hangar, profile, settings })[screen]();
+  if (S.mode !== 'demo' || S.demoRescue !== inRescue()) setDemo();
+  ({ home, levels, hangar, profile, settings, rmap, rhangar })[screen]();
   if (screen !== 'home') guardBack();
 }
+// Accueil : le décor animé en fond, et en bas les deux mondes côte à côte. Toucher une bulle choisit le monde
+// (le décor s'adapte) ; « Entrer » ouvre le monde choisi.
 function home() {
   if (!save.pilot) return welcome();
-  const m = medalCount(save), id = nextLevelId();
-  if (S.levelId !== id) setDemo(id);
+  S.screen = 'home';
+  const m = medalCount(save), w = save.world, id = nextLevelId();
+  if (S.mode !== 'demo' || S.demoRescue !== (w === 'rescue') || (w === 'adv' && S.levelId !== id)) setDemo();
+  const bubble = (k, title, prog, sky) => `<button class="world ${w === k ? 'sel' : ''}" data-world="${k}">
+      <span class="bubble" style="background:linear-gradient(${sky[0]},${sky[1]})"><canvas data-bubble="${k}"></canvas>${k === 'rescue' ? '<i class="beacon"></i>' : ''}</span>
+      <b>${title}</b><small>${prog}</small></button>`;
   ui.innerHTML = `<section class="screen home">
-    <div class="top"><button class="chip" data-go="profile"><span class="avatar">${esc(save.pilot[0].toUpperCase())}</span><span><b>${esc(save.pilot)}</b><small>${t('rank' + rankIdx(m))} · ${m}/${TOTAL_MEDALS}</small></span></button>${wallet()}</div>
-    <div class="title"><h1>HELI<span>ADVENTURE</span></h1><p>${t('tagline')}</p></div>
-    <button class="btn primary big" data-play="${id}">${ICON.play}<span>${t('play')}<small>${t('level')} ${id} · ${t('lvl' + id)}</small></span></button>
-  </section>${nav('home')}`;
+    <div class="top"><button class="chip" data-go="profile"><span class="avatar">${esc(save.pilot[0].toUpperCase())}</span><span><b>${esc(save.pilot)}</b><small>${t('rank' + rankIdx(m))} · ${m}/${TOTAL_MEDALS}</small></span></button>
+      <button class="round" data-go="settings" aria-label="${t('settings')}">${ICON.settings}</button></div>
+    <div class="title"><h1>HELI<span>${w === 'rescue' ? 'RESCUE' : 'ADVENTURE'}</span></h1><p>${t('tagline')}</p></div>
+    <div class="homebot">
+      <div class="worlds">${bubble('adv', t('adventure'), `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, LEVELS[RESCUE_DEMO.level - 1].sky[0])}</div>
+      <button class="btn primary" data-go="${w === 'rescue' ? 'rmap' : 'levels'}">${ICON.play}${t('enter')} · ${w === 'rescue' ? 'Heli Rescue' : t('adventure')}</button>
+    </div>
+  </section>`;
+  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, heliOf(c.dataset.bubble === 'rescue' ? RESCUE_DEMO.heli : save.heli).look, 1.05));
+}
+// Carte du monde Heli Rescue : un chemin sinueux de 20 pastilles (les niveaux arrivent avec les phases suivantes).
+function rmap() {
+  const N = 20, pos = (i) => [50 + 30 * Math.sin(i * 1.15), 96 - i * 4.75];
+  const pts = Array.from({ length: N }, (_, i) => pos(i));
+  const path = pts.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + (y * 3).toFixed(1)).join(' ');
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">Heli Rescue<span class="wallet"><b>★ ${rescueStars(save)}/60</b></span></h2><div class="scroll" id="rmapScroll">
+    <div class="rmap"><svg viewBox="0 0 100 300" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.6" stroke-dasharray="1 3.2" stroke-linecap="round" vector-effect="non-scaling-stroke" style="stroke-width:5px"/></svg>
+    ${pts.map(([x, y], i) => `<button class="node ${i ? 'locked' : ''}" data-act="soon" style="left:${x}%;top:${y}%"><b>${i + 1}</b><small>☆☆☆</small></button>`).join('')}</div>
+  </div></section>${nav('rmap')}`;
+  const sc = $('#rmapScroll'); sc.scrollTop = sc.scrollHeight;
+}
+function rhangar() {
+  ui.innerHTML = `<section class="screen scrim"><h2>${t('hangar')} · Heli Rescue</h2><div class="panel" style="text-align:center;padding:40px 16px;font-weight:700">${t('soon')}</div><div style="flex:1"></div></section>${nav('rhangar')}`;
 }
 function welcome() {
   ui.innerHTML = `<div class="overlay center"><div class="sheet col">
@@ -341,6 +376,7 @@ ui.addEventListener('click', (e) => {
   const d = b.dataset;
   if (d.act === 'closeSheet' && e.target !== b) { if (!e.target.closest('button')) return; }
   if (b.tagName === 'BUTTON') snd.sfx('ui');
+  if (d.world) { if (save.world !== d.world) { save.world = d.world; persist(); vibe(15); } return home(); }
   if (d.go) return go(d.go);
   if (d.play) return startLevel(+d.play);
   if (d.level) return levelSheet(+d.level);
@@ -358,6 +394,7 @@ ui.addEventListener('click', (e) => {
   if (d.quality) { save.settings.quality = d.quality; persist(); R.resize(d.quality); R.setLevel(S.level); return settings(); }
   switch (d.act) {
     case 'closeSheet': b.remove(); break;
+    case 'soon': toast(t('soon')); break;
     case 'closeTip': b.closest('.overlay').remove(); break;
     case 'tutNext': tutorialCard(S.tut.page + 1); break;
     case 'respawn': S.game.reset(true); S.ended = false; S.mode = 'play'; ui.innerHTML = ''; snd.rotorStart(S.game.H); R.snap = true; guardBack(); break;

@@ -5,6 +5,8 @@ const KEY = 'heli-save-v1';
 export function defaults() {
   return {
     v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false,
+    world: 'adv', // monde affiché à l'accueil : 'adv' (Aventure) ou 'rescue' (Heli Rescue)
+    heliRescue: { levels: {}, heli: null, helis: [] }, // progression du monde Heli Rescue, indépendante de l'Aventure
     coins: 0, starsSpent: 0, // porte-monnaie : pièces cumulées, étoiles dépensées
     levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, sm (masque des étoiles trouvées) }
     stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },
@@ -22,6 +24,8 @@ function sanitize(raw) {
   if (!s.helis.includes('moineau')) s.helis.unshift('moineau');
   if (!s.helis.includes(s.heli)) s.heli = 'moineau';
   s.pilot = String(s.pilot || '').slice(0, 16);
+  s.world = s.world === 'rescue' ? 'rescue' : 'adv';
+  s.heliRescue = { ...d.heliRescue, ...(raw.heliRescue && typeof raw.heliRescue === 'object' ? raw.heliRescue : {}) };
   s.coins = Math.max(0, Math.floor(+s.coins || 0)); s.starsSpent = Math.max(0, Math.floor(+s.starsSpent || 0));
   s.lastLevel = Math.min(LEVELS.length, Math.max(1, s.lastLevel | 0 || 1));
   return s;
@@ -37,6 +41,7 @@ export function importSave(text) { return sanitize(JSON.parse(text)); }
 export const medalCount = (s) => Object.values(s.levels).reduce((n, l) => n + (l.obj || []).filter(Boolean).length, 0);
 const bits = (m) => { let n = 0; for (m |= 0; m; m >>= 1) n += m & 1; return n; };
 export const levelStars = (s, id) => bits(s.levels[id]?.sm);
+export const rescueStars = (s) => Object.values(s.heliRescue.levels).reduce((n, l) => n + (l.stars || 0), 0);
 export const starCount = (s) => Object.values(s.levels).reduce((n, l) => n + bits(l.sm), 0);
 export const starWallet = (s) => Math.max(0, starCount(s) - s.starsSpent);
 export const levelUnlocked = (s, id) => id === 1 || !!s.levels[id - 1]?.done;
