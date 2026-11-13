@@ -77,7 +77,8 @@ export class CargoGame extends RescueGame {
       let ok = false;
       if (best) {
         const hgt = best.y - best.h - (h.y + 10);
-        const K = this.hook || HOOK, inWin = Math.abs(best.x - h.x) < K.dx && hgt > K.lo && hgt < K.hi;
+        const K = this.hook || HOOK, slim = best.h > best.w * 1.8 ? 18 : 0; // charge haute et étroite (pieu, pylône, obélisque) : on tolère un écart plus grand
+        const inWin = Math.abs(best.x - h.x) < K.dx + slim && hgt > K.lo && hgt < K.hi;
         if (inWin && best.m / H.lift > MAX_RATIO) this.warn('tooHeavy');
         else if (inWin && Math.abs(h.vx) < K.vx && Math.abs(h.vy) < K.vy && !h.grounded) {
           ok = true; this.target = best; this.cable += 80 * dt;

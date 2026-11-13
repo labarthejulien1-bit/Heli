@@ -518,8 +518,11 @@ export class Renderer {
   }
   // Sangle et fanion à la couleur de la charge : on la reconnaît aussi une fois livrée ou en vol.
   loadTag(c, l) {
-    c.fillStyle = l.col; c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4);
-    c.fillRect(l.w / 2 - 1.5, -l.h - 13, 2, 13); c.beginPath(); c.moveTo(l.w / 2 + 0.5, -l.h - 13); c.lineTo(l.w / 2 + 12, -l.h - 9); c.lineTo(l.w / 2 + 0.5, -l.h - 5); c.fill();
+    c.fillStyle = l.col;
+    if (l.type !== 'anchor') c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4); // sangle (l'ancre, elle, a ses pattes de la couleur)
+    // le mât du fanion est planté sur le point le plus haut de la charge, un peu à côté de l'anneau de levage
+    const fx = (l.type === 'sphinx' ? l.w * 0.2 : l.type === 'sarco' ? -l.w * 0.25 : l.type === 'snowcat' ? -l.w * 0.2 : 0) + 4, fy = -l.h + (['spool', 'tank', 'urn', 'statue', 'logs', 'engine'].includes(l.type) ? 3 : 1);
+    c.fillRect(fx - 1, fy - 14, 2, 15); c.beginPath(); c.moveTo(fx + 1, fy - 14); c.lineTo(fx + 12, fy - 10); c.lineTo(fx + 1, fy - 6); c.fill();
   }
   // Dessin d'une charge, posée en (0, 0) : l'origine est le milieu de sa base.
   load(c, l, def, time) {
@@ -532,7 +535,8 @@ export class Renderer {
       case 'tank': E('#e9ecef', 0, -hh / 2, w / 2, hh / 2); R('#e9ecef', -w / 2 + 6, -hh, w - 12, hh); R('#f77f00', -w / 2 + 6, -hh * 0.62, w - 12, 5); R(dk, -w * 0.3, -3, 4, 3); R(dk, w * 0.3 - 4, -3, 4, 3); R(steel, -3, -hh - 4, 6, 4); break;
       case 'pile': R(steel, -w / 2, -hh, w, hh); R('#adb5bd', -w / 2, -hh, 4, hh); for (let y = -hh + 8; y < -4; y += 14) R('#6c757d', -w / 2, y, w, 2); break;
       case 'engine': R('#495057', -w / 2, -hh * 0.75, w, hh * 0.75); R('#6c757d', -w / 2 + 4, -hh, w * 0.5, hh * 0.3); for (let k = 0; k < 4; k++) R('#adb5bd', -w / 2 + 5 + k * 8, -hh * 0.6, 5, hh * 0.35); E('#f77f00', w / 2 - 7, -hh * 0.4, 5); R(dk, -w / 2, -3, w, 3); break;
-      case 'anchor': c.strokeStyle = '#343a40'; c.lineWidth = 4.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -hh + 6); c.lineTo(0, -4); c.moveTo(-w / 2 + 3, -12); c.quadraticCurveTo(0, 4, w / 2 - 3, -12); c.moveTo(-7, -hh + 12); c.lineTo(7, -hh + 12); c.stroke(); c.lineWidth = 3; c.beginPath(); c.arc(0, -hh + 4, 4, 0, TAU); c.stroke(); break;
+      case 'anchor': c.strokeStyle = '#343a40'; c.lineWidth = 4.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -hh + 6); c.lineTo(0, -4); c.moveTo(-7, -hh + 12); c.lineTo(7, -hh + 12); c.stroke();
+        c.strokeStyle = l.col || '#343a40'; c.beginPath(); c.moveTo(-w / 2 + 3, -12); c.quadraticCurveTo(0, 4, w / 2 - 3, -12); c.stroke(); c.strokeStyle = '#343a40'; // les pattes de l'ancre portent sa couleur c.lineWidth = 3; c.beginPath(); c.arc(0, -hh + 4, 4, 0, TAU); c.stroke(); break;
       case 'tower': case 'skipylon': case 'mast': { // tronçon de pylône : treillis d'acier
         const col = l.type === 'mast' ? '#9a6b3f' : l.type === 'skipylon' ? '#e63946' : steel;
         if (l.type === 'mast') { R(col, -w / 2 + 2, -hh, w - 4, hh); R('#7a5230', -w / 2 + 2, -hh, 2.5, hh); R(dk, -w, -hh + 6, w * 2, 3); break; }
@@ -1164,7 +1168,7 @@ export class Renderer {
         case 'deck': { // plateforme portante de Heli Cargo : barge, plateforme pétrolière, navire, dalle, barrage, refuge, musée, socle
           const k = o.deck, bot = top + h, P2 = (colr, pts) => { c.fillStyle = colr; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
           if (k === 'barge') { P2('#3d405b', [l, top, l + w, top, l + w - 14, bot, l + 14, bot]); c.fillStyle = '#e07a5f'; c.fillRect(l, top, w, 5); c.fillStyle = '#1b1b26'; for (let x2 = l + 16; x2 < l + w - 10; x2 += 34) { c.beginPath(); c.arc(x2, top + 14, 5, 0, TAU); c.fill(); } }
-          else if (k === 'ship') { P2('#1d3557', [l - 26, top, l + w + 40, top, l + w + 10, bot, l - 10, bot]); c.fillStyle = '#c1121f'; c.fillRect(l - 14, top + 44, w + 34, 60); c.fillStyle = '#f1faee'; c.fillRect(l - 26, top, w + 66, 4); c.fillStyle = rgba('#ffffff', 0.35); for (let x2 = l + 10; x2 < l + w; x2 += 26) c.fillRect(x2, top + 14, 9, 5); }
+          else if (k === 'ship') { P2('#1d3557', [l - 26, top, l + w + 40, top, l + w + 10, bot, l - 10, bot]); c.save(); c.beginPath(); c.moveTo(l - 26, top); c.lineTo(l + w + 40, top); c.lineTo(l + w + 10, bot); c.lineTo(l - 10, bot); c.clip(); c.fillStyle = '#c1121f'; c.fillRect(l - 40, top + 44, w + 100, 70); c.restore(); /* bande rouge découpée à la forme de la coque */ c.fillStyle = '#f1faee'; c.fillRect(l - 26, top, w + 66, 4); c.fillStyle = rgba('#ffffff', 0.35); for (let x2 = l + 10; x2 < l + w; x2 += 26) c.fillRect(x2, top + 14, 9, 5); }
           else if (k === 'rig') { // tablier sur jambes en treillis, grue de pont, torchère éteinte
             c.fillStyle = '#343a40'; for (const x2 of [l + 14, l + w / 2 - 8, l + w - 30]) c.fillRect(x2, top + 22, 16, h); c.strokeStyle = '#495057'; c.lineWidth = 3; c.beginPath(); for (let y2 = top + 30; y2 < bot - 40; y2 += 46) { c.moveTo(l + 22, y2); c.lineTo(l + w - 22, y2 + 46); c.moveTo(l + w - 22, y2); c.lineTo(l + 22, y2 + 46); } c.stroke();
             c.fillStyle = '#f2a516'; c.fillRect(l - 10, top, w + 20, 24); c.fillStyle = '#1b1b26'; for (let x2 = l - 4; x2 < l + w + 6; x2 += 22) c.fillRect(x2, top + 15, 12, 5); c.fillStyle = '#f1faee'; c.fillRect(l - 10, top, w + 20, 3);
