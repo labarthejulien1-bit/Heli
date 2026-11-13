@@ -217,3 +217,8 @@ input[type=range]{flex:0 0 46%;accent-color:var(--accent);height:30px}
 .nav.w-cargo{background:rgba(30,88,86,.88)}
 /* Petits écrans : avec quatre bulles, le titre se fait plus discret pour ne pas passer sous la pastille du pilote */
 @media (max-height:720px){.title{margin-top:-4vh}.title h1{font-size:52px;letter-spacing:14px;margin-right:-14px}.title h1 span{font-size:19px;letter-spacing:9px}.title p{margin-top:8px;font-size:12px}}
+
+/* Médailles de temps des courses : bronze, argent, or */
+.medal.m0.on{background:#cd7f32;border-color:#8a4f1c}
+.medal.m1.on{background:#d7dde4;border-color:#8d99a6}
+.medal.m2.on{background:#ffd34d;border-color:#f2a900}

@@ -306,7 +306,8 @@ export function autopilot(g) {
     if (dist < -4 || dist > 230) continue;
     const v = Math.max(120 * Math.sqrt(mod.grav || 1), h.vx), tA = dist / v, tB = (dist + (o.maxX - o.minX) + 44) / v;
     let safe = true;
-    if (o.kind === 'geyser') {
+    if (o.safeAt) { for (let t = tA - 0.15; t <= tB + 0.15; t += 0.08) if (!o.safeAt(g.t + t, h.y, o.x)) safe = false; } // danger qui annonce lui-même quand il est sûr
+    else if (o.kind === 'geyser') {
       for (let t = tA - 0.1; t <= tB + 0.1; t += 0.08) if (geyserState(o, g.t + t).h > 0.05) safe = false;
     } else {
       for (let t = tA; t <= tB; t += 0.08) if (Math.abs(moverY(o, g.t + t) - L.pathAt(o.x)) < o.r + 30) safe = false;

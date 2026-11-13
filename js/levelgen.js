@@ -430,7 +430,8 @@ export function generateLevel(def) {
   }
   for (let i = 0; i < 100 && coins.length; i++) items.push(coins[Math.floor((i * coins.length) / Math.max(100, coins.length))] );
   items.sort((p, q) => p.x - q.x);
-  const endPad = { x: LEN - 300, y: groundAt(LEN - 300), w: 150, kind: 'end' };
+  // L'aire d'arrivée est posée après le pied de la dernière pente, sur le replat : elle ne mord pas dans le relief.
+  const endX = LEN - 205, endPad = { x: endX, y: groundAt(endX), w: 150, kind: 'end' };
   pads.push(endPad);
   pads.forEach((p, i) => { p.i = i; });
   // Réservoir : dimensionné sur le plus long trajet entre deux ravitaillements principaux.
@@ -439,8 +440,16 @@ export function generateLevel(def) {
   const mod = def.mod || {};
   const tank = ((maxGap / 200) * (def.id <= 2 ? 1.55 : 1.4)) / Math.sqrt(mod.grav || 1) * (mod.windX < 0 ? 1.25 : 1); // secondes de rotor à pleine puissance
 
+  // Décor sans collision demandé par le niveau (def.story : [type, position de 0 à 1]) : posé là où le sol est le plus plat
+  // près de l'endroit voulu, hors des aires de ravitaillement. N'utilise pas le générateur aléatoire : le niveau reste identique.
+  const story = (def.story || []).map(([type, at, o]) => {
+    let bx = at * LEN, best = 1e9;
+    for (let x = at * LEN - 320; x <= at * LEN + 320; x += 20) { if (inFuel(x)) continue; const d = Math.abs(groundAt(x + 50) - groundAt(x - 50)) + Math.abs(x - at * LEN) * 0.02; if (d < best) { best = d; bx = x; } }
+    return { type, x: bx, y: Math.max(groundAt(bx - 30), groundAt(bx + 30)), v: (bx * 0.137) % 1, ...(o || {}) };
+  });
+
   return {
-    def, length: LEN, secs, obs, items, zones, pads, tank, tunnels, traffic,
+    def, length: LEN, secs, obs, items, zones, pads, tank, tunnels, traffic, story: story.length ? story : null,
     ground, ceil, groundAt, ceilAt, pathAt, gapAt, groundSlope: slope(ground), ceilSlope: slope(ceil),
     startX: 170, pad: endPad,
     // largeur libre minimale au-dessus d'un point (sert à vérifier que les étoiles sont atteignables)

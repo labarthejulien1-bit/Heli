@@ -8,7 +8,7 @@ export function buildCargoLevel(cfg) {
   // replats dégagés autour des charges, des zones de livraison, de l'arrivée et des ravitaillements
   const clear = [...cfg.loads.flatMap((l) => [{ x: l.x, w: 130 }, { x: l.to, w: (l.zw || 110) + 50 }]), { x: cfg.finish.x, w: (cfg.finish.w || 120) + 50 }, ...(cfg.fuel || []).map((f) => ({ x: f.x, w: 160 }))];
   const L = buildRescueLevel({ ...cfg, victims: [], clear, stars: { time: 0, maxHits: 0 } });
-  L.def.id = 300 + cfg.n;
+  L.def.id = 300 + cfg.n; L.def.objectives = cfg.objectives || [];
   // Hauteur portante en un point : le dessus d'une plateforme s'il y en a une, sinon le sol.
   const topAt = (x) => { let y = L.groundAt(x); for (const o of L.obs) if (o.st === 'deck' && x > o.minX && x < o.maxX) y = Math.min(y, o.y); return y; };
   const base = L.pads[0];

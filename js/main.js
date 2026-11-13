@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.1.0';
+const VERSION = '4.3.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -348,11 +348,11 @@ function rhangar() {
 // ---------- Heli Cargo : liste des chantiers, fiche, résultat, hangar
 function glist() {
   ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('g_levels')}${gwallet()}</h2><div class="scroll">${CARGO_LEVELS.map((cfg) => {
-    const n = cfg.n, open = cargoOpen(n), rec = save.heliCargo.levels[n], st = levelBits(rec?.sm), k = cfg.look;
+    const n = cfg.n, open = cargoOpen(n), rec = save.heliCargo.levels[n], st = levelBits(rec?.sm), ob = rec?.obj || [], k = cfg.look;
     return `<button class="lvl ${open ? '' : 'locked'}" ${open ? `data-glevel="${n}"` : `data-glock="${n}"`} style="--a:${k.sky[0][0]};--b:${k.sky[0][1]};--gr:${k.ground}">
       <span class="n">${n}</span>
-      <span class="name">${t('g_lvl' + n)}<small>${open ? `${t('g_uni_' + cfg.uni)}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('g_unlock', n - 1)}</small></span>
-      ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal ${st > q ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
+      <span class="name">${t('g_lvl' + n)}<small>${open ? `${t('g_uni_' + cfg.uni)} · ★ ${st}/3${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}` : t('g_unlock', n - 1)}</small></span>
+      ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal ${ob[q] ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
     </button>`;
   }).join('')}</div></section>${nav('glist')}`;
 }
@@ -361,6 +361,7 @@ function cargoSheet(n) {
   const ok = L.cargo.loads.every((l) => l.m / me.lift <= MAX_RATIO); // l'appareil choisi peut-il lever toutes les charges ?
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
     <h2>${n} · ${t('g_lvl' + n)}</h2><p class="sub">${t('g_uni_' + cfg.uni)} · ${'★'.repeat(st)}${'☆'.repeat(3 - st)}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
+    ${cfg.objectives.map((o, i) => `<div class="obj"><i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
     <div class="obj"><span>${t('g_loads')}</span><small>${cfg.loads.map((l) => t('g_l_' + l.type)).join(', ')}</small></div>
     <div class="obj"><span>${t('r_reco')}</span><small>${cargoHeli(cfg.recommended).name}</small></div>
     ${ok ? '' : `<div class="obj warn"><span>⚠ ${t('g_tooHeavy')}</span></div>`}
@@ -374,6 +375,8 @@ function showCargoResult() {
   const g = S.game, n = S.cargo, L = S.level;
   const rec = (save.heliCargo.levels[n] ||= { done: false, time: null, sm: 0 });
   const newRec = rec.time != null && g.t < rec.time, before = levelBits(rec.sm);
+  const objs = L.def.objectives, done = objs.map((o) => g.objectiveDone(o)), old = rec.obj || [false, false, false], fresh = done.map((d, i) => d && !old[i]);
+  rec.obj = old.map((o, i) => o || done[i]);
   rec.done = true;
   if (rec.time == null || g.t < rec.time) rec.time = g.t;
   let k = 0; L.items.forEach((it, i) => { if (it.type === 'star') { if (g.taken[i]) rec.sm = (rec.sm || 0) | (1 << k); k++; } });
@@ -382,6 +385,7 @@ function showCargoResult() {
   const hasNext = !!cargoLevel(n + 1);
   ui.innerHTML = `<div class="overlay"><div class="sheet">
     <h2>${t('g_done')}</h2><p class="sub">${n} · ${t('g_lvl' + n)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
+    ${objs.map((o, i) => `<div class="obj ${fresh[i] ? 'new' : ''}"><i class="medal ${done[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
     <div class="obj"><span>${t('time')}</span><small>${fmtTime(g.t)}</small></div>
     <div class="obj"><span>${t('g_loads')}</span><small>${g.delivered}/${g.loads.length}</small></div>
     <div class="obj"><span>${t('stars')}</span><small style="color:#ffd34d;font-size:16px;letter-spacing:2px">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</small></div>
@@ -391,7 +395,7 @@ function showCargoResult() {
       <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
       <button class="btn ghost" data-act="quit">${t('g_levels')}</button>
     </div></div></div>`;
-  for (let i = before; i < st; i++) setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + (i - before) * 250);
+  fresh.forEach((f, i) => f && setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + i * 250));
 }
 function ghangar() {
   const cur = myCargoHeli().id;
@@ -413,11 +417,11 @@ function ghangar() {
 // ---------- Heli Race : liste des courses, fiche, résultat, hangar
 function clist() {
   ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('c_races')}${cwallet()}</h2><div class="scroll">${RACE_LEVELS.map((cfg) => {
-    const n = cfg.n, open = raceOpen(n), rec = save.heliRace.levels[n], st = levelBits(rec?.sm), k = cfg.look;
+    const n = cfg.n, open = raceOpen(n), rec = save.heliRace.levels[n], st = levelBits(rec?.sm), md = rec?.md || 0, k = cfg.look;
     return `<button class="lvl ${open ? '' : 'locked'}" ${open ? `data-clevel="${n}"` : `data-clock="${n}"`} style="--a:${k.sky[0][0]};--b:${k.sky[0][1]};--gr:${k.ground}">
       <span class="n">${n}</span>
-      <span class="name">${t('c_lvl' + n)}<small>${open ? `${t('c_uni_' + cfg.uni)}${rec?.time != null ? ` · ${t('best')} ${fmtChrono(rec.time)}` : ''}` : t('c_unlock', n - 1)}</small></span>
-      ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal ${st > q ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
+      <span class="name">${t('c_lvl' + n)}<small>${open ? `${t('c_uni_' + cfg.uni)} · ★ ${st}/3${rec?.time != null ? ` · ${t('best')} ${fmtChrono(rec.time)}` : ''}` : t('c_unlock', n - 1)}</small></span>
+      ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal m${q} ${md > q ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
     </button>`;
   }).join('')}</div></section>${nav('clist')}`;
 }
@@ -425,6 +429,7 @@ function raceSheet(n) {
   const cfg = raceLevel(n), rec = save.heliRace.levels[n], st = levelBits(rec?.sm), L = getRace(n);
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
     <h2>${n} · ${t('c_lvl' + n)}</h2><p class="sub">${t('c_uni_' + cfg.uni)} · ${'★'.repeat(st)}${'☆'.repeat(3 - st)}${rec?.time != null ? ` · ${t('best')} ${fmtChrono(rec.time)}` : ''}</p>
+    ${['c_bronze', 'c_silver', 'c_gold'].map((key, q) => `<div class="obj"><i class="medal m${q} ${rec?.time != null && rec.time <= L.race.medals[q] ? 'on' : ''}"></i>${t(key, fmtTime(L.race.medals[q]))}</div>`).join('')}
     <div class="obj"><span>${t('c_rings')}</span><small>${L.race.rings.length}</small></div>
     <div class="obj"><span>${t('stars')}</span><small>★ ${st}/3</small></div>
     <p class="sub" style="margin:10px 0 0;line-height:1.4">${t('c_rule')}</p>
@@ -441,11 +446,15 @@ function showRaceResult() {
   if (rec.time == null || time < rec.time) rec.time = time;
   let k = 0; L.items.forEach((it, i) => { if (it.type === 'star') { if (g.taken[i]) rec.sm = (rec.sm || 0) | (1 << k); k++; } });
   const st = levelBits(rec.sm);
+  // médailles de temps : bronze, argent, or, d'après le chrono de cette course ; on garde le meilleur palmarès
+  const got = g.medals(time), count = got.filter(Boolean).length, mdBefore = rec.md || 0;
+  rec.md = Math.max(mdBefore, count);
   save.stats.landings++; commitRun(); persist();
   const hasNext = !!raceLevel(n + 1);
   ui.innerHTML = `<div class="overlay"><div class="sheet">
     <h2>${t('c_done')}</h2><p class="sub">${n} · ${t('c_lvl' + n)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
     <div class="chrono">${fmtChrono(time)}</div>
+    ${['c_bronze', 'c_silver', 'c_gold'].map((key, q) => `<div class="obj ${got[q] && q >= mdBefore ? 'new' : ''}"><i class="medal m${q} ${got[q] ? 'on' : ''}"></i>${t(key, fmtTime(L.race.medals[q]))}</div>`).join('')}
     <div class="obj"><span>${t('c_rings')}</span><small>${g.passed}/${L.race.rings.length}</small></div>
     <div class="obj"><span>${t('c_penalty')}</span><small>${g.missed ? '+' + g.missed * PENALTY + ' s' : '—'}</small></div>
     <div class="obj"><span>${t('stars')}</span><small style="color:#ffd34d;font-size:16px;letter-spacing:2px">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</small></div>
@@ -455,7 +464,7 @@ function showRaceResult() {
       <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
       <button class="btn ghost" data-act="quit">${t('c_races')}</button>
     </div></div></div>`;
-  for (let i = before; i < st; i++) setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + (i - before) * 250);
+  for (let i = mdBefore; i < count; i++) setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + (i - mdBefore) * 250);
 }
 function changar() {
   const cur = myRaceHeli().id;
@@ -601,7 +610,7 @@ function pause() {
   const l = S.level.def, g = S.game;
   ui.innerHTML = `<div class="overlay center"><div class="sheet col">
     <h2>${t('pause')}</h2><p class="sub">${levelTitle()}</p>
-    <div>${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${save.levels[l.id]?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}${o.t === 'orbs' ? `<small>${g.stats.orbs}/${Math.ceil((S.level.orbTotal * o.v) / 100)}</small>` : o.t === 'hits' ? `<small>${g.stats.hits}/${o.v}</small>` : o.t === 'stars' ? `<small>${g.stats.stars}/${S.level.starTotal}</small>` : ''}</div>`).join('')}</div>
+    <div>${l.objectives.map((o, i) => `<div class="obj"><i class="medal ${(S.cargo ? save.heliCargo.levels[S.cargo] : save.levels[l.id])?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}${o.t === 'orbs' ? `<small>${g.stats.orbs}/${Math.ceil((S.level.orbTotal * o.v) / 100)}</small>` : o.t === 'hits' ? `<small>${g.stats.hits}/${o.v}</small>` : o.t === 'stars' ? `<small>${g.stats.stars}/${S.level.starTotal}</small>` : ''}</div>`).join('')}</div>
     <button class="btn primary" data-act="resume">${ICON.play}${t('resume')}</button>
     <button class="btn" data-act="restart">${t('restart')}</button>
     <button class="btn ghost" data-act="quit">${t('quit')}</button>
