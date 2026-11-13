@@ -206,3 +206,14 @@ input[type=range]{flex:0 0 46%;accent-color:var(--accent);height:30px}
 .bubble{width:min(29vmin,124px)}
 .chrono{text-align:center;font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;margin:2px 0 10px;color:var(--accent)}
 .obj small .medal{margin-left:4px}
+
+/* Bulles des mondes : taille fixée en largeur ET en hauteur (aspect-ratio seul les écrasait sur certains téléphones), jamais comprimées */
+.bubble{--bs:min(29vmin,124px);width:var(--bs);height:var(--bs);aspect-ratio:auto;flex:none}
+.worlds,.world{flex-shrink:0}
+/* Bandeau du bas : une teinte douce par monde, pour voir d'un coup d'œil où l'on est */
+.nav.w-adv{background:rgba(44,48,96,.88)}
+.nav.w-rescue{background:rgba(108,52,58,.88)}
+.nav.w-race{background:rgba(104,82,36,.88)}
+.nav.w-cargo{background:rgba(30,88,86,.88)}
+/* Petits écrans : avec quatre bulles, le titre se fait plus discret pour ne pas passer sous la pastille du pilote */
+@media (max-height:720px){.title{margin-top:-4vh}.title h1{font-size:52px;letter-spacing:14px;margin-right:-14px}.title h1 span{font-size:19px;letter-spacing:9px}.title p{margin-top:8px;font-size:12px}}

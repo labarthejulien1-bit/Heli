@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.0.0';
+const VERSION = '4.1.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -236,7 +236,7 @@ function nav(cur) {
     : world === 'race' ? [['home', 'home', 'home'], ['clist', 'levels', 'c_races'], ['changar', 'hangar', 'hangar']]
     : world === 'rescue' ? [['home', 'home', 'home'], ['rmap', 'levels', 'r_missions'], ['rhangar', 'hangar', 'hangar']] : [['home', 'home', 'home'], ['levels', 'levels', 'levels'], ['hangar', 'hangar', 'hangar']];
   items.push(['profile', 'profile', 'profile'], ['settings', 'settings', 'settings']);
-  return `<nav class="nav">${items.map(([k, ic, lb]) => `<button data-go="${k}" class="${k === cur ? 'on' : ''}">${ICON[ic]}<span>${t(lb)}</span></button>`).join('')}</nav>`;
+  return `<nav class="nav w-${world}">${items.map(([k, ic, lb]) => `<button data-go="${k}" class="${k === cur ? 'on' : ''}">${ICON[ic]}<span>${t(lb)}</span></button>`).join('')}</nav>`;
 }
 function go(screen) {
   S.screen = screen;
@@ -263,7 +263,7 @@ function home() {
       <div class="worlds">${bubble('adv', t('adventure'), `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, rsky)}${bubble('race', 'Heli Race', `★ ${raceStars(save)}/${RACE_LEVELS.length * 3}`, raceLevel(nextRace()).look.sky[0])}${bubble('cargo', 'Heli Cargo', `★ ${cargoStars(save)}/${CARGO_LEVELS.length * 3}`, cargoLevel(nextCargo()).look.sky[0])}</div>
     </div>
   </section>${(S.navWorld = w, nav('home'))}`;
-  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? myRescueHeli() : c.dataset.bubble === 'race' ? myRaceHeli() : c.dataset.bubble === 'cargo' ? myCargoHeli() : heliOf(save.heli)).look, 1.05));
+  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? RESCUE_HELIS[2] : c.dataset.bubble === 'race' ? myRaceHeli() : c.dataset.bubble === 'cargo' ? cargoHeli('cigogne') : heliOf(save.heli)).look, 1.05)); // vignettes : Mouette pour Rescue, Cigogne pour Cargo
 }
 // Missions Heli Rescue : même présentation que les niveaux de l'Aventure (bannières aux couleurs de la mission,
 // étoiles, record) ; les missions pas encore livrées sont annoncées en grisé.
