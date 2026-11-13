@@ -8,7 +8,9 @@ const WEIGHT = { person: 0.08, small: 0.03, medium: 0.08, big: 0.2 };
 const SPEED = { person: 30, small: 62, medium: 44, big: 24 }; // vitesse de marche vers la porte
 
 export class RescueGame extends Game {
-  constructor(level, heli, diff) { super(level, heli, 0, diff); }
+  constructor(level, heli, diff, owned = 0) { super(level, heli, owned, diff); }
+  // Mission accomplie quand tout le monde est descendu à la base (redéfini par Heli Cargo).
+  missionDone() { return this.vs.every((v) => v.state === 'out' || v.state === 'saved'); }
 
   reset(fromPad) {
     super.reset(fromPad);
@@ -92,7 +94,7 @@ export class RescueGame extends Game {
     this.mass = 1 + this.aboard.reduce((m, v) => m + (WEIGHT[v.size] || 0.08), 0);
 
     // Mission accomplie quand tout le monde est descendu à la base
-    if (this.vs.every((v) => v.state === 'out' || v.state === 'saved')) {
+    if (this.missionDone()) {
       this.winT += dt;
       if (this.winT > 1.3) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
     }

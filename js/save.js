@@ -2,6 +2,7 @@
 import { HELIS, LEVELS, heliUnlock } from './data.js';
 import { RESCUE_HELIS } from './rescue.js';
 import { RACE_HELIS } from './race.js';
+import { CARGO_HELIS } from './cargo.js';
 const KEY = 'heli-save-v1';
 
 export function defaults() {
@@ -10,6 +11,7 @@ export function defaults() {
     world: 'adv', // monde affiché à l'accueil : 'adv' (Aventure) ou 'rescue' (Heli Rescue)
     heliRescue: { levels: {}, heli: 'mesange', coins: 0, starsSpent: 0, helis: ['mesange'] }, // progression du monde Heli Rescue, indépendante de l'Aventure
     heliRace: { levels: {}, heli: 'eclair', starsSpent: 0, helis: ['eclair'] }, // monde Heli Race : n -> { done, time (meilleur chrono), sm (étoiles ramassées) }
+    heliCargo: { levels: {}, heli: 'mulet', starsSpent: 0, helis: ['mulet'] }, // monde Heli Cargo : n -> { done, time, sm (étoiles ramassées) }
     coins: 0, starsSpent: 0, // porte-monnaie : pièces cumulées, étoiles dépensées
     levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, sm (masque des étoiles trouvées) }
     stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },
@@ -27,7 +29,7 @@ function sanitize(raw) {
   if (!s.helis.includes('moineau')) s.helis.unshift('moineau');
   if (!s.helis.includes(s.heli)) s.heli = 'moineau';
   s.pilot = String(s.pilot || '').slice(0, 16);
-  s.world = ['rescue', 'race'].includes(s.world) ? s.world : 'adv';
+  s.world = ['rescue', 'race', 'cargo'].includes(s.world) ? s.world : 'adv';
   s.heliRescue = { ...d.heliRescue, ...(raw.heliRescue && typeof raw.heliRescue === 'object' ? raw.heliRescue : {}) };
   const r = s.heliRescue;
   if (!r.levels || typeof r.levels !== 'object') r.levels = {};
@@ -43,6 +45,12 @@ function sanitize(raw) {
   if (!c.helis.includes('eclair')) c.helis.unshift('eclair');
   if (!c.helis.includes(c.heli)) c.heli = 'eclair';
   c.starsSpent = Math.max(0, Math.floor(+c.starsSpent || 0));
+  const k = (s.heliCargo = { ...d.heliCargo, ...(raw.heliCargo && typeof raw.heliCargo === 'object' ? raw.heliCargo : {}) });
+  if (!k.levels || typeof k.levels !== 'object') k.levels = {};
+  k.helis = (Array.isArray(k.helis) ? k.helis : []).filter((id) => CARGO_HELIS.some((h) => h.id === id));
+  if (!k.helis.includes('mulet')) k.helis.unshift('mulet');
+  if (!k.helis.includes(k.heli)) k.heli = 'mulet';
+  k.starsSpent = Math.max(0, Math.floor(+k.starsSpent || 0));
   s.coins = Math.max(0, Math.floor(+s.coins || 0)); s.starsSpent = Math.max(0, Math.floor(+s.starsSpent || 0));
   s.lastLevel = Math.min(LEVELS.length, Math.max(1, s.lastLevel | 0 || 1));
   return s;

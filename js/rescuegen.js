@@ -21,7 +21,7 @@ export function buildRescueLevel(cfg) {
     ground[i] = lerp(a[1], b[1], (1 - Math.cos(Math.PI * t)) / 2) + (fbm(x / 60, cfg.seed) - 0.5) * 2 * (cfg.rough || 0);
   }
   // Replats : la base et chaque zone de pose sont aplanies (raccord progressif sur 40 unités)
-  const flats = [{ x: cfg.base.x, w: 150 }, ...cfg.victims.filter((v) => !v.floe && !v.dock && !v.onWater).map((v) => ({ x: v.x, w: v.zoneWidth })), ...(cfg.props || []).filter((p) => p.w && p.type !== 'ledge' && p.type !== 'hang').map((p) => ({ x: p.x, w: p.w }))];
+  const flats = [{ x: cfg.base.x, w: 150 }, ...cfg.victims.filter((v) => !v.floe && !v.dock && !v.onWater).map((v) => ({ x: v.x, w: v.zoneWidth })), ...(cfg.props || []).filter((p) => p.w && p.type !== 'ledge' && p.type !== 'hang').map((p) => ({ x: p.x, w: p.w })), ...(cfg.clear || [])]; // clear : replats supplémentaires sans arbre (charges, zones de livraison de Heli Cargo)
   for (const f of flats) {
     const yc = ground[Math.round(f.x / STEP)], half = f.w / 2 + 14;
     for (let i = Math.max(0, Math.floor((f.x - half - 40) / STEP)); i <= Math.min(N - 1, Math.ceil((f.x + half + 40) / STEP)); i++) {
@@ -78,6 +78,10 @@ export function buildRescueLevel(cfg) {
       const x = wx - sd * (p.w / 2 - 3);
       obs.push({ kind: 'pillar', st: 'ledge', side: sd, x, y: p.y, w: p.w + 6, h, shapes: [{ p: rectPoly(x - p.w / 2 - 3, p.y, p.w + 6, h) }], minX: x - p.w / 2 - 3, maxX: x + p.w / 2 + 3, v: R() });
     }
+    else if (p.type === 'deck') { // plateforme portante (barge, plateforme pétrolière, pont de navire, dalle, terrasse) : posée sur l'eau ou le sol, haute de h
+      const b = Math.min(groundAt(p.x), waterAt ? waterAt(0) : 1e9), top = b - p.h;
+      obs.push({ kind: 'pillar', st: 'deck', deck: p.st || 'slab', x: p.x, y: top, w: p.w, h: p.h + 40, shapes: [{ p: rectPoly(p.x - p.w / 2, top, p.w, p.h + 40) }], minX: p.x - p.w / 2, maxX: p.x + p.w / 2, v: R() });
+    }
     else if (p.type === 'hang') obs.push({ kind: 'hang', st: p.st || 'rock', x: p.x, y: p.len, w: p.w, shapes: [{ p: [p.x - p.w / 2, -80, p.x + p.w / 2, -80, p.x + p.w * 0.3, p.len, p.x - p.w * 0.3, p.len] }], minX: p.x - p.w / 2, maxX: p.x + p.w / 2, v: R() });
   }
   for (const b of builds) { const g = groundAt(b.x), top = g - b.h; obs.push({ kind: 'pillar', st: 'house', ruin: b.ruin, x: b.x, y: top, w: b.w, h: b.h + 24, shapes: [{ p: rectPoly(b.x - b.w / 2, top, b.w, b.h + 24) }], minX: b.x - b.w / 2, maxX: b.x + b.w / 2, v: R() }); }
@@ -123,7 +127,7 @@ export function buildRescueLevel(cfg) {
   for (let i = 0; i < N; i++) {
     let m = 1e9;
     for (let k = Math.max(0, i - 18); k <= Math.min(N - 1, i + 18); k++) m = Math.min(m, ground[k]);
-    for (const o of obs) if (o.kind !== 'hang' && o.y != null && Math.abs(o.x - i * STEP) < 110) m = Math.min(m, o.y);
+    for (const o of obs) if (o.kind !== 'hang' && o.y != null && (o.st === 'deck' ? i * STEP > o.minX - 110 && i * STEP < o.maxX + 110 : Math.abs(o.x - i * STEP) < 110)) m = Math.min(m, o.y); // une plateforme large compte sur toute sa largeur
     if (waterAt) m = Math.min(m, waterAt(0) - (WV && i * STEP > WV.x0 - 200 && i * STEP < WV.x1 + 200 ? WV.height : 0));
     cruise[i] = Math.max(70, m - 105);
     for (const o of obs) if (o.kind === 'hang' && Math.abs(o.x - i * STEP) < 70) cruise[i] = Math.max(cruise[i], o.y + 48); // passer sous les lianes

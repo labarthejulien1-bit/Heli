@@ -173,6 +173,7 @@ export class Renderer {
     this.terrain(c, L, def, x0, x1, camY, vh);
     this.pads(c, L, def, g, time, x0, x1);
     if (L.rescue) this.rescue(c, L, def, g, time, x0, x1);
+    if (L.cargo) this.cargo(c, L, def, g, time, x0, x1);
     this.items(c, L, def, g, time, x0, x1);
     if (L.race) this.rings(c, L, g, time, x0, x1, 0);
     this.traffic(c, L, def, g, time, camX);
@@ -208,7 +209,7 @@ export class Renderer {
       c.scale(h.dir, 1);
       c.rotate(h.tilt * DEG + (g.state === 'dead' ? h.spin : 0));
       if (h.inv > 0 && g.state === 'fly' && Math.sin(time * 40) > 0) c.globalAlpha = 0.45;
-      drawHeli(c, look, time, g.state === 'ready' ? 0.8 : h.power, g.vs ? this.pax(g, look) : null);
+      drawHeli(c, look, time, g.state === 'ready' ? 0.8 : h.power, g.vs && look.seats ? this.pax(g, look) : null);
       c.restore();
     }
 
@@ -463,6 +464,73 @@ export class Renderer {
     return { seats, cargo };
   }
 
+  // Monde Heli Cargo : zones de livraison, charges (au sol, portées, livrées), câble et crochet.
+  cargo(c, L, def, g, time, x0, x1) {
+    const h = g.heli, loads = g.loads || L.cargo.loads.map((l) => ({ ...l, state: 'ground' }));
+    for (const l of loads) { // zone de livraison : cadre rayé et fanion, tant que la charge n'y est pas
+      const z = l.to; if (l.state === 'delivered' || z.x < x0 - 120 || z.x > x1 + 120) continue;
+      const on = l === g.carry, col = on ? '#7dffb0' : '#ffd34d';
+      c.fillStyle = rgba(col, on ? 0.2 + 0.1 * Math.sin(time * 5) : 0.1); c.fillRect(z.x - z.w / 2, z.y - 46, z.w, 46);
+      c.fillStyle = col; for (let k = 0; k < z.w - 6; k += 16) { c.beginPath(); c.moveTo(z.x - z.w / 2 + k, z.y); c.lineTo(z.x - z.w / 2 + k + 8, z.y); c.lineTo(z.x - z.w / 2 + k + 13, z.y - 5); c.lineTo(z.x - z.w / 2 + k + 5, z.y - 5); c.fill(); }
+      for (const sd of [-1, 1]) { c.fillRect(z.x + sd * z.w / 2 - 1.2, z.y - 46, 2.4, 46); c.beginPath(); c.moveTo(z.x + sd * z.w / 2, z.y - 46); c.lineTo(z.x + sd * (z.w / 2 - 14), z.y - 41); c.lineTo(z.x + sd * z.w / 2, z.y - 36); c.fill(); }
+    }
+    for (const l of loads) {
+      if (l.state === 'carried' || l.x < x0 - 80 || l.x > x1 + 80) continue;
+      c.save(); c.translate(l.x, l.y);
+      if (l.state === 'ground' && !g.carry) { c.strokeStyle = rgba('#ffffff', 0.5 + 0.3 * Math.sin(time * 4)); c.lineWidth = 1.5; c.setLineDash([4, 4]); c.strokeRect(-l.w / 2 - 5, -l.h - 5, l.w + 10, l.h + 5); c.setLineDash([]); }
+      this.load(c, l, def, time); c.restore();
+    }
+    const hx = h.x, hy = h.y + 10;
+    if (g.carry) { // charge portée : câble tendu (ou détendu si elle repose), élingues, charge qui se balance
+      const l = g.carry, [lx, ly] = g.loadDraw(), slack = ly < g.loadPos()[1] - 1;
+      c.strokeStyle = '#20222c'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx, hy);
+      if (slack) c.quadraticCurveTo((hx + lx) / 2 + 14, (hy + ly) / 2 + 12, lx, ly - 7); else c.lineTo(lx, ly - 7);
+      c.stroke();
+      c.lineWidth = 1.1; c.beginPath(); c.moveTo(lx, ly - 7); c.lineTo(lx - l.w * 0.4, ly); c.moveTo(lx, ly - 7); c.lineTo(lx + l.w * 0.4, ly); c.stroke();
+      c.fillStyle = '#ffd34d'; c.beginPath(); c.arc(lx, ly - 7, 2.6, 0, TAU); c.fill();
+      c.save(); c.translate(lx, ly + l.h); c.rotate(slack ? 0 : -g.th * 0.35); this.load(c, l, def, time); c.restore();
+    } else if (g.cable > 0 && g.target) { // le câble descend vers la charge visée ; jauge de prise au-dessus de l'appareil
+      const t = g.target, full = t.y - t.h - hy, k = clamp(g.cable / Math.max(1, full), 0, 1);
+      c.strokeStyle = '#20222c'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + (t.x - hx) * k, hy + g.cable); c.stroke();
+      c.strokeStyle = '#ffd34d'; c.lineWidth = 2; c.beginPath(); c.arc(hx + (t.x - hx) * k, hy + g.cable + 3, 3, 0.2, Math.PI + 0.6); c.stroke();
+      c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(hx, h.y - 34, 9, 0, TAU); c.stroke();
+      c.strokeStyle = '#6ee7a0'; c.beginPath(); c.arc(hx, h.y - 34, 9, -Math.PI / 2, -Math.PI / 2 + TAU * k); c.stroke();
+    }
+  }
+  // Dessin d'une charge, posée en (0, 0) : l'origine est le milieu de sa base.
+  load(c, l, def, time) {
+    const w = l.w, hh = l.h, R = (col, x, y, ww, h2) => { c.fillStyle = col; c.fillRect(x, y, ww, h2); };
+    const P = (col, pts) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
+    const E = (col, x, y, rx, ry = rx, a0 = 0, a1 = TAU) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, a0, a1); c.fill(); };
+    const steel = '#8d99ae', dk = '#2b2d42', stone = '#d9b77e', stoneD = '#a8834e';
+    switch (l.type) {
+      case 'container': R('#c1121f', -w / 2, -hh, w, hh); c.fillStyle = 'rgba(0,0,0,.25)'; for (let k = 4; k < w - 2; k += 6) c.fillRect(-w / 2 + k, -hh + 2, 1.5, hh - 4); R('#780000', -w / 2, -hh, w, 2.5); break;
+      case 'tank': E('#e9ecef', 0, -hh / 2, w / 2, hh / 2); R('#e9ecef', -w / 2 + 6, -hh, w - 12, hh); R('#f77f00', -w / 2 + 6, -hh * 0.62, w - 12, 5); R(dk, -w * 0.3, -3, 4, 3); R(dk, w * 0.3 - 4, -3, 4, 3); R(steel, -3, -hh - 4, 6, 4); break;
+      case 'pile': R(steel, -w / 2, -hh, w, hh); R('#adb5bd', -w / 2, -hh, 4, hh); for (let y = -hh + 8; y < -4; y += 14) R('#6c757d', -w / 2, y, w, 2); break;
+      case 'engine': R('#495057', -w / 2, -hh * 0.75, w, hh * 0.75); R('#6c757d', -w / 2 + 4, -hh, w * 0.5, hh * 0.3); for (let k = 0; k < 4; k++) R('#adb5bd', -w / 2 + 5 + k * 8, -hh * 0.6, 5, hh * 0.35); E('#f77f00', w / 2 - 7, -hh * 0.4, 5); R(dk, -w / 2, -3, w, 3); break;
+      case 'anchor': c.strokeStyle = '#343a40'; c.lineWidth = 4.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -hh + 6); c.lineTo(0, -4); c.moveTo(-w / 2 + 3, -12); c.quadraticCurveTo(0, 4, w / 2 - 3, -12); c.moveTo(-7, -hh + 12); c.lineTo(7, -hh + 12); c.stroke(); c.lineWidth = 3; c.beginPath(); c.arc(0, -hh + 4, 4, 0, TAU); c.stroke(); break;
+      case 'tower': case 'skipylon': case 'mast': { // tronçon de pylône : treillis d'acier
+        const col = l.type === 'mast' ? '#9a6b3f' : l.type === 'skipylon' ? '#e63946' : steel;
+        if (l.type === 'mast') { R(col, -w / 2 + 2, -hh, w - 4, hh); R('#7a5230', -w / 2 + 2, -hh, 2.5, hh); R(dk, -w, -hh + 6, w * 2, 3); break; }
+        c.strokeStyle = col; c.lineWidth = 2.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(-w / 2, 0); c.lineTo(-w * 0.22, -hh); c.moveTo(w / 2, 0); c.lineTo(w * 0.22, -hh); c.stroke();
+        c.lineWidth = 1.3; c.beginPath(); for (let k = 0; k < 4; k++) { const y0 = -(k / 4) * hh, y1 = -((k + 1) / 4) * hh, a = w / 2 - (w * 0.28 * k) / 4, b = w / 2 - (w * 0.28 * (k + 1)) / 4; c.moveTo(-a, y0); c.lineTo(b, y1); c.moveTo(a, y0); c.lineTo(-b, y1); c.moveTo(-b, y1); c.lineTo(b, y1); } c.stroke();
+        if (l.type === 'skipylon') { R(dk, -w * 0.9, -hh - 3, w * 1.8, 4); E(dk, -w * 0.8, -hh + 3, 3); E(dk, w * 0.8, -hh + 3, 3); } else R(col, -w * 0.7, -hh, w * 1.4, 2.5);
+        break;
+      }
+      case 'transfo': R('#5c677d', -w / 2, -hh * 0.8, w, hh * 0.8); for (let k = 0; k < 5; k++) R('#33415c', -w / 2 + 3 + k * 7, -hh * 0.7, 3, hh * 0.6); for (const sx of [-10, 0, 10]) { R('#e9ecef', sx - 1.5, -hh, 3, hh * 0.22); E('#e9ecef', sx, -hh, 3, 2); } R('#ffd400', -w / 2, -6, w, 3); break;
+      case 'spool': E('#9a6b3f', 0, -hh / 2, hh / 2); E('#3a2a1c', 0, -hh / 2, hh * 0.36); E('#c9a26a', 0, -hh / 2, hh * 0.12); c.strokeStyle = '#1b1b26'; c.lineWidth = 1; for (let r = hh * 0.2; r < hh * 0.36; r += 3) { c.beginPath(); c.arc(0, -hh / 2, r, 0, TAU); c.stroke(); } break;
+      case 'crate': R('#b08968', -w / 2, -hh, w, hh); R('#7f5539', -w / 2, -hh, w, 3); R('#7f5539', -w / 2, -3, w, 3); R('#7f5539', -2, -hh, 4, hh); c.strokeStyle = rgba('#ffffff', 0.5); c.lineWidth = 1; c.beginPath(); c.moveTo(-w / 2, -hh); c.lineTo(w / 2, 0); c.moveTo(w / 2, -hh); c.lineTo(-w / 2, 0); c.stroke(); break;
+      case 'gondola': c.fillStyle = '#e63946'; c.beginPath(); c.moveTo(-w / 2 + 5, -hh * 0.8); c.lineTo(w / 2 - 5, -hh * 0.8); c.quadraticCurveTo(w / 2, -hh * 0.8, w / 2, -hh * 0.6); c.lineTo(w / 2, -4); c.quadraticCurveTo(w / 2, 0, w / 2 - 5, 0); c.lineTo(-w / 2 + 5, 0); c.quadraticCurveTo(-w / 2, 0, -w / 2, -4); c.lineTo(-w / 2, -hh * 0.6); c.quadraticCurveTo(-w / 2, -hh * 0.8, -w / 2 + 5, -hh * 0.8); c.fill(); R('#cfeaf5', -w / 2 + 4, -hh * 0.68, w - 8, hh * 0.32); R('#e63946', -1, -hh * 0.68, 2, hh * 0.32); R(dk, -1.5, -hh, 3, hh * 0.22); R(dk, -7, -hh, 14, 3); break;
+      case 'logs': for (const [x, y] of [[-w / 2 + 9, -6], [0, -6], [w / 2 - 9, -6], [-8, -15], [8, -15]]) { E('#7f5539', x, y, 8.5, 5.5); E('#ddb892', x, y, 4, 2.6); } c.strokeStyle = dk; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-w / 2 + 2, -2); c.lineTo(0, -hh - 1); c.lineTo(w / 2 - 2, -2); c.stroke(); break;
+      case 'snowcat': R('#e63946', -w / 2 + 4, -hh * 0.75, w * 0.5, hh * 0.5); R('#cfeaf5', -w / 2 + 7, -hh * 0.7, w * 0.3, hh * 0.25); R('#c1121f', -w / 2 + 2, -hh * 0.42, w - 6, hh * 0.22); c.fillStyle = dk; c.beginPath(); c.moveTo(-w / 2, -3); c.quadraticCurveTo(-w / 2, -9, -w / 2 + 6, -9); c.lineTo(w / 2 - 6, -9); c.quadraticCurveTo(w / 2, -9, w / 2, -3); c.quadraticCurveTo(w / 2, 0, w / 2 - 5, 0); c.lineTo(-w / 2 + 5, 0); c.quadraticCurveTo(-w / 2, 0, -w / 2, -3); c.fill(); for (let k = 0; k < 4; k++) E('#6c757d', -w / 2 + 8 + k * 10, -4.5, 2.6); P('#adb5bd', [w / 2 - 4, -hh * 0.3, w / 2 + 6, -2, w / 2 - 2, -2]); break;
+      case 'urn': R('#b08968', -w / 2, -9, w, 9); c.fillStyle = '#c8553d'; c.beginPath(); c.moveTo(-4, -9); c.quadraticCurveTo(-w * 0.45, -hh * 0.6, -4, -hh + 5); c.lineTo(-3, -hh); c.lineTo(3, -hh); c.lineTo(4, -hh + 5); c.quadraticCurveTo(w * 0.45, -hh * 0.6, 4, -9); c.fill(); R('#f2cc8f', -6, -hh * 0.6, 12, 2.5); break;
+      case 'statue': R(stoneD, -w / 2, -6, w, 6); c.fillStyle = stone; c.beginPath(); c.moveTo(-8, -6); c.lineTo(-9, -hh * 0.55); c.lineTo(-6, -hh * 0.75); c.lineTo(6, -hh * 0.75); c.lineTo(9, -hh * 0.55); c.lineTo(8, -6); c.fill(); E(stone, 0, -hh * 0.8, 5.5, 6); P('#1d6fb8', [-8, -hh * 0.72, -5, -hh + 1, 5, -hh + 1, 8, -hh * 0.72, 6, -hh * 0.78, -6, -hh * 0.78]); R('#f2c14e', -1.5, -hh * 0.7, 3, 7); R(stoneD, -9, -hh * 0.45, 18, 2); break;
+      case 'sarco': c.fillStyle = '#f2c14e'; c.beginPath(); c.moveTo(-w / 2, -3); c.quadraticCurveTo(-w / 2, -hh, -w * 0.25, -hh); c.lineTo(w * 0.3, -hh * 0.85); c.quadraticCurveTo(w / 2, -hh * 0.7, w / 2, -3); c.lineTo(w / 2, 0); c.lineTo(-w / 2, 0); c.fill(); for (let k = 0; k < 6; k++) R(k % 2 ? '#1d6fb8' : '#c1121f', -w * 0.1 + k * 5, -hh * 0.8, 3, hh * 0.55); E('#e0a458', -w * 0.32, -hh * 0.6, 5, 6); P('#1d6fb8', [-w * 0.45, -hh * 0.5, -w * 0.32, -hh * 0.98, -w * 0.19, -hh * 0.5, -w * 0.25, -hh * 0.3, -w * 0.4, -hh * 0.3]); E('#e0a458', -w * 0.32, -hh * 0.58, 3.6, 4.4); break;
+      case 'obelisk': P(stone, [-w / 2, 0, -w * 0.3, -hh + 8, 0, -hh, w * 0.3, -hh + 8, w / 2, 0]); P(stoneD, [0, -hh, w * 0.3, -hh + 8, w / 2, 0, 1, 0]); P('#f2c14e', [-w * 0.3, -hh + 8, 0, -hh, w * 0.3, -hh + 8]); for (let y = -hh + 16; y < -6; y += 9) R(rgba('#5c4326', 0.6), -3, y, 4, 2.5); break;
+      case 'sphinx': R(stoneD, -w / 2, -5, w, 5); c.fillStyle = stone; c.beginPath(); c.moveTo(-w / 2 + 2, -5); c.quadraticCurveTo(-w / 2, -hh * 0.55, -w * 0.2, -hh * 0.55); c.lineTo(w * 0.12, -hh * 0.55); c.lineTo(w * 0.14, -hh * 0.3); c.lineTo(w / 2 - 2, -hh * 0.3); c.lineTo(w / 2 - 2, -5); c.fill(); P('#1d6fb8', [w * 0.02, -hh * 0.45, w * 0.08, -hh, w * 0.32, -hh, w * 0.36, -hh * 0.45]); E(stone, w * 0.2, -hh * 0.72, 5, 6); R('#f2c14e', w * 0.08, -hh, w * 0.24, 2.5); break;
+    }
+  }
+
   // Anneaux dorés des courses (monde Heli Race). Chaque anneau est dessiné en deux moitiés, l'une derrière l'appareil,
   // l'autre devant lui, pour qu'on le voie passer au travers.
   rings(c, L, g, time, x0, x1, front) {
@@ -624,6 +692,41 @@ export class Renderer {
           E(lt, 0, 6, 74, 11); E(mix(def.ground, '#000000', 0.5), 0, 7, 58, 7); E(rgba('#ff8a3a', 0.2 + 0.2 * bl), 6, -20, 54);
           F(dk, [-26, 6, -34, -22, -14, -50, 22, -54, 44, -26, 34, 6]); Ln(rgba('#ffb347', 0.5 + 0.5 * bl), 2.2, [-14, -44, -4, -26, -16, -10]); Ln(rgba('#ffb347', 0.5 + 0.5 * bl), 2.2, [18, -48, 12, -30, 28, -14]);
           break;
+        case 'farm': // ferme : grange rouge, silo, moulin à vent
+          F(base, [-70, 10, -70, -44, -36, -70, -2, -44, -2, 10]); F(dk, [-76, -42, -36, -74, 4, -42, -2, -44, -36, -66, -70, -44]); c.fillStyle = dk; c.fillRect(-46, -24, 20, 34);
+          c.fillStyle = lt; c.fillRect(14, -84, 26, 94); E(lt, 27, -84, 13, 9, Math.PI, 0); Ln(dk, 2, [70, 10, 70, -70]); c.save(); c.translate(70, -70); c.rotate(time * 2 + d.v * 5); for (let k = 0; k < 6; k++) { c.rotate(TAU / 6); F(lt, [0, 0, 16, -4, 16, 4]); } c.restore();
+          break;
+        case 'epyl': { // pylône électrique en attente de ses câbles
+          Ln(dk, 3, [-16, 10, -5, -150]); Ln(dk, 3, [16, 10, 5, -150]); for (let y2 = -8; y2 > -140; y2 -= 24) { const a2 = 16 - (11 * (-y2 + 10)) / 160; Ln(dk, 1.3, [-a2, y2, a2 - 2, y2 - 24]); Ln(dk, 1.3, [a2, y2, -a2 + 2, y2 - 24]); }
+          for (const y2 of [-150, -124]) { Ln(dk, 2.4, [-34, y2, 34, y2]); for (const sx of [-32, 32]) Ln(lt, 2, [sx, y2, sx, y2 + 8]); }
+          break;
+        }
+        case 'turbine': { // éolienne lointaine
+          F(lt, [-4, 10, -2, -170, 2, -170, 4, 10]); c.save(); c.translate(0, -170); c.rotate(time * 1.2 + d.v * 6); for (let k = 0; k < 3; k++) { c.rotate(TAU / 3); F(lt, [0, -2, 58, -1, 58, 1.5, 0, 3]); } c.restore(); E(dk, 0, -170, 4);
+          break;
+        }
+        case 'skilift': { // pylône de télésiège, câble et siège qui se balance
+          Ln(dk, 4, [0, 10, 0, -96]); Ln(dk, 4, [-22, -96, 22, -96]); Ln(dk, 1.2, [-160, -70, -22, -96, 22, -96, 160, -122]);
+          const sw = Math.sin(time * 1.6 + d.v * 7) * 4; Ln(dk, 1.4, [70, -106, 70 + sw, -78]); F(base, [58 + sw, -78, 82 + sw, -78, 82 + sw, -70, 58 + sw, -70]); Ln(dk, 1.4, [-96, -82, -96 - sw, -54]); F(base, [-108 - sw, -54, -84 - sw, -54, -84 - sw, -46, -108 - sw, -46]);
+          break;
+        }
+        case 'pyramid': { // pyramide : assises de pierre, face à l'ombre, sommet doré
+          const k = d.s || 1, bw = 190 * k, ph = 230 * k; F(mix(base, '#e9c46a', 0.55), [-bw, 10, 0, -ph, bw, 10]); F(mix(base, '#7a5a2a', 0.5), [0, -ph, bw, 10, bw * 0.25, 10]);
+          c.strokeStyle = rgba('#5c4326', 0.28); c.lineWidth = 1; c.beginPath(); for (let y2 = -ph + 22; y2 < 6; y2 += 16) { const a2 = (bw * (y2 + ph)) / (ph + 10); c.moveTo(-a2, y2); c.lineTo(a2, y2); } c.stroke(); F(ac, [-bw * 0.08, -ph * 0.92, 0, -ph, bw * 0.08, -ph * 0.92]);
+          break;
+        }
+        case 'sphinx': { // sphinx couché, regard vers la piste
+          const k = d.s || 1, st = mix(base, '#e9c46a', 0.5), sd2 = mix(base, '#7a5a2a', 0.45); c.scale(k, k);
+          F(st, [-100, 10, -100, -30, -70, -44, 10, -44, 16, -18, 96, -18, 100, 10]); F(sd2, [16, -18, 96, -18, 100, 10, 30, 10]); F(st, [-6, -44, 2, -104, 46, -104, 56, -44]); F('#1d6fb8', [-10, -44, 4, -110, 44, -110, 60, -44, 50, -50, 40, -98, 8, -98, -2, -50]); E(st, 24, -76, 15, 18); F(sd2, [10, -72, 38, -72, 36, -66, 12, -66]); F(st, [-100, -30, -118, -22, -112, 10, -100, 10]);
+          break;
+        }
+        case 'camel': // caravane : un dromadaire et son chamelier
+          E(base, 0, -30, 26, 13); E(base, -2, -44, 11, 9); Ln(base, 5, [20, -32, 34, -56, 44, -56]); E(base, 46, -57, 6, 4.5); for (const px of [-18, -8, 10, 20]) Ln(base, 4, [px, -22, px + Math.sin(time * 2 + px) * 2, 8]); Ln(dk, 2, [-60, 8, -60, -30]); E(dk, -60, -36, 6); F(lt, [-70, -28, -50, -28, -54, 4, -66, 4]);
+          break;
+        case 'palms': // bouquet de palmiers de l'oasis
+          for (const [px, hh2] of [[-30, 96], [8, 120], [44, 84]]) { Ln(base, 5, [px, 10, px + 8, -hh2]); for (let k = 0; k < 6; k++) { const a2 = -Math.PI * (0.05 + 0.18 * k) + Math.sin(time * 1.3 + k + px) * 0.05; c.strokeStyle = mix('#2e8b57', base, 0.35); c.lineWidth = 4; c.beginPath(); c.moveTo(px + 8, -hh2); c.quadraticCurveTo(px + 8 + Math.cos(a2) * 26, -hh2 + Math.sin(a2) * 26 - 8, px + 8 + Math.cos(a2) * 44, -hh2 + Math.sin(a2) * 30 + 8); c.stroke(); } }
+          E(rgba('#9ad1e6', 0.5), 6, 8, 60, 6);
+          break;
         case 'monolith': // dalle noire dressée, gravée d'un trait de lumière
           F('#0b0b12', [-22, 10, -22, -170, 22, -170, 22, 10]); F(rgba('#ffffff', 0.12), [-22, -170, -14, -170, -14, 10, -22, 10]); Ln(rgba(ac, 0.4 + 0.6 * bl), 2, [0, -150, 0, -60, -10, -40, 10, -20]); E(rgba(ac, 0.05 + 0.05 * bl), 0, -90, 34);
           break;
@@ -670,7 +773,7 @@ export class Renderer {
       for (let k = 0; k < 22; k++) { const gx = q.x + ((hash(k, 5) * q.w + time * q.fx * 1.6) % q.w + q.w) % q.w, gy = 120 + hash(k, 9) * 560; c.moveTo(gx, gy); c.lineTo(gx - Math.sign(q.fx) * 26, gy + 3); }
       c.stroke();
     }
-    if (b.x + 200 > x0 && b.x - 200 < x1) {
+    if (!L.cargo && b.x + 200 > x0 && b.x - 200 < x1) { // poste de secours (pas en Heli Cargo)
       const bx = b.x + 112, by = b.y;
       c.fillStyle = '#f4f1de'; c.fillRect(bx - 26, by - 34, 58, 34); c.fillStyle = '#d62828'; c.fillRect(bx - 30, by - 40, 66, 8);
       c.fillStyle = '#9ad1e6'; c.fillRect(bx - 20, by - 26, 12, 10); c.fillRect(bx + 14, by - 26, 12, 10); c.fillStyle = '#7a5a3c'; c.fillRect(bx - 3, by - 20, 10, 20);
@@ -953,7 +1056,7 @@ export class Renderer {
     }
     if (o.kind === 'pillar') {
       const l = x - o.w / 2, top = o.y, w = o.w, h = o.h;
-      if (o.st !== 'rock' && o.st !== 'ledge') c.fillRect(l, top, w, h);
+      if (!['rock', 'ledge', 'deck', 'bridge', 'derrick', 'turbine', 'obel', 'column'].includes(o.st)) c.fillRect(l, top, w, h);
       switch (o.st) {
         case 'building': case 'neon': {
           const neon = o.st === 'neon';
@@ -1012,6 +1115,47 @@ export class Renderer {
           }
           break;
         }
+        case 'deck': { // plateforme portante de Heli Cargo : barge, plateforme pétrolière, navire, dalle, barrage, refuge, musée, socle
+          const k = o.deck, bot = top + h, P2 = (colr, pts) => { c.fillStyle = colr; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
+          if (k === 'barge') { P2('#3d405b', [l, top, l + w, top, l + w - 14, bot, l + 14, bot]); c.fillStyle = '#e07a5f'; c.fillRect(l, top, w, 5); c.fillStyle = '#1b1b26'; for (let x2 = l + 16; x2 < l + w - 10; x2 += 34) { c.beginPath(); c.arc(x2, top + 14, 5, 0, TAU); c.fill(); } }
+          else if (k === 'ship') { P2('#1d3557', [l - 26, top, l + w + 40, top, l + w + 10, bot, l - 10, bot]); c.fillStyle = '#c1121f'; c.fillRect(l - 14, top + 44, w + 34, 60); c.fillStyle = '#f1faee'; c.fillRect(l - 26, top, w + 66, 4); c.fillStyle = rgba('#ffffff', 0.35); for (let x2 = l + 10; x2 < l + w; x2 += 26) c.fillRect(x2, top + 14, 9, 5); }
+          else if (k === 'rig') { // tablier sur jambes en treillis, grue de pont, torchère éteinte
+            c.fillStyle = '#343a40'; for (const x2 of [l + 14, l + w / 2 - 8, l + w - 30]) c.fillRect(x2, top + 22, 16, h); c.strokeStyle = '#495057'; c.lineWidth = 3; c.beginPath(); for (let y2 = top + 30; y2 < bot - 40; y2 += 46) { c.moveTo(l + 22, y2); c.lineTo(l + w - 22, y2 + 46); c.moveTo(l + w - 22, y2); c.lineTo(l + 22, y2 + 46); } c.stroke();
+            c.fillStyle = '#f2a516'; c.fillRect(l - 10, top, w + 20, 24); c.fillStyle = '#1b1b26'; for (let x2 = l - 4; x2 < l + w + 6; x2 += 22) c.fillRect(x2, top + 15, 12, 5); c.fillStyle = '#f1faee'; c.fillRect(l - 10, top, w + 20, 3);
+          } else if (k === 'dam') { P2('#adb5bd', [l - 30, top, l + w + 20, top, l + w + 60, bot, l - 30, bot]); c.fillStyle = '#6c757d'; c.fillRect(l - 30, top, w + 50, 5); c.fillStyle = rgba('#dff6ff', 0.8); for (let x2 = l + w * 0.55; x2 < l + w + 10; x2 += 22) c.fillRect(x2, top + 20, 9, h - 30); }
+          else if (k === 'refuge') { // terrasse du refuge, cabane en retrait
+            c.fillStyle = '#7f5539'; c.fillRect(l, top, w, 7); c.fillStyle = '#5c3d2e'; for (let x2 = l + 6; x2 < l + w; x2 += 28) c.fillRect(x2, top + 7, 5, h); c.fillStyle = mix(def.ground, '#ffffff', 0.5); c.fillRect(l, top + h - 12, w, 16);
+          } else if (k === 'museum') { // musée : colonnade, fronton, toit-terrasse où l'on dépose les pièces
+            c.fillStyle = '#e9d8a6'; c.fillRect(l, top, w, h); c.fillStyle = '#ca9a55'; c.fillRect(l - 8, top, w + 16, 9); c.fillRect(l - 8, bot - 46, w + 16, 8);
+            for (let x2 = l + 14; x2 < l + w - 10; x2 += 34) { c.fillStyle = '#f4ecd0'; c.fillRect(x2, top + 14, 14, h - 52); c.fillStyle = rgba('#8a6a3a', 0.4); c.fillRect(x2 + 4, top + 14, 2, h - 52); c.fillRect(x2 + 9, top + 14, 2, h - 52); }
+            c.fillStyle = '#6b4f2a'; c.fillRect(x - 13, bot - 78, 26, 40);
+          } else if (k === 'plinth') { c.fillStyle = '#d9b77e'; c.fillRect(l, top, w, h); c.fillStyle = '#a8834e'; c.fillRect(l - 5, top, w + 10, 4); for (let x2 = l + 12; x2 < l + w; x2 += 26) c.fillRect(x2, top + 5, 2, 7); }
+          else { c.fillStyle = '#adb5bd'; c.fillRect(l, top, w, h); c.fillStyle = '#6c757d'; c.fillRect(l, top, w, 3); c.fillStyle = '#ffd400'; for (let x2 = l + 4; x2 < l + w - 8; x2 += 22) c.fillRect(x2, top + 4, 10, 2.5); } // dalle de béton
+          break;
+        }
+        case 'bridge': // château d'un navire : passerelle vitrée, cheminée, mât
+          c.fillStyle = '#f1faee'; c.fillRect(l, top + 30, w, h); c.fillRect(l - 8, top + 30, w + 16, 16); c.fillStyle = '#9ad1e6'; c.fillRect(l - 5, top + 34, w + 10, 7);
+          c.fillStyle = '#c1121f'; c.fillRect(l + 8, top, w - 16, 30); c.fillStyle = '#1b1b26'; c.fillRect(l + 8, top, w - 16, 7);
+          break;
+        case 'derrick': { // derrick : tour en treillis, torchère au sommet
+          c.strokeStyle = '#495057'; c.lineWidth = 3; c.beginPath(); c.moveTo(l, top + h); c.lineTo(x - 5, top); c.moveTo(l + w, top + h); c.lineTo(x + 5, top); c.stroke();
+          c.lineWidth = 1.6; c.beginPath(); for (let y2 = top + 20; y2 < top + h - 40; y2 += 36) { const a2 = 5 + ((w / 2 - 5) * (y2 - top)) / h, b2 = 5 + ((w / 2 - 5) * (y2 + 36 - top)) / h; c.moveTo(x - a2, y2); c.lineTo(x + b2, y2 + 36); c.moveTo(x + a2, y2); c.lineTo(x - b2, y2 + 36); } c.stroke();
+          c.fillStyle = Math.sin(time * 9 + o.v * 7) > 0 ? '#ffb703' : '#ff5a1f'; c.beginPath(); c.moveTo(x - 6, top); c.quadraticCurveTo(x - 9 + Math.sin(time * 5) * 3, top - 16, x, top - 26 - 6 * Math.abs(Math.sin(time * 4))); c.quadraticCurveTo(x + 9, top - 14, x + 6, top); c.fill();
+          break;
+        }
+        case 'turbine': { // éolienne : mât clair et trois pales qui tournent
+          c.fillStyle = '#f1f3f5'; c.beginPath(); c.moveTo(x - 6, top + h); c.lineTo(x - 3, top); c.lineTo(x + 3, top); c.lineTo(x + 6, top + h); c.fill();
+          c.fillStyle = rgba('#f1f3f5', 0.9); for (let k = 0; k < 3; k++) { const a2 = time * 1.6 + o.v * 6 + (k * TAU) / 3; c.beginPath(); c.moveTo(x, top); c.lineTo(x + Math.cos(a2 + 0.07) * 64, top + Math.sin(a2 + 0.07) * 64); c.lineTo(x + Math.cos(a2 - 0.1) * 30, top + Math.sin(a2 - 0.1) * 30); c.fill(); }
+          c.fillStyle = '#adb5bd'; c.beginPath(); c.arc(x, top, 5, 0, TAU); c.fill();
+          break;
+        }
+        case 'obel': // obélisque dressé
+          c.fillStyle = '#d9b77e'; c.beginPath(); c.moveTo(l, top + h); c.lineTo(l + w * 0.2, top + 16); c.lineTo(x, top); c.lineTo(l + w * 0.8, top + 16); c.lineTo(l + w, top + h); c.fill();
+          c.fillStyle = '#a8834e'; c.beginPath(); c.moveTo(x, top); c.lineTo(l + w * 0.8, top + 16); c.lineTo(l + w, top + h); c.lineTo(x + 1, top + h); c.fill(); c.fillStyle = '#f2c14e'; c.beginPath(); c.moveTo(l + w * 0.2, top + 16); c.lineTo(x, top); c.lineTo(l + w * 0.8, top + 16); c.fill();
+          break;
+        case 'column': // colonne de temple à chapiteau
+          c.fillStyle = '#e9d8a6'; c.fillRect(l + 5, top + 12, w - 10, h); c.fillStyle = '#ca9a55'; c.fillRect(l - 2, top, w + 4, 12); c.fillStyle = rgba('#8a6a3a', 0.35); for (let x2 = l + 10; x2 < l + w - 8; x2 += 7) c.fillRect(x2, top + 14, 2, h);
+          break;
         case 'ledge': { // corniche : un éperon de la même matière que la falaise, large à sa racine dans la paroi, effilé vers le vide
           const sd = o.side || -1, root = x - sd * (w / 2 + 6), tip = x + sd * w / 2, j = (k) => hash(k, o.v * 77) * 3;
           const gr = c.createLinearGradient(0, 380, 0, 820); gr.addColorStop(0, def.ground); gr.addColorStop(1, def.groundDeep || mix(def.ground, '#000000', 0.35));

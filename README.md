@@ -43,13 +43,23 @@ Un troisième monde, tourné vers la course et le meilleur chrono : **25 courses
 - Cinq univers de cinq courses : eau et cascades, neige, volcans, ovnis (soucoupes écrasées, vaisseaux posés), Lune (faible gravité, cratères, météorites). Chaque course a ses monuments : épaves, moulins, mammouth dans la glace, gardiens de pierre, forge, module lunaire, base sous dôme…
 - Les courses sont de simples données (`js/racelevels.js`) ; `node tools/sim-race.mjs` vérifie que chacune se termine en 2 à 3 minutes au pilote automatique.
 
+## Heli Cargo
+
+Un quatrième monde, consacré au levage de charges lourdes : **20 chantiers** et **5 appareils de levage** (Mulet, Castor, Cigogne, Buffle, Colosse).
+
+- Se tenir stationnaire au-dessus d'une charge : le câble descend tout seul et la saisit (il remonte si l'on bouge trop). La charge se balance au bout du câble, alourdit l'appareil et le tire de côté.
+- La poser dans sa zone rayée : elle se décroche seule. Une fois tout livré, atterrir sur l'aire d'arrivée.
+- Quatre univers de cinq niveaux : en mer (barges, plateformes pétrolières, navires ; pieux, cuves, moteurs), campagne (pylônes et transformateurs des lignes électriques), montagne (vivres du refuge, pylônes de remontée, télécabine, dameuse), désert (antiquités des pyramides à ramener au musée, sous le vent et les tempêtes de sable).
+- Aucune pièce : 3 étoiles à ramasser par niveau, pour acheter les appareils. Une charge trop lourde pour l'appareil choisi ne se laisse pas saisir.
+- Les niveaux sont de simples données (`js/cargolevels.js`) ; `node tools/sim-cargo.mjs` vérifie que chacun est faisable.
+
 ## Démarrage
 
 Aucune dépendance, aucune étape de build : ce sont des fichiers statiques.
 
 ```bash
 npm run serve     # http://localhost:8080
-npm run check     # valide les 30 niveaux, les 20 missions Heli Rescue, les 25 courses Heli Race et les traductions
+npm run check     # valide les 30 niveaux, les 20 missions Heli Rescue, les 25 courses Heli Race, les 20 chantiers Heli Cargo et les traductions
 ```
 
 ## Installation sur Android (PWA)
