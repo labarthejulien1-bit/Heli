@@ -200,3 +200,9 @@ input[type=range]{flex:0 0 46%;accent-color:var(--accent);height:30px}
 #paxHud canvas.big{border-radius:14px}
 #paxHud canvas.on{border-color:#6ee7a0;background:linear-gradient(#cfeaf5,#8fb8c9);animation:pop .4s both}
 .obj.warn{color:#ffd34d;font-weight:700}
+
+/* Accueil à trois mondes : la troisième bulle passe dessous, centrée ; résultat de course : grand chrono */
+.worlds{flex-wrap:wrap;row-gap:10px}
+.bubble{width:min(29vmin,124px)}
+.chrono{text-align:center;font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;margin:2px 0 10px;color:var(--accent)}
+.obj small .medal{margin-left:4px}

@@ -97,6 +97,13 @@ export class Renderer {
       c.fillStyle = rgba('#ffffff', 0.07);
       for (let i = 0; i < 4; i++) { const gx = 40 + i * 105 + Math.sin(time * 0.2 + i) * 14; c.beginPath(); c.moveTo(gx, 0); c.lineTo(gx + 46, 0); c.lineTo(gx - 90, vh); c.lineTo(gx - 190, vh); c.fill(); }
     }
+    if (ex.includes('meteors')) { // pluie de météorites dans le ciel lunaire : traits de feu qui filent vers l'horizon
+      for (let k = 0; k < 5; k++) {
+        const u = (time * (0.16 + 0.05 * hash(k, 41)) + hash(k, 42)) % 1, mx = VW * (1.1 - 1.3 * u) + hash(k, 43) * 160 - 80, my = vh * (0.04 + 0.5 * u * u) + hash(k, 44) * 60;
+        c.strokeStyle = rgba('#ffd9a0', 0.75 * (1 - u)); c.lineWidth = 2.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx + 46, my - 22); c.stroke();
+        c.fillStyle = rgba('#ffffff', 0.9 * (1 - u)); c.beginPath(); c.arc(mx, my, 2.6, 0, TAU); c.fill();
+      }
+    }
     if (ex.includes('lightning')) {
       this.nextBolt -= dt;
       if (this.nextBolt < 0) { this.nextBolt = 3 + Math.random() * 6; this.bolt = 0.35; this.boltX = 40 + Math.random() * 320; opts.onThunder?.(); }
@@ -157,6 +164,7 @@ export class Renderer {
       }
       c.stroke();
     }
+    if (L.story) this.story(c, L, def, time, x0, x1);
     for (const o of L.obs) {
       if (o.minX > x1 + 60) break;
       if (o.maxX < x0 - 60) continue;
@@ -166,6 +174,7 @@ export class Renderer {
     this.pads(c, L, def, g, time, x0, x1);
     if (L.rescue) this.rescue(c, L, def, g, time, x0, x1);
     this.items(c, L, def, g, time, x0, x1);
+    if (L.race) this.rings(c, L, g, time, x0, x1, 0);
     this.traffic(c, L, def, g, time, camX);
 
     // particules monde
@@ -204,6 +213,7 @@ export class Renderer {
     }
 
     // bancs de fumée épaisse (missions en feu) : au premier plan, ils cachent l'appareil qui vole trop haut
+    if (L.race) this.rings(c, L, g, time, x0, x1, 1); // moitié avant des anneaux, par-dessus l'appareil
     // Chaque banc tient dans une tranche d'altitude : couloir dégagé au ras du relief, ciel libre au-dessus.
     for (const q of L.clouds || []) {
       const qx = q.xAt(g.t);
@@ -451,6 +461,175 @@ export class Renderer {
     const seats = look.seats.map(() => null); let cargo = null;
     for (const v of g.vs) if (v.state === 'aboard') { if (v.seat === 'cargo') cargo = as(v); else if (v.seat >= 0) seats[v.seat] = as(v); }
     return { seats, cargo };
+  }
+
+  // Anneaux dorés des courses (monde Heli Race). Chaque anneau est dessiné en deux moitiés, l'une derrière l'appareil,
+  // l'autre devant lui, pour qu'on le voie passer au travers.
+  rings(c, L, g, time, x0, x1, front) {
+    const R = L.race.rings, st = g.ring;
+    for (let i = 0; i < R.length; i++) {
+      const r = R[i];
+      if (r.x < x0 - 30 || r.x > x1 + 30) continue;
+      const s = st ? st[i] : 0, next = st && i === g.rk, pulse = next ? 0.5 + 0.5 * Math.sin(time * 7) : 0;
+      if (s === 1 && g.heli.x - r.x > 260) continue;
+      c.save(); c.translate(r.x, r.y);
+      c.globalAlpha = s === 1 ? Math.max(0, 1 - (g.heli.x - r.x) / 260) : s === 2 ? 0.35 : 1;
+      const a0 = front ? -Math.PI / 2 : Math.PI / 2, col = s === 1 ? '#7dffb0' : s === 2 ? '#9aa0ad' : '#ffd34d';
+      if (!front && s === 0) { c.strokeStyle = rgba('#ffd34d', 0.18 + 0.2 * pulse); c.lineWidth = 9 + 5 * pulse; c.beginPath(); c.ellipse(0, 0, r.r * 0.34, r.r, 0, 0, TAU); c.stroke(); }
+      c.strokeStyle = mix(col, '#7a5200', front ? 0 : 0.35); c.lineWidth = 4.2; c.beginPath(); c.ellipse(0, 0, r.r * 0.34, r.r, 0, a0, a0 + Math.PI); c.stroke();
+      c.strokeStyle = rgba('#ffffff', front ? 0.75 : 0.3); c.lineWidth = 1.2; c.beginPath(); c.ellipse(-1, 0, r.r * 0.34, r.r, 0, a0 + 0.3, a0 + Math.PI - 0.3); c.stroke();
+      c.restore();
+    }
+  }
+
+  // Monuments et statues des courses (décor sans collision), dessinés dans les tons de l'arrière-plan.
+  story(c, L, def, time, x0, x1) {
+    const base = mix(def.mid, def.obs, 0.55), dk = mix(base, '#000000', 0.25), lt = mix(base, '#ffffff', 0.3), rim = def.rim, ac = def.accent;
+    const F = (col, pts) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
+    const E = (col, x, y, rx, ry = rx, a0 = 0, a1 = TAU) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, a0, a1); c.fill(); };
+    const Ln = (col, w, pts) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
+    for (const d of L.story) {
+      if (d.x < x0 - 260 || d.x > x1 + 260) continue;
+      c.save(); c.translate(d.x, d.y + 6); c.scale(d.flip ? -1 : 1, 1);
+      const bl = 0.5 + 0.5 * Math.sin(time * 3 + d.v * 9);
+      switch (d.type) {
+        case 'falls': { // falaise et cascade : l'eau file, l'écume bouillonne au pied
+          F(base, [-80, 10, -66, -330, -20, -352, 34, -340, 70, -300, 84, 10]); F(lt, [-66, -330, -20, -352, 34, -340, 20, -326, -40, -322]);
+          c.fillStyle = rgba('#dff6ff', 0.85); c.fillRect(-24, -338, 44, 348);
+          c.strokeStyle = rgba('#ffffff', 0.9); c.lineWidth = 2; c.beginPath();
+          for (let k = 0; k < 7; k++) { const sx = -20 + k * 6, o = (time * 260 + k * 53) % 340; c.moveTo(sx, -334 + o); c.lineTo(sx, -334 + Math.min(340, o + 30)); }
+          c.stroke();
+          for (let k = 0; k < 6; k++) E(rgba('#ffffff', 0.55), -30 + k * 12, 4 - 6 * Math.abs(Math.sin(time * 3 + k)), 11 + 3 * Math.sin(time * 2 + k * 2));
+          break;
+        }
+        case 'arch': // vieux pont de pierre à moitié effondré
+          F(base, [-110, 10, -110, -92, 40, -92, 52, -80, 60, -92, 70, -84, 70, 10, 44, 10, 44, -40, -84, -40, -84, 10]);
+          c.fillStyle = base; c.beginPath(); c.moveTo(-84, -30); c.arc(-20, -30, 64, Math.PI, 0); c.lineTo(44, -62); c.lineTo(-84, -62); c.fill();
+          c.globalCompositeOperation = 'destination-out'; E('#000', -20, -30, 50, 50, Math.PI, 0); c.fillRect(-70, -30, 100, 42); c.globalCompositeOperation = 'source-over';
+          F(lt, [-110, -92, 40, -92, 40, -86, -110, -86]); F(base, [96, 10, 100, -30, 118, -36, 126, 10]);
+          break;
+        case 'ship': // épave d'un voilier couchée sur le flanc
+          c.rotate(-0.16); F(dk, [-78, 0, -92, -30, 74, -30, 96, -44, 84, 0]); F(base, [-92, -30, 74, -30, 70, -22, -88, -22]);
+          Ln(dk, 5, [-20, -30, -34, -128]); Ln(dk, 3, [-52, -92, -8, -100]); Ln(dk, 4, [36, -30, 46, -76]);
+          F(rgba(lt, 0.7), [-33, -124, -6, -98, -30, -62, -38, -92]); for (const px of [-60, -30, 0, 30]) E(mix(dk, '#000000', 0.4), px, -12, 4);
+          break;
+        case 'wheel': { // moulin et sa roue à aubes
+          F(base, [-10, 10, -10, -84, 30, -112, 70, -84, 70, 10]); F(dk, [-18, -80, 30, -116, 78, -80, 70, -74, 30, -104, -10, -74]); c.fillStyle = rgba(ac, 0.8); c.fillRect(22, -70, 16, 18);
+          c.translate(-38, -36); c.rotate(time * 0.9); c.strokeStyle = dk; c.lineWidth = 5; c.beginPath(); c.arc(0, 0, 38, 0, TAU); c.stroke();
+          c.lineWidth = 3; c.beginPath(); for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU; c.moveTo(0, 0); c.lineTo(Math.cos(a) * 44, Math.sin(a) * 44); } c.stroke(); E(dk, 0, 0, 6);
+          break;
+        }
+        case 'beacon': // balise de course : tour rayée et feu clignotant
+          F(base, [-13, 10, -9, -120, 9, -120, 13, 10]); c.fillStyle = rgba('#ffffff', 0.35); for (let y = -100; y < 0; y += 40) c.fillRect(-11, y, 22, 16);
+          F(dk, [-14, -120, 14, -120, 10, -134, -10, -134]); E(rgba(ac, 0.25 + 0.5 * bl), 0, -142, 20); E(ac, 0, -142, 6);
+          break;
+        case 'cabin': // refuge : toit enneigé, fenêtre éclairée, fumée
+          F(base, [-44, 10, -44, -40, 44, -40, 44, 10]); F(dk, [-54, -38, 0, -76, 54, -38]); F('#f4faff', [-54, -40, 0, -78, 54, -40, 46, -42, 0, -68, -46, -42]);
+          c.fillStyle = rgba(ac, 0.9); c.fillRect(-28, -28, 18, 16); c.fillStyle = dk; c.fillRect(8, -30, 18, 40); c.fillRect(22, -72, 9, 20);
+          for (let k = 0; k < 3; k++) E(rgba('#ffffff', 0.3 - k * 0.08), 27 + k * 7 + Math.sin(time + k) * 3, -84 - k * 16, 7 + k * 3);
+          break;
+        case 'snowman': // bonhomme de neige géant
+          E('#f4faff', 0, -22, 34, 32); E('#f4faff', 0, -72, 25, 24); E('#f4faff', 0, -110, 18, 17); E(rgba('#9bb8d6', 0.35), 8, -18, 24, 26, -1, 1.4);
+          F(dk, [-16, -124, 16, -124, 13, -150, -13, -150]); F(dk, [-24, -122, 24, -122, 24, -127, -24, -127]); F('#ff8a3a', [4, -110, 30, -106, 4, -104]);
+          E(dk, -6, -114, 2); E(dk, 5, -115, 2); for (const y of [-80, -68, -56]) E(dk, 0, y, 2.4); Ln(dk, 3, [-22, -78, -52, -98, -58, -108]); Ln(dk, 3, [22, -78, 50, -92]);
+          break;
+        case 'igloo':
+          E('#eef6fc', 0, 6, 56, 52, Math.PI, 0); c.strokeStyle = rgba('#8fb4d6', 0.6); c.lineWidth = 1.5; c.beginPath();
+          for (const rr of [18, 34]) { c.moveTo(-Math.sqrt(56 * 56 - rr * rr * 0.9), 6 - rr); c.lineTo(Math.sqrt(56 * 56 - rr * rr * 0.9), 6 - rr); } for (let k = -2; k <= 2; k++) { c.moveTo(k * 20, 6); c.lineTo(k * 18, -12); } c.stroke();
+          E('#dbe9f5', 46, 6, 20, 22, Math.PI, 0); E(dk, 50, 6, 11, 14, Math.PI, 0);
+          break;
+        case 'mammoth': // mammouth pris dans un bloc de glace
+          F(rgba('#cfe9fb', 0.55), [-70, 10, -78, -70, -40, -112, 44, -108, 82, -60, 74, 10]); F(rgba('#ffffff', 0.5), [-78, -70, -40, -112, -30, -100, -66, -64]);
+          E(rgba(dk, 0.75), -6, -46, 36, 26); E(rgba(dk, 0.75), 30, -62, 18, 20); for (const px of [-28, -10, 8, 24]) { c.fillStyle = rgba(dk, 0.75); c.fillRect(px, -30, 10, 34); }
+          Ln(rgba(dk, 0.75), 7, [44, -56, 54, -30, 46, -12]); Ln('#f4faff', 4, [40, -52, 58, -40, 62, -58]);
+          break;
+        case 'flags': // fanions d'expédition
+          Ln(dk, 3, [-70, 10, -70, -70]); Ln(dk, 3, [70, 10, 70, -86]); Ln(dk, 1.2, [-70, -68, 0, -52, 70, -84]);
+          for (let k = 0; k < 7; k++) { const u = (k + 0.5) / 7, px = -70 + 140 * u, py = -68 + (u < 0.5 ? 32 * u : 16 - 64 * (u - 0.5)) + 2; F(['#e63946', '#ffd166', '#2ec4b6', '#f4faff'][k % 4], [px - 6, py, px + 6, py, px + Math.sin(time * 4 + k) * 3, py + 15]); }
+          break;
+        case 'icearch':
+          c.fillStyle = rgba('#cfe9fb', 0.8); c.beginPath(); c.moveTo(-74, 10); c.lineTo(-62, -80); c.quadraticCurveTo(0, -150, 62, -80); c.lineTo(74, 10); c.lineTo(42, 10); c.lineTo(36, -60); c.quadraticCurveTo(0, -104, -36, -60); c.lineTo(-42, 10); c.fill();
+          F(rgba('#ffffff', 0.7), [-62, -80, -30, -116, -22, -106, -50, -76]); for (const px of [-20, -6, 10, 22]) F(rgba('#eaf6ff', 0.9), [px - 4, -92, px + 4, -92, px, -70 - 10 * hash(px, 3)]);
+          break;
+        case 'moai': // gardien de pierre : une tête au regard fixé sur la piste
+          F(base, [-26, 10, -30, -70, -24, -118, 20, -122, 28, -90, 30, -40, 22, 10]); F(dk, [-30, -70, -36, -80, -30, -96, -24, -118, -22, -76]);
+          F(dk, [-20, -96, 24, -100, 24, -92, -20, -88]); F(dk, [8, -88, 30, -56, 14, -56]); F(dk, [-8, -44, 22, -46, 20, -38, -8, -36]); E(rgba(ac, 0.5 + 0.4 * bl), 2, -82, 3.4); E(rgba(ac, 0.5 + 0.4 * bl), 18, -84, 3);
+          break;
+        case 'temple': // colonnade en ruine
+          F(base, [-96, 10, -96, -8, 96, -8, 96, 10]);
+          for (const [px, hh] of [[-78, 104], [-42, 104], [-6, 66], [30, 104], [66, 40]]) { c.fillStyle = base; c.fillRect(px, -8 - hh, 18, hh); c.fillStyle = lt; c.fillRect(px - 3, -12 - hh, 24, 6); c.fillStyle = rgba(dk, 0.5); c.fillRect(px + 4, -8 - hh, 2, hh); c.fillRect(px + 11, -8 - hh, 2, hh); }
+          F(base, [-88, -116, -52, -144, -16, -116]); F(dk, [44, 4, 70, -6, 96, 8]);
+          break;
+        case 'ribs': // squelette d'une bête immense
+          for (let k = 0; k < 6; k++) { const px = -70 + k * 22, hh = 86 - Math.abs(k - 2) * 12; c.strokeStyle = lt; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(px, 8); c.quadraticCurveTo(px - 16, -hh * 0.7, px + 16, -hh); c.stroke(); }
+          Ln(lt, 7, [-84, 2, 70, -8]); E(lt, 92, -26, 26, 20); F(lt, [100, -18, 132, -8, 104, -4]); E(dk, 98, -30, 6, 7);
+          break;
+        case 'anvil': { // forge du titan : enclume et marteau dressé
+          F(dk, [-50, 10, -38, -30, -70, -44, -70, -60, 60, -60, 60, -46, 30, -40, 40, 10]); E(rgba('#ff7a2a', 0.5 + 0.4 * bl), 0, -64, 22, 6);
+          c.save(); c.translate(20, -62); c.rotate(-0.5 + 0.12 * Math.sin(time * 1.4 + d.v * 5)); F(base, [-4, 0, 4, 0, 4, -110, -4, -110]); F(dk, [-26, -110, 26, -110, 26, -140, -26, -140]); c.restore();
+          break;
+        }
+        case 'saucer': { // soucoupe écrasée, plantée de travers dans le sol
+          c.rotate(0.42); E(dk, 0, -8, 78, 15); E(base, 0, -14, 70, 11); E(rgba('#9ff5d0', 0.55), -6, -22, 30, 22, Math.PI, 0);
+          for (let k = 0; k < 5; k++) E(k % 2 ? rgba(ac, 0.3 + 0.6 * bl) : rgba(ac, 0.9 - 0.6 * bl), -52 + k * 26, -8, 3.4);
+          c.rotate(-0.42); for (let k = 0; k < 4; k++) E(rgba('#20202a', 0.32 - k * 0.06), -50 + Math.sin(time * 0.8 + k) * 6 - k * 6, -50 - k * 24, 12 + k * 7);
+          F(dk, [40, 10, 58, -6, 78, 10]); F(dk, [-96, 10, -84, -4, -70, 10]);
+          break;
+        }
+        case 'mothership': { // vaisseau posé sur ses béquilles, rampe abaissée, faisceau allumé
+          Ln(dk, 5, [-70, -70, -96, 8]); Ln(dk, 5, [70, -70, 96, 8]); Ln(dk, 5, [0, -66, 0, 8]);
+          c.fillStyle = rgba('#9ff5d0', 0.14 + 0.1 * bl); c.beginPath(); c.moveTo(-22, -66); c.lineTo(22, -66); c.lineTo(52, 8); c.lineTo(-52, 8); c.fill();
+          E(dk, 0, -78, 130, 22); E(base, 0, -88, 118, 17); E(rgba('#9ff5d0', 0.5), 0, -100, 54, 36, Math.PI, 0); E(rgba('#ffffff', 0.25), -18, -118, 16, 8);
+          for (let k = 0; k < 9; k++) E(((k + Math.floor(time * 4)) % 3) ? rgba(ac, 0.35) : ac, -104 + k * 26, -78, 4);
+          break;
+        }
+        case 'dish': // antenne d'écoute pointée vers le ciel
+          Ln(dk, 4, [-22, 10, 0, -50, 22, 10]); Ln(dk, 4, [0, -50, 0, 10]); c.translate(0, -56); c.rotate(-0.7 + 0.25 * Math.sin(time * 0.5 + d.v * 6));
+          E(base, 0, 0, 46, 16); E(lt, 0, -3, 40, 11); Ln(dk, 2.5, [0, -4, 0, -40]); E(rgba(ac, 0.4 + 0.6 * bl), 0, -42, 4);
+          break;
+        case 'abduct': { // petite soucoupe en vol stationnaire qui enlève une vache
+          const hy = -190 + Math.sin(time * 1.3 + d.v * 4) * 8;
+          c.fillStyle = rgba('#b6ff5a', 0.13 + 0.08 * bl); c.beginPath(); c.moveTo(-12, hy + 6); c.lineTo(12, hy + 6); c.lineTo(46, 8); c.lineTo(-46, 8); c.fill();
+          E(dk, 0, hy, 46, 9); E(rgba('#9ff5d0', 0.6), 0, hy - 4, 20, 15, Math.PI, 0); for (let k = 0; k < 5; k++) E(rgba(ac, 0.4 + 0.6 * ((k + Math.floor(time * 5)) % 2)), -32 + k * 16, hy + 1, 2.6);
+          const cy = -70 + Math.sin(time * 0.9 + d.v) * 26; c.translate(0, cy); c.rotate(0.3 * Math.sin(time * 1.1));
+          E('#f4f1e8', 0, 0, 13, 7); E('#f4f1e8', 14, -3, 5, 4); E('#3a2a1c', -4, -1, 4.5, 3); Ln('#3a2a1c', 2, [-8, 6, -9, 13]); Ln('#3a2a1c', 2, [7, 6, 8, 13]);
+          break;
+        }
+        case 'zone': // clôture et panneau de zone interdite
+          for (let k = -3; k <= 3; k++) Ln(dk, 2.5, [k * 22, 10, k * 22, -44]); Ln(dk, 1.3, [-66, -38, 66, -38]); Ln(dk, 1.3, [-66, -18, 66, -18]); Ln(dk, 1.3, [-66, -44, 66, -44, 60, -50, -60, -50]);
+          F(ac, [-20, -40, 20, -40, 20, -84, -20, -84]); E(dk, 0, -64, 10, 12); E(ac, -4, -64, 3, 4.5); E(ac, 4, -64, 3, 4.5);
+          break;
+        case 'lander': // module lunaire posé là depuis longtemps
+          Ln(lt, 3, [-22, -26, -44, 8]); Ln(lt, 3, [22, -26, 44, 8]); Ln(lt, 3, [-48, 8, -40, 8]); Ln(lt, 3, [40, 8, 48, 8]);
+          F('#d9a441', [-28, -26, 28, -26, 22, -6, -22, -6]); F(lt, [-20, -26, -24, -54, -8, -68, 10, -68, 24, -54, 20, -26]); E(dk, 0, -46, 7); F(dk, [-8, -6, 8, -6, 12, 6, -12, 6]);
+          Ln(lt, 2, [16, -66, 30, -86]); E(lt, 32, -90, 9, 4);
+          break;
+        case 'flag': // drapeau planté, figé faute de vent
+          Ln(lt, 2.5, [0, 10, 0, -84]); F('#f4faff', [0, -84, 42, -84, 42, -58, 0, -58]); F(ac, [14, -78, 18, -70, 26, -70, 20, -65, 22, -57, 14, -62, 6, -57, 8, -65, 2, -70, 10, -70]);
+          for (let k = 0; k < 5; k++) E(rgba(dk, 0.5), -60 + k * 14, 8 + (k % 2) * 3, 5, 2); // empreintes
+          break;
+        case 'rover': // véhicule lunaire
+          for (const px of [-30, 0, 30]) { E(dk, px, 0, 11); E(lt, px, 0, 5); } F(lt, [-40, -10, 40, -10, 34, -26, -34, -26]); F('#d9a441', [-10, -26, 22, -26, 18, -40, -6, -40]);
+          Ln(lt, 2, [-26, -26, -30, -66]); E(lt, -30, -70, 12, 5); Ln(lt, 2, [28, -26, 36, -52]); E(rgba(ac, 0.4 + 0.6 * bl), 36, -54, 3);
+          break;
+        case 'crater': // cratère : bourrelet clair, fond dans l'ombre
+          E(lt, 0, 4, 120, 16); E(mix(def.ground, '#000000', 0.45), 0, 6, 100, 11); E(rgba('#000000', 0.25), -18, 7, 70, 7); for (const [px, pr] of [[-134, 7], [128, 5], [150, 9]]) E(lt, px, 6, pr, pr * 0.6);
+          break;
+        case 'dome': // base lunaire : dôme vitré, sas, antenne
+          E(rgba('#9fd8ff', 0.35), 0, 8, 86, 78, Math.PI, 0); c.strokeStyle = rgba('#ffffff', 0.5); c.lineWidth = 1.5; c.beginPath(); for (const rr of [86, 58, 28]) { c.moveTo(-rr, 8); c.quadraticCurveTo(0, 8 - 78 * 2.05, rr, 8); } c.moveTo(-80, -22); c.lineTo(80, -22); c.stroke();
+          F(lt, [-96, 10, -96, -6, 96, -6, 96, 10]); F(dk, [-126, 10, -126, -30, -92, -30, -92, 10]); c.fillStyle = rgba(ac, 0.5 + 0.4 * bl); c.fillRect(-118, -22, 18, 12);
+          for (const px of [-40, -8, 26]) F(mix('#2e8b57', dk, 0.3), [px, -6, px + 8, -34, px + 16, -6]); Ln(lt, 2, [60, -6, 60, -110]); E(rgba('#ff5a5a', bl), 60, -112, 3.5);
+          break;
+        case 'meteor': // météorite fichée dans son cratère, encore incandescente
+          E(lt, 0, 6, 74, 11); E(mix(def.ground, '#000000', 0.5), 0, 7, 58, 7); E(rgba('#ff8a3a', 0.2 + 0.2 * bl), 6, -20, 54);
+          F(dk, [-26, 6, -34, -22, -14, -50, 22, -54, 44, -26, 34, 6]); Ln(rgba('#ffb347', 0.5 + 0.5 * bl), 2.2, [-14, -44, -4, -26, -16, -10]); Ln(rgba('#ffb347', 0.5 + 0.5 * bl), 2.2, [18, -48, 12, -30, 28, -14]);
+          break;
+        case 'monolith': // dalle noire dressée, gravée d'un trait de lumière
+          F('#0b0b12', [-22, 10, -22, -170, 22, -170, 22, 10]); F(rgba('#ffffff', 0.12), [-22, -170, -14, -170, -14, 10, -22, 10]); Ln(rgba(ac, 0.4 + 0.6 * bl), 2, [0, -150, 0, -60, -10, -40, 10, -20]); E(rgba(ac, 0.05 + 0.05 * bl), 0, -90, 34);
+          break;
+      }
+      c.restore();
+    }
   }
 
   // Monde Heli Rescue : poste de secours à la base, victimes au sol, jauge d'embarquement, remerciements.

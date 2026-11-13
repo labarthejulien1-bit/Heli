@@ -419,6 +419,23 @@ export function drawHeli(c, look, t = 0, power = 0.6, pax = null) {
       rotor(c, 1, -16, 33, t, power, dark);
       break;
     }
+    case 'racer': { // appareil de course : fuselage effilé, haute dérive, bande et numéro (look.v : variante de 0 à 4)
+      const { F, S, E } = kit(c), v = look.v || 0, long = v >= 2;
+      skids(c, dark);
+      F('M-8,-6 L-33,-4.5 L-33,-2 L-10,4Z', c1);
+      F(v % 2 ? 'M-27,-4.5 L-38,-18 L-31,-18 L-22,-4.5Z' : 'M-28,-4.5 L-35,-15 L-30,-15 L-24,-4.5Z', c2);
+      if (long) F('M-30,-2.6 L-38,2 L-32,2.4 L-25,-1.6Z', c2);
+      F(long ? 'M25,1.5 Q15,-9.5 2,-9 L-9,-7.5 Q-13,-2 -11,3.5 Q4,9 16,6.2 Q23,5 25,1.5Z' : 'M20,1 Q14,-9.5 3,-9 L-8,-8 Q-12,-3 -10,4 Q4,9 14,6.5 Q19,5 20,1Z', c1);
+      F(long ? 'M22.5,0.6 Q15,-8 6.5,-8 L8.5,-0.4Z' : 'M18.5,0 Q13.5,-8 6.5,-8 L8,-0.5Z', glass);
+      F(long ? 'M-11,1.2 L23,2 L20,4.2 L-11,3.4Z' : 'M-10,1.2 L19,1.8 L17,3.8 L-10.4,3.4Z', c2);
+      if (v >= 1) S('M-31,-3.2 L-11,-0.4', c2, 1.3);
+      if (v >= 3) F('M-5,5.4 L-15,10 L-2,7.6Z', c2);
+      if (v === 4) { E(-12.5, 0.6, 2.2, 3.2, dark); E(-12.5, 0.6, 1.2, 2, '#ffb703'); }
+      E(-1.5, -3.4, 4.7, 4.7, '#ffffff'); c.fillStyle = dark; c.font = 'bold 6px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(look.num ?? ''), -1.5, -3.1); c.textBaseline = 'alphabetic';
+      tailRotor(c, -33, -3.5, t, power, dark);
+      rotor(c, 1, -15, long ? 33 : 31, t, power, dark);
+      break;
+    }
     default: // future
       c.fillStyle = c1; c.beginPath(); c.moveTo(22, 0); c.bezierCurveTo(16, -12, -6, -12, -14, -6); c.lineTo(-30, -5); c.lineTo(-30, -1.5); c.lineTo(-12, 5); c.bezierCurveTo(0, 10, 16, 8, 22, 0); c.fill();
       c.shadowBlur = 0;

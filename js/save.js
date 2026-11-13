@@ -1,6 +1,7 @@
 // Sauvegarde 100 % locale (localStorage), versionnée, avec export/import JSON.
 import { HELIS, LEVELS, heliUnlock } from './data.js';
 import { RESCUE_HELIS } from './rescue.js';
+import { RACE_HELIS } from './race.js';
 const KEY = 'heli-save-v1';
 
 export function defaults() {
@@ -8,6 +9,7 @@ export function defaults() {
     v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false,
     world: 'adv', // monde affiché à l'accueil : 'adv' (Aventure) ou 'rescue' (Heli Rescue)
     heliRescue: { levels: {}, heli: 'mesange', coins: 0, starsSpent: 0, helis: ['mesange'] }, // progression du monde Heli Rescue, indépendante de l'Aventure
+    heliRace: { levels: {}, heli: 'eclair', starsSpent: 0, helis: ['eclair'] }, // monde Heli Race : n -> { done, time (meilleur chrono), sm (étoiles ramassées) }
     coins: 0, starsSpent: 0, // porte-monnaie : pièces cumulées, étoiles dépensées
     levels: {}, // id -> { done, obj:[bool,bool,bool], time, orbs, sm (masque des étoiles trouvées) }
     stats: { flights: 0, dist: 0, orbs: 0, crashes: 0, time: 0, landings: 0, refuels: 0 },
@@ -25,7 +27,7 @@ function sanitize(raw) {
   if (!s.helis.includes('moineau')) s.helis.unshift('moineau');
   if (!s.helis.includes(s.heli)) s.heli = 'moineau';
   s.pilot = String(s.pilot || '').slice(0, 16);
-  s.world = s.world === 'rescue' ? 'rescue' : 'adv';
+  s.world = ['rescue', 'race'].includes(s.world) ? s.world : 'adv';
   s.heliRescue = { ...d.heliRescue, ...(raw.heliRescue && typeof raw.heliRescue === 'object' ? raw.heliRescue : {}) };
   const r = s.heliRescue;
   if (!r.levels || typeof r.levels !== 'object') r.levels = {};
@@ -35,6 +37,12 @@ function sanitize(raw) {
   if (!r.helis.includes('mesange')) r.helis.unshift('mesange');
   if (!r.helis.includes(r.heli)) r.heli = 'mesange';
   r.coins = Math.max(0, Math.floor(+r.coins || 0)); r.starsSpent = Math.max(0, Math.floor(+r.starsSpent || 0));
+  const c = (s.heliRace = { ...d.heliRace, ...(raw.heliRace && typeof raw.heliRace === 'object' ? raw.heliRace : {}) });
+  if (!c.levels || typeof c.levels !== 'object') c.levels = {};
+  c.helis = (Array.isArray(c.helis) ? c.helis : []).filter((id) => RACE_HELIS.some((h) => h.id === id));
+  if (!c.helis.includes('eclair')) c.helis.unshift('eclair');
+  if (!c.helis.includes(c.heli)) c.heli = 'eclair';
+  c.starsSpent = Math.max(0, Math.floor(+c.starsSpent || 0));
   s.coins = Math.max(0, Math.floor(+s.coins || 0)); s.starsSpent = Math.max(0, Math.floor(+s.starsSpent || 0));
   s.lastLevel = Math.min(LEVELS.length, Math.max(1, s.lastLevel | 0 || 1));
   return s;

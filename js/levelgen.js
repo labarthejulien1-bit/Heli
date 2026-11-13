@@ -59,7 +59,7 @@ export function generateLevel(def) {
   add('start', 1, 520);
   const list = def.sections.trim().split(/\s+/).map((s) => { const [a, b] = s.split(':'); return [a, +b || 1]; });
   // Arrêts de ravitaillement répartis régulièrement entre les sections.
-  const stops = (def.fuel || 'easy easy').split(/\s+/);
+  const stops = def.fuel === 'none' ? [] : (def.fuel || 'easy easy').split(/\s+/); // 'none' : aucun arrêt (courses Heli Race)
   const stopAt = stops.map((_, k) => Math.round(((k + 1) * list.length) / (stops.length + 1)));
   list.forEach(([ty, d], i) => {
     stopAt.forEach((at, k) => { if (at === i) add('fuel', 1, 520, stops[k]); });

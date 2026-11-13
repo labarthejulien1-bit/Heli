@@ -34,13 +34,22 @@ Un second monde, accessible depuis l'accueil : **20 missions de secours hélipor
 - Trois étoiles par mission : tout le monde sauf, temps, chocs. **100 pièces par mission**, créditées à l'arrivée, pour acheter les appareils de secours (porte-monnaie propre à Heli Rescue).
 - Les missions sont de simples données (`js/rescuelevels.js`) ; `node tools/sim-rescue.mjs` vérifie que chacune est faisable.
 
+## Heli Race
+
+Un troisième monde, tourné vers la course et le meilleur chrono : **25 courses** et **5 appareils de course** (Éclair, Guépard, Flèche, Tornade, Supernova).
+
+- Filer toujours vers la droite en passant dans les anneaux dorés, plus ou moins gros, posés sur la meilleure ligne à travers le décor : 3 s de pénalité par anneau manqué.
+- Aucune pièce, aucun ravitaillement : 3 étoiles à ramasser par course, qui servent à acheter les appareils (déverrouillés au fil des courses réussies).
+- Cinq univers de cinq courses : eau et cascades, neige, volcans, ovnis (soucoupes écrasées, vaisseaux posés), Lune (faible gravité, cratères, météorites). Chaque course a ses monuments : épaves, moulins, mammouth dans la glace, gardiens de pierre, forge, module lunaire, base sous dôme…
+- Les courses sont de simples données (`js/racelevels.js`) ; `node tools/sim-race.mjs` vérifie que chacune se termine en 2 à 3 minutes au pilote automatique.
+
 ## Démarrage
 
 Aucune dépendance, aucune étape de build : ce sont des fichiers statiques.
 
 ```bash
 npm run serve     # http://localhost:8080
-npm run check     # valide les 30 niveaux, les 20 missions Heli Rescue et les traductions
+npm run check     # valide les 30 niveaux, les 20 missions Heli Rescue, les 25 courses Heli Race et les traductions
 ```
 
 ## Installation sur Android (PWA)

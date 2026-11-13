@@ -22,7 +22,10 @@ r_lvl1 r_uni1 r_victims r_reco r_aboard r_thanks r_full r_needBig r_cancel r_don
 r_lvl2 r_lvl3 r_lvl4 r_lvl5 r_uni2 r_uni3 r_uni4 r_uni5 r_v_dog r_v_walker r_v_climber r_v_resident r_v_cat r_tide r_missions
 r_lvl6 r_lvl7 r_lvl8 r_lvl9 r_lvl10 r_lvl11 r_lvl12 r_uni6 r_uni7 r_uni8 r_uni9 r_uni10 r_uni11 r_uni12 r_v_forester r_v_deer r_v_fawn r_v_biologist r_v_orangutan r_v_explorer r_v_husky r_v_volcanologist r_v_child r_v_skier r_fire r_found
 r_lvl13 r_lvl14 r_lvl15 r_lvl16 r_lvl17 r_lvl18 r_lvl19 r_lvl20 r_uni13 r_uni14 r_uni15 r_uni16 r_uni17 r_uni18 r_uni19 r_uni20 r_v_fisherman r_v_flamingo r_v_sailor r_v_ranger r_v_elephant r_v_caver r_v_farmer r_v_horse r_v_goat r_v_islander r_v_turtle r_v_shepherd r_storm r_needAmphi
-r_required`.split(/\s+/);
+r_required
+c_lvl1 c_lvl2 c_lvl3 c_lvl4 c_lvl5 c_lvl6 c_lvl7 c_lvl8 c_lvl9 c_lvl10 c_lvl11 c_lvl12 c_lvl13 c_lvl14 c_lvl15 c_lvl16 c_lvl17 c_lvl18 c_lvl19 c_lvl20 c_lvl21 c_lvl22 c_lvl23 c_lvl24 c_lvl25
+c_uni_water c_uni_snow c_uni_lava c_uni_ufo c_uni_moon c_p1 c_p2 c_p3 c_p4 c_p5
+c_races c_rings c_miss c_done c_unlock c_chrono c_accel c_rule c_penalty`.split(/\s+/);
 
 const T = {
   fr: `Jouer|Niveaux|Hangar|Profil|Réglages|Niveau|Pilote|Maîtrise la gravité|Bienvenue, pilote|Choisis ton nom de pilote. Ta progression est enregistrée uniquement sur cet appareil.|Ton nom de pilote|Décoller
@@ -47,7 +50,10 @@ Premier envol|Alpage d'été|À secourir|Appareil conseillé|À bord|Merci !|App
 Le chien égaré|Marée montante|Crevasse|Toits sous l'eau|Forêt de sapins|Côte et falaises|Glacier de haute montagne|Village inondé|Chien|Promeneur|Alpiniste|Habitante|Chat|L'eau est montée trop vite|Missions
 Soif de canyon|Rideau de feu|Canopée|Banquise|Souffle du volcan|Répliques|Avalanche|Canyon désertique|Forêt en feu|Jungle tropicale|Arctique|Volcan en éruption|Village après un séisme|Station de ski, hors-piste|Forestier|Biche|Faon|Biologiste|Bébé orang-outan|Explorateur|Husky|Volcanologue|Enfant|Skieur|Le feu a atteint la zone|Victime localisée
 Brumes du marais|Naufrage|Saison sèche|Gouffre|Ferme isolée|Après le cyclone|Toit du monde|La nuit de tous les dangers|Mangrove brumeuse|Haute mer en tempête|Savane|Gouffre, la nuit|Campagne sous le blizzard|Île tropicale dévastée|Himalaya|Vallée sous la tempête|Pêcheur|Flamant blessé|Marin|Ranger|Éléphanteau|Spéléologue|Fermière|Cheval|Chèvre|Habitant|Tortue de mer|Berger|La fenêtre météo s'est refermée|Il faut un appareil amphibie pour se poser sur l'eau
-Appareil indispensable : {v}`,
+Appareil indispensable : {v}
+Lagon du départ|Les Grandes Chutes|Récif des épaves|Delta des moulins|Tempête sur la baie|Vallée blanche|Le géant de glace|Col des aurores|Village des igloos|Blizzard du sommet|Terres brûlées|Les gardiens de pierre|Forge du titan|Temple des cendres|Cœur de la caldeira|Zone interdite|Le crash|Forêt des visiteurs|Vaisseau-mère|Signal dans la nuit|Mer de la Tranquillité|Premiers pas|Pluie de météorites|Base Séléné|Face cachée
+Eau et cascades|Neige|Volcans|Ovnis|Lune|Équilibré, pour apprendre les tracés|Accélération fulgurante, idéal en zigzag|Vitesse de pointe énorme, lent à relancer|Rapide et très vif|Le plus rapide de tous
+Courses|Anneaux|Anneau manqué : +3 s|Course terminée !|Réussis la course {v} de Heli Race|Chrono|Accélération|Passe dans chaque anneau doré : 3 s de pénalité par anneau manqué. Aucun ravitaillement en route.|Pénalités`,
   en: `Play|Levels|Hangar|Profile|Settings|Level|Pilot|Master gravity|Welcome, pilot|Choose your pilot name. Your progress is saved on this device only.|Your pilot name|Take off
 Alpine Dawn|Misty Forest|Ochre Canyon|Turquoise Coast|Dusk Metropolis|Frozen Peaks|Temple Valley|Heart of the Volcano|Neon Night|Sky Archipelago
 Finish the level|Collect {v}% of the coins|Finish in under {v}|Finish with at least {v}% armour|{v} collisions at most|Finish without crashing|Soft landing|Fly through every ring|Earn {v} medals
@@ -70,7 +76,10 @@ First Flight|Summer pasture|To rescue|Recommended aircraft|On board|Thank you!|A
 The Lost Dog|Rising Tide|Crevasse|Rooftops Under Water|Pine forest|Coast and cliffs|High mountain glacier|Flooded village|Dog|Walker|Climber|Resident|Cat|The water rose too fast|Missions
 Canyon Thirst|Wall of Fire|Canopy|Pack Ice|Breath of the Volcano|Aftershocks|Avalanche|Desert canyon|Forest on fire|Tropical jungle|Arctic|Erupting volcano|Village after an earthquake|Ski resort, off-piste|Forester|Doe|Fawn|Biologist|Baby orangutan|Explorer|Husky|Volcanologist|Child|Skier|The fire reached the zone|Victim located
 Marsh Mists|Shipwreck|Dry Season|The Chasm|Lonely Farm|After the Cyclone|Roof of the World|The Night of All Dangers|Misty mangrove|Stormy high seas|Savanna|Chasm at night|Countryside in a blizzard|Devastated tropical island|Himalayas|Valley in the storm|Fisherman|Injured flamingo|Sailor|Ranger|Baby elephant|Caver|Farmer|Horse|Goat|Islander|Sea turtle|Shepherd|The weather window has closed|You need an amphibious aircraft to land on water
-Required aircraft: {v}`,
+Required aircraft: {v}
+Starting Lagoon|The Great Falls|Wreck Reef|Mill Delta|Storm over the Bay|White Valley|The Ice Giant|Aurora Pass|Igloo Village|Summit Blizzard|Scorched Lands|The Stone Guardians|Titan's Forge|Temple of Ashes|Heart of the Caldera|Forbidden Zone|The Crash|Forest of the Visitors|Mothership|Signal in the Night|Sea of Tranquility|First Steps|Meteor Shower|Selene Base|Far Side
+Water and falls|Snow|Volcanoes|UFOs|Moon|Balanced, to learn the tracks|Blistering acceleration, ideal for zigzags|Huge top speed, slow to pick up|Fast and very nimble|The fastest of all
+Races|Rings|Ring missed: +3 s|Race finished!|Complete Heli Race race {v}|Time|Acceleration|Fly through every golden ring: 3 s penalty per ring missed. No refuelling on the way.|Penalties`,
   es: `Jugar|Niveles|Hangar|Perfil|Ajustes|Nivel|Piloto|Domina la gravedad|Bienvenido, piloto|Elige tu nombre de piloto. Tu progreso se guarda solo en este dispositivo.|Tu nombre de piloto|Despegar
 Amanecer alpino|Bosque de niebla|Cañón ocre|Costa turquesa|Metrópolis al atardecer|Picos helados|Valle de los templos|Corazón del volcán|Noche de neón|Archipiélago celeste
 Terminar el nivel|Recoger el {v} % de las monedas|Terminar en menos de {v}|Terminar con al menos {v} % de blindaje|{v} colisiones como máximo|Terminar sin estrellarse|Aterrizaje suave|Atravesar todos los anillos|Conseguir {v} medallas
@@ -93,7 +102,10 @@ Primer vuelo|Pasto de verano|A rescatar|Aparato recomendado|A bordo|¡Gracias!|A
 El perro perdido|Marea creciente|Grieta|Tejados bajo el agua|Bosque de abetos|Costa y acantilados|Glaciar de alta montaña|Pueblo inundado|Perro|Paseante|Alpinista|Vecina|Gato|El agua subió demasiado rápido|Misiones
 Sed de cañón|Cortina de fuego|Dosel|Banquisa|Aliento del volcán|Réplicas|Avalancha|Cañón desértico|Bosque en llamas|Selva tropical|Ártico|Volcán en erupción|Pueblo tras un seísmo|Estación de esquí, fuera de pista|Guardabosques|Cierva|Cervatillo|Bióloga|Cría de orangután|Explorador|Husky|Vulcanólogo|Niño|Esquiador|El fuego alcanzó la zona|Víctima localizada
 Brumas del pantano|Naufragio|Estación seca|La sima|Granja aislada|Tras el ciclón|Techo del mundo|La noche de todos los peligros|Manglar brumoso|Alta mar en tormenta|Sabana|Sima, de noche|Campo bajo la ventisca|Isla tropical devastada|Himalaya|Valle bajo la tormenta|Pescador|Flamenco herido|Marinero|Guardabosques|Cría de elefante|Espeleólogo|Granjera|Caballo|Cabra|Isleño|Tortuga marina|Pastor|La ventana de buen tiempo se ha cerrado|Necesitas un aparato anfibio para posarte en el agua
-Aparato imprescindible: {v}`,
+Aparato imprescindible: {v}
+Laguna de salida|Las Grandes Cataratas|Arrecife de los naufragios|Delta de los molinos|Tormenta en la bahía|Valle blanco|El gigante de hielo|Paso de las auroras|Aldea de iglús|Ventisca en la cumbre|Tierras quemadas|Los guardianes de piedra|Forja del titán|Templo de las cenizas|Corazón de la caldera|Zona prohibida|El accidente|Bosque de los visitantes|Nave nodriza|Señal en la noche|Mar de la Tranquilidad|Primeros pasos|Lluvia de meteoritos|Base Selene|Cara oculta
+Agua y cascadas|Nieve|Volcanes|Ovnis|Luna|Equilibrado, para aprender los trazados|Aceleración fulgurante, ideal en zigzag|Velocidad punta enorme, lento al relanzar|Rápido y muy ágil|El más rápido de todos
+Carreras|Anillos|Anillo fallado: +3 s|¡Carrera terminada!|Completa la carrera {v} de Heli Race|Crono|Aceleración|Pasa por cada anillo dorado: 3 s de penalización por anillo fallado. Sin repostaje en ruta.|Penalizaciones`,
   pt: `Jogar|Níveis|Hangar|Perfil|Definições|Nível|Piloto|Domina a gravidade|Bem-vindo, piloto|Escolhe o teu nome de piloto. O teu progresso é guardado apenas neste dispositivo.|O teu nome de piloto|Descolar
 Aurora alpina|Floresta da névoa|Desfiladeiro ocre|Costa turquesa|Metrópole ao entardecer|Picos gelados|Vale dos templos|Coração do vulcão|Noite de néon|Arquipélago celeste
 Terminar o nível|Recolher {v} % das moedas|Terminar em menos de {v}|Terminar com pelo menos {v} % de blindagem|{v} colisões no máximo|Terminar sem se despenhar|Aterragem suave|Atravessar todos os anéis|Obter {v} medalhas
@@ -116,7 +128,10 @@ Primeiro voo|Pastagem de verão|A resgatar|Aparelho recomendado|A bordo|Obrigado
 O cão perdido|Maré a subir|Fenda|Telhados debaixo de água|Floresta de abetos|Costa e falésias|Glaciar de alta montanha|Aldeia inundada|Cão|Passeante|Alpinista|Moradora|Gato|A água subiu depressa demais|Missões
 Sede de desfiladeiro|Cortina de fogo|Copa das árvores|Banquisa|Sopro do vulcão|Réplicas|Avalanche|Desfiladeiro desértico|Floresta em chamas|Selva tropical|Ártico|Vulcão em erupção|Aldeia após um sismo|Estância de esqui, fora de pista|Guarda-florestal|Corça|Cria de veado|Bióloga|Bebé orangotango|Explorador|Husky|Vulcanólogo|Criança|Esquiador|O fogo chegou à zona|Vítima localizada
 Brumas do pântano|Naufrágio|Estação seca|O abismo|Quinta isolada|Depois do ciclone|Teto do mundo|A noite de todos os perigos|Mangal enevoado|Alto mar em tempestade|Savana|Abismo, à noite|Campo sob o nevão|Ilha tropical devastada|Himalaias|Vale sob a tempestade|Pescador|Flamingo ferido|Marinheiro|Guarda|Cria de elefante|Espeleólogo|Agricultora|Cavalo|Cabra|Ilhéu|Tartaruga marinha|Pastor|A janela de bom tempo fechou-se|Precisas de um aparelho anfíbio para pousar na água
-Aparelho indispensável: {v}`,
+Aparelho indispensável: {v}
+Lagoa da partida|As Grandes Cataratas|Recife dos naufrágios|Delta dos moinhos|Tempestade na baía|Vale branco|O gigante de gelo|Passo das auroras|Aldeia dos iglus|Nevasca no cume|Terras queimadas|Os guardiões de pedra|Forja do titã|Templo das cinzas|Coração da caldeira|Zona proibida|A queda|Floresta dos visitantes|Nave-mãe|Sinal na noite|Mar da Tranquilidade|Primeiros passos|Chuva de meteoritos|Base Selene|Lado oculto
+Água e cascatas|Neve|Vulcões|Óvnis|Lua|Equilibrado, para aprender os traçados|Aceleração fulgurante, ideal em ziguezague|Velocidade de ponta enorme, lento a relançar|Rápido e muito ágil|O mais rápido de todos
+Corridas|Anéis|Anel falhado: +3 s|Corrida terminada!|Termina a corrida {v} de Heli Race|Crono|Aceleração|Passa por cada anel dourado: 3 s de penalização por anel falhado. Sem reabastecimento pelo caminho.|Penalizações`,
   de: `Spielen|Level|Hangar|Profil|Einstellungen|Level|Pilot|Meistere die Schwerkraft|Willkommen, Pilot|Wähle deinen Pilotennamen. Dein Fortschritt wird nur auf diesem Gerät gespeichert.|Dein Pilotenname|Abheben
 Alpenmorgen|Nebelwald|Ockercanyon|Türkisküste|Metropole in der Dämmerung|Eisgipfel|Tal der Tempel|Herz des Vulkans|Neonnacht|Himmelsarchipel
 Level abschließen|{v} % der Münzen einsammeln|In unter {v} abschließen|Mit mindestens {v} % Panzerung abschließen|Höchstens {v} Kollisionen|Ohne Absturz abschließen|Sanfte Landung|Durch alle Ringe fliegen|{v} Medaillen verdienen
@@ -139,7 +154,10 @@ Erster Flug|Sommeralm|Zu retten|Empfohlene Maschine|An Bord|Danke!|Maschine voll
 Der verirrte Hund|Steigende Flut|Gletscherspalte|Dächer unter Wasser|Tannenwald|Küste und Klippen|Hochgebirgsgletscher|Überflutetes Dorf|Hund|Spaziergänger|Bergsteiger|Bewohnerin|Katze|Das Wasser ist zu schnell gestiegen|Missionen
 Durst im Canyon|Feuerwand|Blätterdach|Packeis|Atem des Vulkans|Nachbeben|Lawine|Wüstencanyon|Brennender Wald|Tropischer Dschungel|Arktis|Ausbrechender Vulkan|Dorf nach einem Erdbeben|Skigebiet, abseits der Piste|Förster|Hirschkuh|Kitz|Biologin|Orang-Utan-Baby|Forscher|Husky|Vulkanologe|Kind|Skifahrer|Das Feuer hat die Zone erreicht|Opfer geortet
 Sumpfnebel|Schiffbruch|Trockenzeit|Der Schlund|Einsamer Hof|Nach dem Zyklon|Dach der Welt|Die Nacht aller Gefahren|Neblige Mangroven|Stürmische See|Savanne|Schlund bei Nacht|Land im Schneesturm|Verwüstete Tropeninsel|Himalaya|Tal im Sturm|Fischer|Verletzter Flamingo|Seemann|Ranger|Elefantenkalb|Höhlenforscher|Bäuerin|Pferd|Ziege|Inselbewohner|Meeresschildkröte|Hirte|Das Wetterfenster hat sich geschlossen|Zum Landen auf dem Wasser brauchst du eine amphibische Maschine
-Erforderliche Maschine: {v}`,
+Erforderliche Maschine: {v}
+Startlagune|Die Großen Fälle|Riff der Wracks|Mühlendelta|Sturm über der Bucht|Weißes Tal|Der Eisriese|Polarlichtpass|Igludorf|Gipfelschneesturm|Verbrannte Erde|Die Steinwächter|Schmiede des Titanen|Tempel der Asche|Herz der Caldera|Sperrzone|Der Absturz|Wald der Besucher|Mutterschiff|Signal in der Nacht|Meer der Ruhe|Erste Schritte|Meteoritenschauer|Basis Selene|Rückseite des Mondes
+Wasser und Fälle|Schnee|Vulkane|UFOs|Mond|Ausgewogen, um die Strecken zu lernen|Rasante Beschleunigung, ideal im Zickzack|Enorme Höchstgeschwindigkeit, träge beim Antritt|Schnell und sehr wendig|Der Schnellste von allen
+Rennen|Ringe|Ring verpasst: +3 s|Rennen beendet!|Schließe Heli-Race-Rennen {v} ab|Zeit|Beschleunigung|Fliege durch jeden goldenen Ring: 3 s Strafe pro verpasstem Ring. Kein Tanken unterwegs.|Strafen`,
   it: `Gioca|Livelli|Hangar|Profilo|Impostazioni|Livello|Pilota|Domina la gravità|Benvenuto, pilota|Scegli il tuo nome da pilota. I tuoi progressi sono salvati solo su questo dispositivo.|Il tuo nome da pilota|Decolla
 Alba alpina|Foresta delle nebbie|Canyon ocra|Costa turchese|Metropoli al tramonto|Vette ghiacciate|Valle dei templi|Cuore del vulcano|Notte al neon|Arcipelago celeste
 Completa il livello|Raccogli il {v} % delle monete|Finisci in meno di {v}|Finisci con almeno il {v} % di corazza|Massimo {v} collisioni|Finisci senza schiantarti|Atterraggio morbido|Attraversa tutti gli anelli|Ottieni {v} medaglie
@@ -162,7 +180,10 @@ Primo volo|Alpeggio estivo|Da soccorrere|Velivolo consigliato|A bordo|Grazie!|Ve
 Il cane smarrito|Marea montante|Crepaccio|Tetti sott'acqua|Foresta di abeti|Costa e scogliere|Ghiacciaio d'alta montagna|Villaggio allagato|Cane|Passeggiatore|Alpinista|Abitante|Gatto|L'acqua è salita troppo in fretta|Missioni
 Sete di canyon|Muro di fuoco|Volta della foresta|Banchisa|Respiro del vulcano|Scosse di assestamento|Valanga|Canyon desertico|Foresta in fiamme|Giungla tropicale|Artico|Vulcano in eruzione|Villaggio dopo un terremoto|Stazione sciistica, fuoripista|Guardia forestale|Cerva|Cerbiatto|Biologa|Cucciolo di orango|Esploratore|Husky|Vulcanologo|Bambino|Sciatore|Il fuoco ha raggiunto la zona|Vittima localizzata
 Nebbie della palude|Naufragio|Stagione secca|La voragine|Fattoria isolata|Dopo il ciclone|Tetto del mondo|La notte di tutti i pericoli|Mangrovie nella nebbia|Alto mare in tempesta|Savana|Voragine, di notte|Campagna nella bufera|Isola tropicale devastata|Himalaya|Valle nella tempesta|Pescatore|Fenicottero ferito|Marinaio|Ranger|Elefantino|Speleologo|Contadina|Cavallo|Capra|Isolano|Tartaruga marina|Pastore|La finestra di bel tempo si è chiusa|Serve un velivolo anfibio per posarsi sull'acqua
-Velivolo indispensabile: {v}`,
+Velivolo indispensabile: {v}
+Laguna di partenza|Le Grandi Cascate|Scogliera dei relitti|Delta dei mulini|Tempesta sulla baia|Valle bianca|Il gigante di ghiaccio|Passo delle aurore|Villaggio degli igloo|Bufera sulla vetta|Terre bruciate|I guardiani di pietra|Fucina del titano|Tempio delle ceneri|Cuore della caldera|Zona proibita|Lo schianto|Foresta dei visitatori|Nave madre|Segnale nella notte|Mare della Tranquillità|Primi passi|Pioggia di meteoriti|Base Selene|Lato nascosto
+Acqua e cascate|Neve|Vulcani|UFO|Luna|Equilibrato, per imparare i tracciati|Accelerazione fulminea, ideale negli zigzag|Velocità di punta enorme, lento a ripartire|Veloce e molto agile|Il più veloce di tutti
+Gare|Anelli|Anello mancato: +3 s|Gara terminata!|Completa la gara {v} di Heli Race|Tempo|Accelerazione|Passa in ogni anello dorato: 3 s di penalità per anello mancato. Nessun rifornimento lungo il percorso.|Penalità`,
 };
 
 export const KEYS = K;

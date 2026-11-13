@@ -8,12 +8,16 @@ import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy, heliOpen } from './save.js';
 import { clamp, fmtTime } from './util.js';
+import { RACE_HELIS, raceHeli, raceStars, raceStarWallet, raceOwned, raceOpenHeli, raceCanBuy, raceBuy } from './race.js';
+import { RACE_LEVELS, raceLevel } from './racelevels.js';
+import { buildRaceLevel } from './racegen.js';
+import { RaceGame, PENALTY } from './racegame.js';
 import { RESCUE_HELIS, rescueHeli, rescueUnlocked, rescueBuy, rescueCanBuy, rescueOpenHeli, rescueStarWallet } from './rescue.js';
 import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '2.12.0';
+const VERSION = '3.0.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -68,23 +72,32 @@ const getRescue = (n) => { if (!rcache.has(n)) rcache.set(n, buildRescueLevel(re
 const rwallet = (shop) => `<span class="wallet"><span><i class="coin"></i>${save.heliRescue.coins}</span><b>★ ${shop ? rescueStarWallet(save) : rescueStars(save) + '/60'}</b></span>`;
 const lockIcon = () => ICON.lock.replace('<svg', '<svg style="width:12px;height:12px"');
 const rescueOpen = (n) => n === 1 || !!save.heliRescue.levels[n - 1]?.done;
-const levelTitle = () => (S.rescue ? `${S.rescue} · ${t('r_lvl' + S.rescue)}` : `${S.level.def.id} · ${t('lvl' + S.level.def.id)}`);
+const levelTitle = () => (S.race ? `${S.race} · ${t('c_lvl' + S.race)}` : S.rescue ? `${S.rescue} · ${t('r_lvl' + S.rescue)}` : `${S.level.def.id} · ${t('lvl' + S.level.def.id)}`);
 const myRescueHeli = () => { const h = rescueHeli(save.heliRescue.heli); return rescueUnlocked(save, h) ? h : RESCUE_HELIS[0]; };
+// Monde Heli Race : courses construites à la demande, appareil choisi, prochaine course à faire
+const ccache = new Map();
+const getRace = (n) => { if (!ccache.has(n)) ccache.set(n, buildRaceLevel(raceLevel(n))); return ccache.get(n); };
+const raceOpen = (n) => n === 1 || !!save.heliRace.levels[n - 1]?.done;
+const myRaceHeli = () => { const h = raceHeli(save.heliRace.heli); return raceOwned(save, h) ? h : RACE_HELIS[0]; };
+const nextRace = () => { for (const l of RACE_LEVELS) if (!save.heliRace.levels[l.n]?.done) return l.n; return RACE_LEVELS.length; };
+const inRace = () => ['clist', 'changar'].includes(S.screen) || (S.screen === 'home' && save.world === 'race');
+const curWorld = () => (inRescue() ? 'rescue' : inRace() ? 'race' : 'adv');
+const cwallet = (shop) => `<span class="wallet"><b>★ ${shop ? raceStarWallet(save) : raceStars(save) + '/' + RACE_LEVELS.length * 3}</b></span>`;
 const inRescue = () => ['rmap', 'rhangar'].includes(S.screen) || (S.screen === 'home' && save.world === 'rescue');
 function setDemo(id) {
-  const rescue = id == null && inRescue();
-  id = id ?? (rescue ? 0 : nextLevelId());
-  S.mode = 'demo'; S.levelId = id; S.demoRescue = rescue; S.rescue = 0;
+  const rescue = id == null && inRescue(), race = id == null && !rescue && inRace();
+  id = id ?? (rescue || race ? 0 : nextLevelId());
+  S.mode = 'demo'; S.levelId = id; S.demoWorld = rescue ? 'rescue' : race ? 'race' : 'adv'; S.rescue = 0; S.race = 0;
   // Fond Heli Rescue : une mission du niveau 1 jouée par le pilote automatique de sauvetage
-  S.level = rescue ? getRescue(1) : getLevel(id);
-  S.game = rescue ? new RescueGame(S.level, myRescueHeli(), 'normal') : new Game(S.level, heliOf(save.heli));
+  S.level = rescue ? getRescue(1) : race ? getRace(nextRace()) : getLevel(id);
+  S.game = rescue ? new RescueGame(S.level, myRescueHeli(), 'normal') : race ? new RaceGame(S.level, myRaceHeli(), 0, 'normal') : new Game(S.level, heliOf(save.heli));
   R.setLevel(S.level); theme(S.level.def);
   hud.hidden = true; S.touch = null;
   snd.rotorStop(); snd.playMusic(S.level.def.music);
   releaseWake();
 }
 function startLevel(id) {
-  S.rescue = 0;
+  S.rescue = 0; S.race = 0;
   S.mode = 'play'; S.levelId = id; S.level = getLevel(id); S.ended = false;
   S.game = new Game(S.level, heliOf(save.heli), save.levels[id]?.sm || 0, save.settings.diff);
   R.setLevel(S.level); theme(S.level.def);
@@ -99,8 +112,21 @@ function startLevel(id) {
   if (id === 1 && !save.tut) tutorialCard();
 }
 // Lance une mission Heli Rescue (même écran de jeu que l'Aventure, avec la mécanique de sauvetage).
+// Lance une course Heli Race : même écran de jeu, règles de course (anneaux, chrono, aucun ravitaillement).
+function startRace(n) {
+  S.race = n; S.rescue = 0; S.mode = 'play'; S.level = getRace(n); S.ended = false; S.tut = null;
+  S.game = new RaceGame(S.level, myRaceHeli(), save.heliRace.levels[n]?.sm || 0, save.settings.diff);
+  R.setLevel(S.level); theme(S.level.def);
+  ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
+  lowBeep = 0; timeShown = -1;
+  $('#cpMarks').innerHTML = '';
+  $('#fps').hidden = !save.settings.fps;
+  snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
+  save.stats.flights++; persist();
+  requestWake(); guardBack();
+}
 function startRescue(n) {
-  S.rescue = n; S.mode = 'play'; S.level = getRescue(n); S.ended = false; S.tut = null;
+  S.rescue = n; S.race = 0; S.mode = 'play'; S.level = getRescue(n); S.ended = false; S.tut = null;
   S.game = new RescueGame(S.level, myRescueHeli(), save.settings.diff);
   R.setLevel(S.level); theme(S.level.def);
   ui.innerHTML = ''; S.screen = 'game'; hud.hidden = false; S.touch = null; S.pid = null;
@@ -179,16 +205,17 @@ function releaseWake() { try { wake?.release(); } catch { /* déjà libéré */ 
 // ---------- Écrans
 // Barre du bas, à l'intérieur d'un monde : accueil, écrans du monde, profil, réglages.
 function nav(cur) {
-  const world = ['rmap', 'rhangar'].includes(cur) || (S.navWorld === 'rescue' && !['levels', 'hangar'].includes(cur)) ? 'rescue' : 'adv';
+  const world = ['clist', 'changar'].includes(cur) ? 'race' : ['rmap', 'rhangar'].includes(cur) ? 'rescue' : ['levels', 'hangar'].includes(cur) ? 'adv' : S.navWorld || 'adv';
   S.navWorld = world;
-  const items = world === 'rescue' ? [['home', 'home', 'home'], ['rmap', 'levels', 'r_missions'], ['rhangar', 'hangar', 'hangar']] : [['home', 'home', 'home'], ['levels', 'levels', 'levels'], ['hangar', 'hangar', 'hangar']];
+  const items = world === 'race' ? [['home', 'home', 'home'], ['clist', 'levels', 'c_races'], ['changar', 'hangar', 'hangar']]
+    : world === 'rescue' ? [['home', 'home', 'home'], ['rmap', 'levels', 'r_missions'], ['rhangar', 'hangar', 'hangar']] : [['home', 'home', 'home'], ['levels', 'levels', 'levels'], ['hangar', 'hangar', 'hangar']];
   items.push(['profile', 'profile', 'profile'], ['settings', 'settings', 'settings']);
   return `<nav class="nav">${items.map(([k, ic, lb]) => `<button data-go="${k}" class="${k === cur ? 'on' : ''}">${ICON[ic]}<span>${t(lb)}</span></button>`).join('')}</nav>`;
 }
 function go(screen) {
   S.screen = screen;
-  if (S.mode !== 'demo' || S.demoRescue !== inRescue()) setDemo();
-  ({ home, levels, hangar, profile, settings, rmap, rhangar })[screen]();
+  if (S.mode !== 'demo' || S.demoWorld !== curWorld()) setDemo();
+  ({ home, levels, hangar, profile, settings, rmap, rhangar, clist, changar })[screen]();
   if (screen !== 'home') guardBack();
 }
 // Accueil : le décor animé en fond, et en bas les deux mondes côte à côte. Toucher une bulle choisit le monde
@@ -197,7 +224,7 @@ function home() {
   if (!save.pilot) return welcome();
   S.screen = 'home';
   const m = medalCount(save), w = save.world, id = nextLevelId();
-  if (S.mode !== 'demo' || S.demoRescue !== (w === 'rescue') || (w === 'adv' && S.levelId !== id)) setDemo();
+  if (S.mode !== 'demo' || S.demoWorld !== w || (w === 'adv' && S.levelId !== id)) setDemo();
   const rsky = rescueLevel(1).look.sky[0];
   const bubble = (k, title, prog, sky) => `<button class="world ${w === k ? 'sel' : ''}" data-world="${k}">
       <span class="bubble" style="background:linear-gradient(${sky[0]},${sky[1]})"><canvas data-bubble="${k}"></canvas></span>
@@ -205,12 +232,12 @@ function home() {
   ui.innerHTML = `<section class="screen home">
     <div class="top"><button class="chip" data-go="profile"><span class="avatar">${esc(save.pilot[0].toUpperCase())}</span><span><b>${esc(save.pilot)}</b><small>${t('rank' + rankIdx(m))} · ${m}/${TOTAL_MEDALS}</small></span></button>
       <button class="round" data-go="settings" aria-label="${t('settings')}">${ICON.settings}</button></div>
-    <div class="title"><h1>HELI<span>${w === 'rescue' ? 'RESCUE' : 'ADVENTURE'}</span></h1><p>${t('tagline')}</p></div>
+    <div class="title"><h1>HELI<span>${w === 'rescue' ? 'RESCUE' : w === 'race' ? 'RACE' : 'ADVENTURE'}</span></h1><p>${t('tagline')}</p></div>
     <div class="homebot">
-      <div class="worlds">${bubble('adv', t('adventure'), `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, rsky)}</div>
+      <div class="worlds">${bubble('adv', t('adventure'), `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, rsky)}${bubble('race', 'Heli Race', `★ ${raceStars(save)}/${RACE_LEVELS.length * 3}`, raceLevel(nextRace()).look.sky[0])}</div>
     </div>
   </section>${(S.navWorld = w, nav('home'))}`;
-  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? myRescueHeli() : heliOf(save.heli)).look, 1.05));
+  ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? myRescueHeli() : c.dataset.bubble === 'race' ? myRaceHeli() : heliOf(save.heli)).look, 1.05));
 }
 // Missions Heli Rescue : même présentation que les niveaux de l'Aventure (bannières aux couleurs de la mission,
 // étoiles, record) ; les missions pas encore livrées sont annoncées en grisé.
@@ -292,6 +319,72 @@ function rhangar() {
   ui.querySelectorAll('canvas[data-rheli]').forEach((c) => heliCanvas(c, rescueHeli(c.dataset.rheli).look, 0.95));
   $('#rh-' + cur)?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
+// ---------- Heli Race : liste des courses, fiche, résultat, hangar
+function clist() {
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('c_races')}${cwallet()}</h2><div class="scroll">${RACE_LEVELS.map((cfg) => {
+    const n = cfg.n, open = raceOpen(n), rec = save.heliRace.levels[n], st = levelBits(rec?.sm), k = cfg.look;
+    return `<button class="lvl ${open ? '' : 'locked'}" ${open ? `data-clevel="${n}"` : `data-clock="${n}"`} style="--a:${k.sky[0][0]};--b:${k.sky[0][1]};--gr:${k.ground}">
+      <span class="n">${n}</span>
+      <span class="name">${t('c_lvl' + n)}<small>${open ? `${t('c_uni_' + cfg.uni)}${rec?.time != null ? ` · ${t('best')} ${fmtChrono(rec.time)}` : ''}` : t('c_unlock', n - 1)}</small></span>
+      ${open ? `<span class="medals">${[0, 1, 2].map((q) => `<i class="medal ${st > q ? 'on' : ''}"></i>`).join('')}</span>` : ICON.lock}
+    </button>`;
+  }).join('')}</div></section>${nav('clist')}`;
+}
+function raceSheet(n) {
+  const cfg = raceLevel(n), rec = save.heliRace.levels[n], st = levelBits(rec?.sm), L = getRace(n);
+  ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
+    <h2>${n} · ${t('c_lvl' + n)}</h2><p class="sub">${t('c_uni_' + cfg.uni)} · ${'★'.repeat(st)}${'☆'.repeat(3 - st)}${rec?.time != null ? ` · ${t('best')} ${fmtChrono(rec.time)}` : ''}</p>
+    <div class="obj"><span>${t('c_rings')}</span><small>${L.race.rings.length}</small></div>
+    <div class="obj"><span>${t('stars')}</span><small>★ ${st}/3</small></div>
+    <p class="sub" style="margin:10px 0 0;line-height:1.4">${t('c_rule')}</p>
+    <button class="btn primary" style="width:100%;margin-top:14px" data-cplay="${n}">${ICON.play}${t('play')} · ${myRaceHeli().name}</button>
+  </div></div>`);
+}
+// Fin de course : chrono (pénalités comprises), anneaux, étoiles ramassées.
+function showRaceResult() {
+  S.ended = true;
+  const g = S.game, n = S.race, L = S.level, time = g.raceTime;
+  const rec = (save.heliRace.levels[n] ||= { done: false, time: null, sm: 0 });
+  const newRec = rec.time != null && time < rec.time, before = levelBits(rec.sm);
+  rec.done = true;
+  if (rec.time == null || time < rec.time) rec.time = time;
+  let k = 0; L.items.forEach((it, i) => { if (it.type === 'star') { if (g.taken[i]) rec.sm = (rec.sm || 0) | (1 << k); k++; } });
+  const st = levelBits(rec.sm);
+  save.stats.landings++; commitRun(); persist();
+  const hasNext = !!raceLevel(n + 1);
+  ui.innerHTML = `<div class="overlay"><div class="sheet">
+    <h2>${t('c_done')}</h2><p class="sub">${n} · ${t('c_lvl' + n)} ${newRec ? `<span class="rec">· ${t('newRecord')}</span>` : ''}</p>
+    <div class="chrono">${fmtChrono(time)}</div>
+    <div class="obj"><span>${t('c_rings')}</span><small>${g.passed}/${L.race.rings.length}</small></div>
+    <div class="obj"><span>${t('c_penalty')}</span><small>${g.missed ? '+' + g.missed * PENALTY + ' s' : '—'}</small></div>
+    <div class="obj"><span>${t('stars')}</span><small style="color:#ffd34d;font-size:16px;letter-spacing:2px">${'★'.repeat(st)}${'☆'.repeat(3 - st)}</small></div>
+    <div class="obj"><span>${t('best')}</span><small>${fmtChrono(rec.time)}</small></div>
+    <div class="col" style="margin-top:14px">
+      ${hasNext ? `<button class="btn primary" data-cplay="${n + 1}">${ICON.play}${t('next')}</button>` : ''}
+      <button class="btn ${hasNext ? '' : 'primary'}" data-act="restart">${t('retry')}</button>
+      <button class="btn ghost" data-act="quit">${t('c_races')}</button>
+    </div></div></div>`;
+  for (let i = before; i < st; i++) setTimeout(() => { snd.sfx('medal'); vibe(20); }, 300 + (i - before) * 250);
+}
+function changar() {
+  const cur = myRaceHeli().id;
+  ui.innerHTML = `<section class="screen scrim"><h2 class="top">${t('hangar')} · Heli Race${cwallet(true)}</h2><div class="cards">${RACE_HELIS.map((h) => {
+    const own = raceOwned(save, h), sel = cur === h.id;
+    const bar = (lb, v) => `<div class="bar"><span>${t(lb)}</span><i><b style="width:${Math.round(clamp(v, 0.08, 1) * 100)}%"></b></i></div>`;
+    return `<div class="hcard panel ${own ? '' : 'locked'}" id="ch-${h.id}">
+      <canvas data-cheli="${h.id}"></canvas><h4>${h.name}</h4>
+      <p class="perk">${t(h.perk)}</p>
+      ${bar('c_accel', (h.power - 1.75) / 0.75)}${bar('stat_speed', (1.08 - h.drag) / 0.4)}${bar('stat_agility', h.agility / 270)}
+      ${own ? `<button class="btn ${sel ? 'ghost' : 'primary'}" data-cheli-sel="${h.id}" ${sel ? 'disabled' : ''}>${sel ? '✓ ' + t('selected') : t('select')}</button>`
+        : raceOpenHeli(save, h) ? `<button class="btn primary ${raceCanBuy(save, h) ? '' : 'cant'}" data-cbuy="${h.id}">${t('buy')} · ${priceLabel(h.price)}</button>`
+        : `<div class="req"><small>${lockIcon()} ${t('locked')} · ${priceLabel(h.price)}</small>${t('c_unlock', h.unlock)}</div>`}
+    </div>`;
+  }).join('')}</div></section>${nav('changar')}`;
+  ui.querySelectorAll('canvas[data-cheli]').forEach((c) => heliCanvas(c, raceHeli(c.dataset.cheli).look, 0.95));
+  $('#ch-' + cur)?.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+const levelBits = (m) => { let n = 0; for (m |= 0; m; m >>= 1) n += m & 1; return n; };
+const fmtChrono = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}.${Math.floor((s * 10) % 10)}`;
 function welcome() {
   ui.innerHTML = `<div class="overlay center"><div class="sheet col">
     <h2>${t('welcome')}</h2><p class="sub">${t('welcomeText')}</p>
@@ -469,7 +562,7 @@ ui.addEventListener('click', (e) => {
   const d = b.dataset;
   if (d.act === 'closeSheet' && e.target !== b) { if (!e.target.closest('button')) return; }
   if (b.tagName === 'BUTTON') snd.sfx('ui');
-  if (d.world) { if (save.world !== d.world) { save.world = d.world; persist(); vibe(15); } return go(d.world === 'rescue' ? 'rmap' : 'levels'); } // la bulle choisit le monde et ouvre ses niveaux
+  if (d.world) { if (save.world !== d.world) { save.world = d.world; persist(); vibe(15); } return go(d.world === 'rescue' ? 'rmap' : d.world === 'race' ? 'clist' : 'levels'); } // la bulle choisit le monde et ouvre ses niveaux
   if (d.go) return go(d.go);
   if (d.play) return startLevel(+d.play);
   if (d.level) return levelSheet(+d.level);
@@ -478,6 +571,15 @@ ui.addEventListener('click', (e) => {
     if (!buy(save, h)) return toast(heliOpen(save, h) ? t('notEnough') : t('lockedLevel', heliUnlock(h)));
     save.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(S.levelId); return hangar();
   }
+  if (d.clevel) return raceSheet(+d.clevel);
+  if (d.clock) return toast(t('c_unlock', +d.clock - 1));
+  if (d.cplay) return startRace(+d.cplay);
+  if (d.cbuy) {
+    const h = raceHeli(d.cbuy);
+    if (!raceBuy(save, h)) return toast(raceOpenHeli(save, h) ? t('notEnough') : t('c_unlock', h.unlock));
+    save.heliRace.heli = h.id; persist(); snd.sfx('win'); snd.preview(h); vibe([30, 40, 60]); toast(t('bought')); setDemo(); return changar();
+  }
+  if (d.cheliSel) { save.heliRace.heli = d.cheliSel; persist(); snd.preview(raceHeli(d.cheliSel)); setDemo(); return changar(); }
   if (d.rlevel) return rescueSheet(+d.rlevel);
   if (d.rlock) return toast(t('lockedLevel', +d.rlock - 1));
   if (d.rplay) return startRescue(+d.rplay);
@@ -506,8 +608,8 @@ ui.addEventListener('click', (e) => {
       save.pilot = n.slice(0, 16); save.lang = getLang(); persist(); home(); break;
     }
     case 'resume': resume(); break;
-    case 'restart': commitRun(); if (S.rescue) startRescue(S.rescue); else startLevel(S.levelId); break;
-    case 'quit': { const back = S.rescue ? 'rmap' : 'home'; commitRun(); S.screen = back; setDemo(); go(back); break; }
+    case 'restart': commitRun(); if (S.rescue) startRescue(S.rescue); else if (S.race) startRace(S.race); else startLevel(S.levelId); break;
+    case 'quit': { const back = S.rescue ? 'rmap' : S.race ? 'clist' : 'home'; commitRun(); S.screen = back; setDemo(); go(back); break; }
     case 'install': installEvt?.prompt(); installEvt = null; settings(); break;
     case 'export': {
       const a = document.createElement('a');
@@ -604,6 +706,8 @@ function events() {
       case 'aboard': R.spawn(e.x, e.y - 20, 10, { a: -Math.PI / 2, spread: 2.4, v: 70, col: '#7dffb0', life: 0.6 }); if (play) { toast('● ' + t('r_aboard')); snd.sfx('cp'); vibe(25); } break;
       case 'saved': R.spawn(e.x, e.y, 12, { a: -Math.PI / 2, spread: 2.2, v: 80, col: '#ff8fa3', life: 0.8 }); if (play) { toast('♥ ' + t('r_thanks')); snd.sfx('repair'); vibe(20); } break;
       case 'call': if (play) snd.call(e.variant); break;
+      case 'ring': R.spawn(e.x, e.y, 12, { v: 120, col: '#ffd34d', life: 0.5, size: 1.8 }); if (play) { snd.sfx('ring'); vibe(12); } break;
+      case 'miss': if (play) { toast('✕ ' + t('c_miss')); snd.sfx('bump'); vibe([30, 40, 30]); } break;
       case 'quake': R.shake = 30; if (play) { snd.sfx('thunder'); vibe([40, 30, 40, 30, 60]); } break;
       case 'beep': if (play) snd.tone(e.d < 300 ? 1100 : 820, 0.06, 'square', 0.09); break;
       case 'found': R.spawn(e.x, e.y - 10, 14, { a: -Math.PI / 2, spread: 2.6, v: 90, col: '#ffffff', life: 0.6 }); if (play) { toast('● ' + t('r_found')); snd.sfx('cp'); vibe(25); } break;
@@ -633,7 +737,7 @@ function updateHud() {
   fuelBar.classList.toggle('low', low);
   if (low && g.fuel > 0 && time > lowBeep) { lowBeep = time + 1.1; snd.tone(520, 0.09, 'square', 0.1); snd.tone(520, 0.09, 'square', 0.1, 0.16); }
   // Aventure : étoiles du niveau. Heli Rescue : victimes déposées (cœurs) et places occupées à bord.
-  starTxt.textContent = g.vs ? '♥'.repeat(g.savedCount) + '♡'.repeat(g.vs.length - g.savedCount) + '  ' + '●'.repeat(g.aboard.length) + '○'.repeat(Math.max(0, g.H.places - g.aboard.length)) : '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars);
+  starTxt.textContent = g.ring ? '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars) + '  ◯ ' + g.passed + '/' + L.race.rings.length : g.vs ? '♥'.repeat(g.savedCount) + '♡'.repeat(g.vs.length - g.savedCount) + '  ' + '●'.repeat(g.aboard.length) + '○'.repeat(Math.max(0, g.H.places - g.aboard.length)) : '★'.repeat(g.stats.stars) + '☆'.repeat(3 - g.stats.stars);
   const key2 = g.vs ? g.H.id + ':' + g.vs.map((v) => (v.state === 'aboard' ? v.seat : '-')).join('') : '';
   if (key2 !== paxKey) {
     paxKey = key2;
@@ -653,7 +757,7 @@ function updateHud() {
   const sec = Math.floor(g.t);
   // fenêtre météo : on affiche le temps restant
   const lim = L.rescue && L.rescue.cfg.timeLimit;
-  if (sec !== timeShown) { timeShown = sec; timeTxt.textContent = lim ? '⏳ ' + fmtTime(Math.max(0, lim - g.t)) : fmtTime(g.t); timeTxt.style.color = lim && lim - g.t < 40 ? '#ff9c9c' : ''; }
+  if (sec !== timeShown) { timeShown = sec; timeTxt.textContent = lim ? '⏳ ' + fmtTime(Math.max(0, lim - g.t)) : fmtTime(g.raceTime ?? g.t); timeTxt.style.color = lim && lim - g.t < 40 ? '#ff9c9c' : ''; }
   let key = '';
   const fp = L.pads[1];
   if (g.fuel < 0.22 && g.fuel > 0 && g.state === 'fly') key = 'lowFuel';
@@ -663,6 +767,7 @@ function updateHud() {
     else if (g.aboard.length) key = Math.abs(h.x - base.x) < 500 ? 'r_tut4' : 'r_tut3';
     else if (g.vs.some((v) => v.state === 'wait')) key = 'r_tut1';
   }
+  else if (S.race && g.t < 7 && g.state === 'fly' && !save.heliRace.levels[S.race]?.done) key = 'c_rule'; // rappel de la règle au départ d'une course jamais terminée
   else if (S.tut && g.state === 'fly') key = ['tut1', 'tut2', 'tutC', 'tutD'][S.tut.step];
   else if (g.state === 'fly' && L.def.id === 1 && !save.levels[1]?.done && h.x > fp.x - 700 && h.x < fp.x + 100 && g.padIdx < 1) key = 'tut5';
   if (g.state === 'fly' && L.def.id === 1 && h.x > L.pad.x - 700) key = 'tut4';
@@ -688,10 +793,10 @@ function loop(ts) {
     events();
     if (S.mode === 'play' && S.tut) tutorialStep(g, dt);
     if (S.mode === 'demo') {
-      if ((g.state === 'win' && g.stateT > 2.5) || (g.state === 'dead' && g.stateT > 1.5)) { S.game = g.vs ? new RescueGame(S.level, g.H, 'normal') : new Game(S.level, g.H); R.snap = true; }
+      if ((g.state === 'win' && g.stateT > 2.5) || (g.state === 'dead' && g.stateT > 1.5)) { S.game = g.vs ? new RescueGame(S.level, g.H, 'normal') : g.ring ? new RaceGame(S.level, g.H, 0, 'normal') : new Game(S.level, g.H); R.snap = true; }
     } else {
       snd.rotorSet(g.heli.power);
-      if (!S.ended && g.state === 'win' && g.stateT > 1.3) (S.rescue ? showRescueResult : showResult)();
+      if (!S.ended && g.state === 'win' && g.stateT > 1.3) (S.rescue ? showRescueResult : S.race ? showRaceResult : showResult)();
       else if (!S.ended && g.state === 'dead' && g.stateT > 1.5) showCrash();
     }
   }
