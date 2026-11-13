@@ -415,13 +415,17 @@ export class Renderer {
     for (const pad of L.pads) {
       if (pad.kind === 'zone') continue; // aucune marque au sol : au joueur de trouver où se poser près des victimes
       if (L.race && pad.kind === 'end') { // course : pas d'aire de pose, une ligne d'arrivée à franchir en vol
-        const fx = L.race.finishX, gy = L.groundAt(fx), top = gy - 330;
-        if (fx > x0 - 80 && fx < x1 + 80) {
-          c.fillStyle = '#20222c'; c.fillRect(fx - 3, top, 6, gy - top + 10);
-          for (let r = 0; r < 4; r++) for (let k = 0; k < 2; k++) { c.fillStyle = (r + k) % 2 ? '#ffffff' : '#20222c'; c.fillRect(fx - 12 + k * 12, top + r * 12, 12, 12); }
-          c.fillStyle = rgba('#ffffff', 0.1 + 0.05 * Math.sin(time * 4)); c.fillRect(fx - 12, top + 48, 24, gy - top - 48);
-          for (let y2 = top + 60; y2 < gy - 10; y2 += 28) { c.fillStyle = rgba(Math.floor((y2 - top) / 28) % 2 ? '#ffffff' : '#ffd34d', 0.55); c.fillRect(fx - 2, y2, 4, 14); }
-          c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(fx + 3, top + 2); c.lineTo(fx + 30, top + 10 + Math.sin(time * 5) * 2); c.lineTo(fx + 3, top + 20); c.fill();
+        const fx = L.race.finishX;
+        if (fx > x0 - 120 && fx < x1 + 120) {
+          for (const [px, hh] of [[fx - 34, 300], [fx + 34, 340]]) { // deux longs cônes rouges à bandes blanches, qui ondulent un peu au vent
+            const gy = L.groundAt(px), sw = Math.sin(time * 1.7 + px) * 5, tipX = px + sw, top = gy - hh, bw = 26;
+            const edge = (k) => [px - bw * (1 - k) + sw * k, px + bw * (1 - k) + sw * k, gy - hh * k]; // bords du cône à la hauteur k (0 : base, 1 : pointe)
+            c.fillStyle = '#d7263d'; c.beginPath(); c.moveTo(px - bw, gy + 8); c.lineTo(tipX, top); c.lineTo(px + bw, gy + 8); c.fill();
+            c.fillStyle = '#ffffff'; for (const [k0, k1] of [[0.16, 0.26], [0.42, 0.5], [0.66, 0.72]]) { const a0 = edge(k0), a1 = edge(k1); c.beginPath(); c.moveTo(a0[0], a0[2]); c.lineTo(a0[1], a0[2]); c.lineTo(a1[1], a1[2]); c.lineTo(a1[0], a1[2]); c.fill(); }
+            c.fillStyle = 'rgba(0,0,0,.16)'; c.beginPath(); c.moveTo(px + bw * 0.25, gy + 8); c.lineTo(tipX, top); c.lineTo(px + bw, gy + 8); c.fill();
+            c.fillStyle = '#8f1626'; c.fillRect(px - bw - 4, gy + 2, bw * 2 + 8, 8);
+          }
+          const gy = L.groundAt(fx); c.fillStyle = rgba('#ffffff', 0.1 + 0.05 * Math.sin(time * 4)); c.fillRect(fx - 4, gy - 300, 8, 300); // plan d'arrivée, entre les deux cônes
         }
         continue;
       }
@@ -481,16 +485,19 @@ export class Renderer {
     const h = g.heli, loads = g.loads || L.cargo.loads.map((l) => ({ ...l, state: 'ground' }));
     for (const l of loads) { // zone de livraison : cadre rayé et fanion, tant que la charge n'y est pas
       const z = l.to; if (l.state === 'delivered' || z.x < x0 - 120 || z.x > x1 + 120) continue;
-      const on = l === g.carry, col = on ? '#7dffb0' : '#ffd34d';
-      c.fillStyle = rgba(col, on ? 0.2 + 0.1 * Math.sin(time * 5) : 0.1); c.fillRect(z.x - z.w / 2, z.y - 46, z.w, 46);
+      const on = l === g.carry, col = l.col; // la zone porte la couleur de sa charge ; elle bat quand on apporte la bonne
+      c.fillStyle = rgba(col, on ? 0.3 + 0.14 * Math.sin(time * 6) : 0.14); c.fillRect(z.x - z.w / 2, z.y - 46, z.w, 46);
       c.fillStyle = col; for (let k = 0; k < z.w - 6; k += 16) { c.beginPath(); c.moveTo(z.x - z.w / 2 + k, z.y); c.lineTo(z.x - z.w / 2 + k + 8, z.y); c.lineTo(z.x - z.w / 2 + k + 13, z.y - 5); c.lineTo(z.x - z.w / 2 + k + 5, z.y - 5); c.fill(); }
       for (const sd of [-1, 1]) { c.fillRect(z.x + sd * z.w / 2 - 1.2, z.y - 46, 2.4, 46); c.beginPath(); c.moveTo(z.x + sd * z.w / 2, z.y - 46); c.lineTo(z.x + sd * (z.w / 2 - 14), z.y - 41); c.lineTo(z.x + sd * z.w / 2, z.y - 36); c.fill(); }
     }
     for (const l of loads) {
       if (l.state === 'carried' || l.x < x0 - 80 || l.x > x1 + 80) continue;
       c.save(); c.translate(l.x, l.y);
-      if (l.state === 'ground' && !g.carry) { c.strokeStyle = rgba('#ffffff', 0.5 + 0.3 * Math.sin(time * 4)); c.lineWidth = 1.5; c.setLineDash([4, 4]); c.strokeRect(-l.w / 2 - 5, -l.h - 5, l.w + 10, l.h + 5); c.setLineDash([]); }
-      this.load(c, l, def, time); c.restore();
+      if (l.state === 'ground') { // cadre et halo à la couleur de la charge (celle de sa zone)
+        c.fillStyle = rgba(l.col, 0.16 + 0.08 * Math.sin(time * 4)); c.fillRect(-l.w / 2 - 6, -l.h - 6, l.w + 12, l.h + 6);
+        c.strokeStyle = l.col; c.lineWidth = 2; c.setLineDash([5, 4]); c.strokeRect(-l.w / 2 - 6, -l.h - 6, l.w + 12, l.h + 6); c.setLineDash([]);
+      }
+      this.load(c, l, def, time); this.loadTag(c, l); c.restore();
     }
     const hx = h.x, hy = h.y + 10;
     if (g.carry) { // charge portée : câble tendu (ou détendu si elle repose), élingues, charge qui se balance
@@ -500,7 +507,7 @@ export class Renderer {
       c.stroke();
       { const a = slack ? 0 : -g.th * 0.8, ca = Math.cos(a), sa = Math.sin(a); c.lineWidth = 1.1; c.beginPath(); c.moveTo(lx, ly - 7); c.lineTo(lx - l.w * 0.4 * ca, ly - l.w * 0.4 * sa); c.moveTo(lx, ly - 7); c.lineTo(lx + l.w * 0.4 * ca, ly + l.w * 0.4 * sa); c.stroke(); }
       c.fillStyle = '#ffd34d'; c.beginPath(); c.arc(lx, ly - 7, 2.6, 0, TAU); c.fill();
-      c.save(); c.translate(lx, ly); c.rotate(slack ? 0 : -g.th * 0.8); c.translate(0, l.h); this.load(c, l, def, time); c.restore(); // la charge pend dans l'axe du câble, accrochée par le haut
+      c.save(); c.translate(lx, ly); c.rotate(slack ? 0 : -g.th * 0.8); c.translate(0, l.h); this.load(c, l, def, time); this.loadTag(c, l); c.restore(); // la charge pend dans l'axe du câble, accrochée par le haut
     } else if (g.cable > 0 && g.target) { // le câble descend vers la charge visée ; jauge de prise au-dessus de l'appareil
       const t = g.target, full = t.y - t.h - hy, k = clamp(g.cable / Math.max(1, full), 0, 1);
       c.strokeStyle = '#20222c'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + (t.x - hx) * k, hy + g.cable); c.stroke();
@@ -508,6 +515,11 @@ export class Renderer {
       c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(hx, h.y - 34, 9, 0, TAU); c.stroke();
       c.strokeStyle = '#6ee7a0'; c.beginPath(); c.arc(hx, h.y - 34, 9, -Math.PI / 2, -Math.PI / 2 + TAU * k); c.stroke();
     }
+  }
+  // Sangle et fanion à la couleur de la charge : on la reconnaît aussi une fois livrée ou en vol.
+  loadTag(c, l) {
+    c.fillStyle = l.col; c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4);
+    c.fillRect(l.w / 2 - 1.5, -l.h - 13, 2, 13); c.beginPath(); c.moveTo(l.w / 2 + 0.5, -l.h - 13); c.lineTo(l.w / 2 + 12, -l.h - 9); c.lineTo(l.w / 2 + 0.5, -l.h - 5); c.fill();
   }
   // Dessin d'une charge, posée en (0, 0) : l'origine est le milieu de sa base.
   load(c, l, def, time) {
@@ -582,12 +594,19 @@ export class Renderer {
           for (let k = 0; k < 6; k++) E(rgba('#ffffff', 0.55), -30 + k * 12, 4 - 6 * Math.abs(Math.sin(time * 3 + k)), 11 + 3 * Math.sin(time * 2 + k * 2));
           break;
         }
-        case 'arch': // vieux pont de pierre à moitié effondré
-          F(base, [-110, 10, -110, -92, 40, -92, 52, -80, 60, -92, 70, -84, 70, 10, 44, 10, 44, -40, -84, -40, -84, 10]);
-          c.fillStyle = base; c.beginPath(); c.moveTo(-84, -30); c.arc(-20, -30, 64, Math.PI, 0); c.lineTo(44, -62); c.lineTo(-84, -62); c.fill();
-          c.globalCompositeOperation = 'destination-out'; E('#000', -20, -30, 50, 50, Math.PI, 0); c.fillRect(-70, -30, 100, 42); c.globalCompositeOperation = 'source-over';
-          F(lt, [-110, -92, 40, -92, 40, -86, -110, -86]); F(base, [96, 10, 100, -30, 118, -36, 126, 10]);
+        case 'arch': { // vieux pont de pierre : trois arches, piles ancrées dans le sol, parapet, lierre et une travée effondrée
+          const stone = mix(base, '#ffffff', 0.18), shade = mix(base, '#000000', 0.22);
+          c.fillStyle = stone; c.beginPath(); // tablier et piles d'un seul tenant, arches évidées (remplissage pair-impair)
+          c.moveTo(-150, 46); c.lineTo(-150, -96); c.lineTo(96, -96); c.lineTo(104, -84); c.lineTo(112, -92); c.lineTo(120, -80); c.lineTo(120, 46); c.closePath();
+          for (const ax of [-98, -14, 70]) { c.moveTo(ax - 30, 46); c.lineTo(ax - 30, -34); c.arc(ax, -34, 30, Math.PI, 0); c.lineTo(ax + 30, 46); c.closePath(); }
+          c.fill('evenodd');
+          c.fillStyle = shade; for (const px of [-150, -68, 16, 100]) c.fillRect(px + 14, -70, 4, 116); // ombre sur le flanc des piles
+          c.fillStyle = lt; c.fillRect(-156, -104, 256, 9); for (let px = -150; px < 96; px += 22) c.fillRect(px, -112, 12, 8); // parapet crénelé
+          c.strokeStyle = rgba(shade, 0.55); c.lineWidth = 1.2; c.beginPath(); for (const ax of [-98, -14, 70]) { c.moveTo(ax + 36, -34); c.arc(ax, -34, 36, 0, Math.PI, true); } c.stroke(); // claveaux
+          for (const [px, py, r] of [[-126, -88, 9], [-112, -74, 7], [-40, -90, 8], [36, -86, 10], [48, -70, 6]]) E(rgba('#3f8f5a', 0.75), px, py, r); // lierre
+          F(stone, [150, 46, 156, -22, 176, -30, 186, 46]); F(shade, [168, -26, 176, -30, 186, 46, 176, 46]); F(stone, [128, 46, 134, 28, 150, 32, 148, 46]); // pile isolée et gravats de la travée tombée
           break;
+        }
         case 'ship': // épave d'un voilier couchée sur le flanc
           c.rotate(-0.16); F(dk, [-78, 0, -92, -30, 74, -30, 96, -44, 84, 0]); F(base, [-92, -30, 74, -30, 70, -22, -88, -22]);
           Ln(dk, 5, [-20, -30, -34, -128]); Ln(dk, 3, [-52, -92, -8, -100]); Ln(dk, 4, [36, -30, 46, -76]);

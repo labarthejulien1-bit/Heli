@@ -67,7 +67,7 @@ export const heliUnlock = (h) => { const i = HELIS.indexOf(h); return i <= 0 ? 0
 // mod : particularités de niveau (grav, windX, dark) ; wcol : couleur de la météo.
 // price : coût d'achat au hangar, en pièces (coins) ou en étoiles (stars). 3 étoiles et 100 pièces par niveau.
 export const LEVELS = [
-  { id: 1, fuel: 'easy trees easy', seed: 1101, lenScale: 1, story: [['cottage', 0.17], ['cottage', 0.47, { flip: 1 }], ['cottage', 0.77]], // trois maisons dont l'habitant salue l'appareil
+  { id: 1, fuel: 'easy trees easy', seed: 1101, lenScale: 1,
     sky: [['#3b4a7a', '#f6a98c'], ['#6db3d8', '#fdebd0']], mid: '#8a7aa8', ground: '#262a48', obs: '#2f3357', rim: '#f8d9c4', accent: '#ffd98a',
     sun: { c: '#fff3c9', x: 0.72, y: [0.62, 0.3], r: 34 },
     layers: ['jag', 'jag', 'pines'], extras: ['clouds', 'birds'], weather: null,
