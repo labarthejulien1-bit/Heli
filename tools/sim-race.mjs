@@ -12,8 +12,8 @@ for (const cfg of RACE_LEVELS) {
   let minFuel = 1, steps = 0;
   while (g.state === 'fly' && steps++ < 120 * 400) { raceAutopilot(g); g.step(DT); if (g.fuel < minFuel) minFuel = g.fuel; }
   const n = L.race.rings.length, stars = L.items.filter((i) => i.type === 'star').length;
-  const good = g.state === 'win' && minFuel > 0.05 && g.t >= 120 && g.t <= 180 && n >= 20 && g.passed >= 0.85 * n && stars === 3 && !L.items.some((i) => i.type === 'orb') && L.pads.length === 2;
+  const good = g.state === 'win' && minFuel > 0.05 && g.t >= 120 && g.t <= 180 && n >= 20 && g.passed >= 0.85 * n && stars === 3 && !L.items.some((i) => i.type === 'orb') && L.pads.length === 2 && g.medals()[0] && !g.medals()[2] && L.race.medals[0] > L.race.medals[1] && L.race.medals[1] > L.race.medals[2]; // le pilote automatique décroche le bronze, jamais l'or
   if (!good) ok = false;
-  console.log(`C${String(cfg.n).padStart(2)} ${good ? 'OK ' : 'KO '} long=${Math.round(L.length)} temps=${g.t.toFixed(0)}s chocs=${g.stats.hits} anneaux=${g.passed}/${n} etoiles=${stars} essenceMin=${(minFuel * 100).toFixed(0)}% x=${Math.round(g.heli.x)} état=${g.state}`);
+  console.log(`C${String(cfg.n).padStart(2)} ${good ? 'OK ' : 'KO '} long=${Math.round(L.length)} temps=${g.t.toFixed(0)}s chocs=${g.stats.hits} anneaux=${g.passed}/${n} etoiles=${stars} essenceMin=${(minFuel * 100).toFixed(0)}% médailles=${L.race.medals.join('/')}s x=${Math.round(g.heli.x)} état=${g.state}`);
 }
 process.exit(ok ? 0 : 1);

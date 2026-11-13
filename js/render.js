@@ -413,6 +413,17 @@ export class Renderer {
     const GREEN = '#6ee7a0';
     for (const pad of L.pads) {
       if (pad.kind === 'zone') continue; // aucune marque au sol : au joueur de trouver où se poser près des victimes
+      if (L.race && pad.kind === 'end') { // course : pas d'aire de pose, une ligne d'arrivée à franchir en vol
+        const fx = L.race.finishX, gy = L.groundAt(fx), top = gy - 330;
+        if (fx > x0 - 80 && fx < x1 + 80) {
+          c.fillStyle = '#20222c'; c.fillRect(fx - 3, top, 6, gy - top + 10);
+          for (let r = 0; r < 4; r++) for (let k = 0; k < 2; k++) { c.fillStyle = (r + k) % 2 ? '#ffffff' : '#20222c'; c.fillRect(fx - 12 + k * 12, top + r * 12, 12, 12); }
+          c.fillStyle = rgba('#ffffff', 0.1 + 0.05 * Math.sin(time * 4)); c.fillRect(fx - 12, top + 48, 24, gy - top - 48);
+          for (let y2 = top + 60; y2 < gy - 10; y2 += 28) { c.fillStyle = rgba(Math.floor((y2 - top) / 28) % 2 ? '#ffffff' : '#ffd34d', 0.55); c.fillRect(fx - 2, y2, 4, 14); }
+          c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(fx + 3, top + 2); c.lineTo(fx + 30, top + 10 + Math.sin(time * 5) * 2); c.lineTo(fx + 3, top + 20); c.fill();
+        }
+        continue;
+      }
       if (pad.x + pad.w < x0 || pad.x - pad.w > x1) continue;
       const y = pad.y, end = pad.kind === 'end', fuel = pad.kind === 'fuel', hw = pad.w / 2;
       const col = end ? def.accent : fuel ? GREEN : def.rim, here = g.onPad === pad.i;
@@ -486,9 +497,9 @@ export class Renderer {
       c.strokeStyle = '#20222c'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx, hy);
       if (slack) c.quadraticCurveTo((hx + lx) / 2 + 14, (hy + ly) / 2 + 12, lx, ly - 7); else c.lineTo(lx, ly - 7);
       c.stroke();
-      c.lineWidth = 1.1; c.beginPath(); c.moveTo(lx, ly - 7); c.lineTo(lx - l.w * 0.4, ly); c.moveTo(lx, ly - 7); c.lineTo(lx + l.w * 0.4, ly); c.stroke();
+      { const a = slack ? 0 : -g.th * 0.8, ca = Math.cos(a), sa = Math.sin(a); c.lineWidth = 1.1; c.beginPath(); c.moveTo(lx, ly - 7); c.lineTo(lx - l.w * 0.4 * ca, ly - l.w * 0.4 * sa); c.moveTo(lx, ly - 7); c.lineTo(lx + l.w * 0.4 * ca, ly + l.w * 0.4 * sa); c.stroke(); }
       c.fillStyle = '#ffd34d'; c.beginPath(); c.arc(lx, ly - 7, 2.6, 0, TAU); c.fill();
-      c.save(); c.translate(lx, ly + l.h); c.rotate(slack ? 0 : -g.th * 0.35); this.load(c, l, def, time); c.restore();
+      c.save(); c.translate(lx, ly); c.rotate(slack ? 0 : -g.th * 0.8); c.translate(0, l.h); this.load(c, l, def, time); c.restore(); // la charge pend dans l'axe du câble, accrochée par le haut
     } else if (g.cable > 0 && g.target) { // le câble descend vers la charge visée ; jauge de prise au-dessus de l'appareil
       const t = g.target, full = t.y - t.h - hy, k = clamp(g.cable / Math.max(1, full), 0, 1);
       c.strokeStyle = '#20222c'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + (t.x - hx) * k, hy + g.cable); c.stroke();
@@ -558,7 +569,7 @@ export class Renderer {
     const Ln = (col, w, pts) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
     for (const d of L.story) {
       if (d.x < x0 - 260 || d.x > x1 + 260) continue;
-      c.save(); c.translate(d.x, d.y + 6); c.scale(d.flip ? -1 : 1, 1);
+      c.save(); c.translate(d.x, d.y + 6); c.scale((d.flip ? -1 : 1) * (d.k || 1), d.k || 1); // k : taille de l'élément
       const bl = 0.5 + 0.5 * Math.sin(time * 3 + d.v * 9);
       switch (d.type) {
         case 'falls': { // falaise et cascade : l'eau file, l'écume bouillonne au pied

@@ -4,8 +4,11 @@
 // eau et cascades (1-5), neige (6-10), volcans (11-15), ovnis (16-20), Lune (21-25, faible gravité).
 // - sections : enchaînement de tronçons et difficulté (voir SPEC dans js/levelgen.js) ; len : échelle de longueur (durée visée : 2 à 3 minutes).
 // - story : monuments et statues du décor, sans collision : [type, position (0 à 1 le long de la course), options].
+// - hazards : dangers propres à la course, { type: 'strike' (foudre venue du ciel, annoncée par une lueur sans danger), at : position de 0 à 1, period, phase }.
+//   Dans story, l'option k agrandit ou réduit un élément (guirlandes de longueurs différentes, maisons d'un village).
 // - mod : particularités (grav : gravité, windX : vent, dark : nuit) ; traffic : appareils croisés ('ufo', 'plane').
-// Aucune pièce, aucun ravitaillement : des anneaux dorés à franchir (3 s de pénalité par anneau manqué) et 3 étoiles à ramasser.
+// Aucune pièce, aucun ravitaillement : des anneaux dorés à franchir (3 s de pénalité par anneau manqué), 3 étoiles à ramasser,
+// une ligne d'arrivée à franchir en vol, et trois temps à battre (bronze, argent, or) calculés par le constructeur sur le chrono du pilote automatique.
 import { LEVELS } from './data.js';
 
 const adv = (id, o = {}) => { const l = LEVELS[id - 1]; return { sky: l.sky, mid: l.mid, ground: l.ground, obs: l.obs, rim: l.rim, accent: l.accent, sun: l.sun, layers: l.layers, extras: l.extras, weather: l.weather, wcol: l.wcol, theme: l.theme, music: { ...l.music, bpm: l.music.bpm + 18 }, ...o }; };
@@ -15,21 +18,26 @@ const UFO = { tree: ['mushroom', 'antenna', 'mushroom'], pillar: ['monolith', 'r
 
 export const RACE_LEVELS = [
   // --- Eau et cascades
-  { n: 1, uni: 'water', seed: 51011, look: adv(4), sections: 'open:1 hills:1 peaks:1 gates:1 hills:2 geysers:1 peaks:2 forest:1 wind:1 hills:2 gates:2 peaks:2 open:1',
+  { n: 1, uni: 'water', seed: 51011, look: adv(4), sections: 'open:1 hills:1 peaks:1 gates:1 hills:2 wind:1 peaks:2 forest:1 wind:1 hills:2 gates:2 peaks:2 open:1',
     story: [['beacon', 0.06], ['falls', 0.22], ['arch', 0.45], ['falls', 0.63], ['ship', 0.86]] },
-  { n: 2, uni: 'water', seed: 52027, look: adv(22), sections: 'open:1 peaks:2 hills:2 geysers:2 gates:2 wind:2 peaks:2 hills:2 towers:2 geysers:2 peaks:2 gates:2 open:1',
+  { n: 2, uni: 'water', seed: 52027, look: adv(22), sections: 'open:1 peaks:2 hills:2 forest:2 gates:2 wind:2 peaks:2 hills:2 towers:2 hills:2 peaks:2 gates:2 open:1',
     story: [['falls', 0.1], ['falls', 0.2], ['wheel', 0.36], ['falls', 0.52], ['arch', 0.7], ['falls', 0.88]] },
   { n: 3, uni: 'water', seed: 53033, look: adv(16), sections: 'open:1 hills:2 movers:2 peaks:2 gates:2 forest:2 geysers:2 peaks:2 wind:2 hills:3 movers:2 gates:2 open:1',
     story: [['ship', 0.12], ['ship', 0.3, { flip: 1 }], ['beacon', 0.5], ['arch', 0.66], ['ship', 0.84]] },
   { n: 4, uni: 'water', seed: 54041, look: adv(28, { sky: [['#2f7fb8', '#cfeefc'], ['#f08a5d', '#ffe0a8']] }), sections: 'open:1 mills:2 hills:2 peaks:2 mills:2 gates:2 wind:2 hills:2 mills:3 peaks:2 towers:2 gates:3 open:1',
     story: [['wheel', 0.08], ['falls', 0.26], ['wheel', 0.42], ['arch', 0.6], ['wheel', 0.76], ['beacon', 0.9]] },
-  { n: 5, uni: 'water', seed: 55057, look: adv(20), mod: { windX: -18 }, sections: 'open:1 peaks:2 geysers:3 hills:3 gates:2 wind:3 peaks:3 forest:2 geysers:3 gates:3 hills:3 peaks:3 open:1',
+  { n: 5, uni: 'water', seed: 55057, look: adv(20), mod: { windX: -18 }, sections: 'open:1 peaks:2 hills:3 hills:3 gates:2 wind:3 peaks:3 forest:2 towers:3 gates:3 hills:3 peaks:3 open:1',
+    hazards: [0.12, 0.2, 0.29, 0.38, 0.47, 0.56, 0.65, 0.74, 0.83].map((at, k) => ({ type: 'strike', at, period: 5 + (k % 3) * 0.7, phase: (k * 0.37) % 1 })),
     story: [['beacon', 0.07], ['ship', 0.24], ['falls', 0.4], ['arch', 0.57], ['ship', 0.73, { flip: 1 }], ['beacon', 0.9]] },
   // --- Neige
   { n: 6, uni: 'snow', seed: 56003, look: adv(6, { sky: [['#6fa8dc', '#e6f3fb'], ['#3f6fa8', '#ffe3c8']], extras: ['clouds'] }), sections: 'open:1 hills:2 peaks:2 forest:2 gates:2 hills:2 wind:2 peaks:2 towers:2 hills:3 gates:2 peaks:3 open:1',
-    story: [['cabin', 0.07], ['snowman', 0.25], ['flags', 0.44], ['igloo', 0.62], ['snowman', 0.8, { flip: 1 }]] },
+    story: [['cabin', 0.07], ['snowman', 0.25], ['igloo', 0.62], ['snowman', 0.8, { flip: 1 }],
+      ...[0.05, 0.1, 0.14, 0.19, 0.23, 0.28, 0.33, 0.37, 0.42, 0.46, 0.51, 0.55, 0.59, 0.65, 0.69, 0.74, 0.78, 0.83, 0.87, 0.91].map((at, k) => ['flags', at, { k: [0.7, 1.5, 1, 2.1, 0.8, 1.3, 1.8, 0.6, 1.1, 2.4][k % 10], flip: k % 3 === 1 ? 1 : 0 }])] },
   { n: 7, uni: 'snow', seed: 57019, look: adv(25), sections: 'open:1 peaks:2 gates:2 hills:3 cave:2 peaks:3 wind:2 towers:2 hills:3 gates:3 peaks:3 forest:2 open:1',
-    story: [['flags', 0.08], ['mammoth', 0.3], ['icearch', 0.5], ['mammoth', 0.68, { flip: 1 }], ['cabin', 0.88]] },
+    story: [['flags', 0.08], ['mammoth', 0.3], ['icearch', 0.5], ['mammoth', 0.68, { flip: 1 }],
+      ...[0.13, 0.22, 0.38, 0.58, 0.76, 0.9].flatMap((at, v) => (v % 2
+        ? [['igloo', at - 0.008, { k: 0.8 }], ['igloo', at, { k: 1.05, flip: 1 }], ['igloo', at + 0.008, { k: 0.7 }], ['flags', at + 0.014, { k: 0.7 }]]
+        : [['cabin', at - 0.009, { k: 0.85 }], ['cabin', at, { k: 1.1, flip: 1 }], ['cabin', at + 0.009, { k: 0.75 }], ['igloo', at + 0.016, { k: 0.75 }]]))] },
   { n: 8, uni: 'snow', seed: 58031, look: adv(6), sections: 'open:1 hills:3 wind:3 peaks:3 gates:2 movers:2 hills:3 peaks:3 towers:3 wind:3 gates:3 peaks:3 open:1',
     story: [['igloo', 0.1], ['icearch', 0.28], ['flags', 0.46], ['snowman', 0.64], ['icearch', 0.84]] },
   { n: 9, uni: 'snow', seed: 59047, look: adv(21, { sky: [['#243b6b', '#f3a683'], ['#1b2a4a', '#f7d794']] }), mod: { windX: 15 }, sections: 'open:1 forest:2 hills:3 gates:3 peaks:3 towers:3 hills:3 geysers:2 peaks:3 wind:3 gates:3 forest:3 open:1',

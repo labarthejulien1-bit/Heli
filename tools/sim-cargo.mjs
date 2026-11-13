@@ -14,7 +14,7 @@ for (const cfg of CARGO_LEVELS) {
   const liftOk = L.cargo.loads.every((l) => l.m / H.lift <= MAX_RATIO);
   // chaque étoile doit être hors du relief, des plateformes et de l'eau
   const starsOk = L.items.length === 3 && L.items.every((s) => s.y > 50 && s.y < L.cargo.topAt(s.x) - 18 && (!L.waterAt || s.y < L.waterAt(0) - 18));
-  const good = g.state === 'win' && minFuel > 0.05 && g.t >= 120 && g.t <= 240 && liftOk && starsOk && g.stats.hits <= 2;
+  const good = g.state === 'win' && minFuel > 0.05 && g.t >= 120 && g.t <= 240 && liftOk && starsOk && g.stats.hits <= 2 && L.def.objectives.length === 3 && g.objectiveDone(L.def.objectives[1]); // le pilote automatique tient l'objectif de temps
   if (!good) ok = false;
   console.log(`G${String(cfg.n).padStart(2)} ${good ? 'OK ' : 'KO '} ${H.name} temps=${g.t.toFixed(0)}s chocs=${g.stats.hits} livrées=${g.delivered}/${g.loads.length} essenceMin=${(minFuel * 100).toFixed(0)}% etoiles=${L.items.length}${starsOk ? '' : '!'} levage=${liftOk ? 'ok' : 'trop lourd'} x=${Math.round(g.heli.x)} état=${g.state}${g.failReason ? ' ' + g.failReason : ''}`);
 }

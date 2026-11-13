@@ -12,6 +12,8 @@ export class RaceGame extends Game {
   }
   // Chrono de la course : temps de vol plus les pénalités.
   get raceTime() { return this.t + PENALTY * this.missed; }
+  // Médailles de temps décrochées par un chrono : bronze, argent, or.
+  medals(time = this.raceTime) { return this.L.race.medals.map((m) => time <= m); }
 
   step(dt) {
     const h = this.heli, px = h.x, py = h.y;
@@ -24,6 +26,8 @@ export class RaceGame extends Game {
       else { this.ring[this.rk] = 2; this.missed++; this.ev.push({ type: 'miss', x: r.x, y: r.y }); }
       this.rk++;
     }
+    // Ligne d'arrivée : on la franchit en vol, sans se poser
+    if (h.x >= this.L.race.finishX) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
   }
 }
 // Le pilote automatique de l'Aventure suit la trajectoire du niveau, que le constructeur fait passer par les anneaux.
