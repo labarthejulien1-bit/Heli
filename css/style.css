@@ -222,3 +222,7 @@ input[type=range]{flex:0 0 46%;accent-color:var(--accent);height:30px}
 .medal.m0.on{background:#cd7f32;border-color:#8a4f1c}
 .medal.m1.on{background:#d7dde4;border-color:#8d99a6}
 .medal.m2.on{background:#ffd34d;border-color:#f2a900}
+
+/* Heli Cargo : avertissement d'appareil trop faible sur la fiche du chantier */
+.warnbox{display:flex;flex-direction:column;gap:4px;margin:10px 0 2px;padding:11px 13px;border-radius:14px;background:rgba(255,160,60,.16);border:1.5px solid #ffb347;color:#ffd9a0;font-size:14px;line-height:1.35}
+.warnbox b{color:#ffcf7a}

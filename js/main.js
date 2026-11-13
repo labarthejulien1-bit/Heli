@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.5.0';
+const VERSION = '4.6.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -356,15 +356,22 @@ function glist() {
     </button>`;
   }).join('')}</div></section>${nav('glist')}`;
 }
+// Charges trop lourdes pour l'appareil choisi sur un chantier : leurs noms et le plus petit appareil qui lève tout (null si tout va bien).
+function cargoTooHeavy(n) {
+  const L = getCargo(n), me = myCargoHeli(), heavy = L.cargo.loads.filter((l) => l.m / me.lift > MAX_RATIO);
+  if (!heavy.length) return null;
+  const need = CARGO_HELIS.find((h) => L.cargo.loads.every((l) => l.m / h.lift <= MAX_RATIO));
+  return { names: [...new Set(heavy.map((l) => t('g_l_' + l.type)))].join(', '), need: need ? need.name : '—' };
+}
 function cargoSheet(n) {
   const cfg = cargoLevel(n), rec = save.heliCargo.levels[n], st = levelBits(rec?.sm), L = getCargo(n), me = myCargoHeli();
-  const ok = L.cargo.loads.every((l) => l.m / me.lift <= MAX_RATIO); // l'appareil choisi peut-il lever toutes les charges ?
+  const weak = cargoTooHeavy(n); // charges que l'appareil choisi ne peut pas lever, et appareil minimum pour tout lever
   ui.insertAdjacentHTML('beforeend', `<div class="overlay" data-act="closeSheet"><div class="sheet">
     <h2>${n} · ${t('g_lvl' + n)}</h2><p class="sub">${t('g_uni_' + cfg.uni)} · ${'★'.repeat(st)}${'☆'.repeat(3 - st)}${rec?.time != null ? ` · ${t('best')} ${fmtTime(rec.time)}` : ''}</p>
     ${cfg.objectives.map((o, i) => `<div class="obj"><i class="medal ${rec?.obj?.[i] ? 'on' : ''}"></i>${objLabel(o)}</div>`).join('')}
     <div class="obj"><span>${t('g_loads')}</span><small>${cfg.loads.map((l) => t('g_l_' + l.type)).join(', ')}</small></div>
     <div class="obj"><span>${t('r_reco')}</span><small>${cargoHeli(cfg.recommended).name}</small></div>
-    ${ok ? '' : `<div class="obj warn"><span>⚠ ${t('g_tooHeavy')}</span></div>`}
+    ${weak ? `<div class="warnbox"><b>⚠ ${t('g_heavyList', weak.names)}</b><span>${t('g_needHeli', weak.need)}</span></div>` : ''}
     <p class="sub" style="margin:10px 0 0;line-height:1.4">${t('g_rule')}</p>
     <button class="btn primary" style="width:100%;margin-top:14px" data-gplay="${n}">${ICON.play}${t('play')} · ${me.name}</button>
   </div></div>`);
@@ -673,7 +680,7 @@ ui.addEventListener('click', (e) => {
   }
   if (d.glevel) return cargoSheet(+d.glevel);
   if (d.glock) return toast(t('g_unlock', +d.glock - 1));
-  if (d.gplay) return startCargo(+d.gplay);
+  if (d.gplay) { const n = +d.gplay; return cargoTooHeavy(n) ? confirmBox(t('g_confirmWeak'), () => startCargo(n)) : startCargo(n); } // appareil trop faible : on prévient avant de lancer
   if (d.gbuy) {
     const h = cargoHeli(d.gbuy);
     if (!cargoBuy(save, h)) return toast(cargoOpenHeli(save, h) ? t('notEnough') : t('g_unlock', h.unlock));
