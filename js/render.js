@@ -164,6 +164,7 @@ export class Renderer {
       }
       c.stroke();
     }
+    this._hx = h.x; // position de l'appareil : certains éléments du décor y réagissent (habitant qui salue)
     if (L.story) this.story(c, L, def, time, x0, x1);
     for (const o of L.obs) {
       if (o.minX > x1 + 60) break;
@@ -703,6 +704,21 @@ export class Renderer {
           E(lt, 0, 6, 74, 11); E(mix(def.ground, '#000000', 0.5), 0, 7, 58, 7); E(rgba('#ff8a3a', 0.2 + 0.2 * bl), 6, -20, 54);
           F(dk, [-26, 6, -34, -22, -14, -50, 22, -54, 44, -26, 34, 6]); Ln(rgba('#ffb347', 0.5 + 0.5 * bl), 2.2, [-14, -44, -4, -26, -16, -10]); Ln(rgba('#ffb347', 0.5 + 0.5 * bl), 2.2, [18, -48, 12, -30, 28, -14]);
           break;
+        case 'cottage': { // maison mignonne : toit rouge, cheminée qui fume, jardinière, et son habitant qui salue l'appareil qui passe
+          F('#f6ecd4', [-46, 10, -46, -44, 46, -44, 46, 10]); F('#d4553f', [-56, -42, 0, -84, 56, -42]); F('#b8432f', [0, -84, 56, -42, 46, -42, 0, -76]);
+          F('#8a5a3c', [20, -78, 32, -78, 32, -56, 20, -64]); for (let k = 0; k < 3; k++) E(rgba('#ffffff', 0.5 - k * 0.14), 27 + k * 6 + Math.sin(time * 1.2 + k + d.v * 9) * 3, -88 - k * 15, 6 + k * 3);
+          F('#7a4a2e', [-10, 10, -10, -26, 10, -26, 10, 10]); E('#f2c14e', 6, -8, 1.6); F('#bfe6f5', [-38, -32, -18, -32, -18, -14, -38, -14]); Ln('#ffffff', 1.5, [-28, -32, -28, -14]); Ln('#ffffff', 1.5, [-38, -23, -18, -23]);
+          F('#8a5a3c', [-40, -14, -16, -14, -16, -9, -40, -9]); for (const [px, colr] of [[-36, '#ff6b9d'], [-28, '#ffd34d'], [-20, '#ff6b9d']]) E(colr, px, -16, 3);
+          F('#bfe6f5', [20, -32, 38, -32, 38, -16, 20, -16]); Ln('#ffffff', 1.5, [29, -32, 29, -16]);
+          for (let k = 0; k < 5; k++) { Ln('#ffffff', 2.2, [-98 + k * 10, 10, -98 + k * 10, -6]); } Ln('#ffffff', 1.6, [-100, -1, -56, -1]);
+          // l'habitant, devant la porte : il fait de grands signes quand l'appareil est tout près
+          const near = Math.abs(this._hx - d.x) < 340, wv = near ? Math.sin(time * 9) : 0, px = 68, sgn = d.flip ? -1 : 1, look = Math.sign(this._hx - d.x) * sgn || 1, bob = near ? Math.abs(Math.sin(time * 4.5)) * 2 : 0;
+          Ln('#3a3f5c', 3, [px - 2, 10, px - 2, -6 - bob]); Ln('#3a3f5c', 3, [px + 2, 10, px + 2, -6 - bob]); Ln(d.v > 0.5 ? '#e76f51' : '#2a9d8f', 7, [px, -8 - bob, px, -18 - bob]);
+          E('#f1c9a5', px, -24 - bob, 4.4); F(d.v > 0.5 ? '#264653' : '#e9c46a', [px - 4.8, -25 - bob, px, -31 - bob, px + 4.8, -25 - bob]);
+          if (near) { Ln('#f1c9a5', 2.4, [px, -17 - bob, px + look * (7 + wv * 3), -30 - bob]); Ln('#f1c9a5', 2.4, [px, -17 - bob, px - look * 5, -11 - bob]); }
+          else { Ln('#f1c9a5', 2.4, [px, -17, px + 4, -9]); Ln('#f1c9a5', 2.4, [px, -17, px - 4, -9]); }
+          break;
+        }
         case 'farm': // ferme : grange rouge, silo, moulin à vent
           F(base, [-70, 10, -70, -44, -36, -70, -2, -44, -2, 10]); F(dk, [-76, -42, -36, -74, 4, -42, -2, -44, -36, -66, -70, -44]); c.fillStyle = dk; c.fillRect(-46, -24, 20, 34);
           c.fillStyle = lt; c.fillRect(14, -84, 26, 94); E(lt, 27, -84, 13, 9, Math.PI, 0); Ln(dk, 2, [70, 10, 70, -70]); c.save(); c.translate(70, -70); c.rotate(time * 2 + d.v * 5); for (let k = 0; k < 6; k++) { c.rotate(TAU / 6); F(lt, [0, 0, 16, -4, 16, 4]); } c.restore();
@@ -1145,7 +1161,7 @@ export class Renderer {
           break;
         }
         case 'bridge': // château d'un navire : passerelle vitrée, cheminée, mât
-          c.fillStyle = '#f1faee'; c.fillRect(l, top + 30, w, h); c.fillRect(l - 8, top + 30, w + 16, 16); c.fillStyle = '#9ad1e6'; c.fillRect(l - 5, top + 34, w + 10, 7);
+          c.fillStyle = '#f1faee'; c.fillRect(l, top + 30, w, Math.min(h, 62)); c.fillRect(l - 8, top + 30, w + 16, 16); // le château s'arrête au pont : il ne traverse pas la coque c.fillStyle = '#9ad1e6'; c.fillRect(l - 5, top + 34, w + 10, 7);
           c.fillStyle = '#c1121f'; c.fillRect(l + 8, top, w - 16, 30); c.fillStyle = '#1b1b26'; c.fillRect(l + 8, top, w - 16, 7);
           break;
         case 'derrick': { // derrick : tour en treillis, torchère au sommet
