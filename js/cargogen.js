@@ -16,7 +16,9 @@ export function buildCargoLevel(cfg) {
   const finish = { x: cfg.finish.x, y: topAt(cfg.finish.x), w: cfg.finish.w || 120, kind: 'finish', i: 1 };
   L.pads = [base, finish]; L.pad = finish;
   for (const f of cfg.fuel || []) L.pads.push({ x: f.x, y: topAt(f.x), w: f.w || 110, kind: 'fuel', main: true, i: L.pads.length });
-  const loads = cfg.loads.map((l) => { const T = LOADS[l.type]; return { type: l.type, x: l.x, y: topAt(l.x), w: T.w, h: T.h, m: l.m ?? T.m, to: { x: l.to, w: l.zw || 110, y: topAt(l.to) } }; });
+  // Chaque charge a sa couleur, la même que celle de sa zone de livraison : on voit d'un coup d'œil où la poser.
+  const TINT = ['#ffd34d', '#4dd6ff', '#ff7ad1', '#9dff6a'];
+  const loads = cfg.loads.map((l, i) => { const T = LOADS[l.type]; return { col: TINT[i % TINT.length], type: l.type, x: l.x, y: topAt(l.x), w: T.w, h: T.h, m: l.m ?? T.m, to: { x: l.to, w: l.zw || 110, y: topAt(l.to) } }; });
   // 3 étoiles à ramasser, placées par les données : [x, hauteur au-dessus du sol ou de l'eau]
   const floor = (x) => Math.min(topAt(x), L.waterAt ? L.waterAt(0) : 1e9);
   L.items = (cfg.starsAt || []).map(([x, up]) => ({ type: 'star', x, y: floor(x) - up })).sort((a, b) => a.x - b.x);

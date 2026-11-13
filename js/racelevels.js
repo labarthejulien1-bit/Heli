@@ -22,7 +22,7 @@ export const RACE_LEVELS = [
     story: [['beacon', 0.06], ['falls', 0.22], ['arch', 0.45], ['falls', 0.63], ['ship', 0.86]] },
   { n: 2, uni: 'water', seed: 52027, look: adv(22), sections: 'open:1 peaks:2 hills:2 forest:2 gates:2 wind:2 peaks:2 hills:2 towers:2 hills:2 peaks:2 gates:2 open:1',
     story: [['falls', 0.1], ['falls', 0.2], ['wheel', 0.36], ['falls', 0.52], ['arch', 0.7], ['falls', 0.88]] },
-  { n: 3, uni: 'water', seed: 53033, look: adv(16), sections: 'open:1 hills:2 movers:2 peaks:2 gates:2 forest:2 geysers:2 peaks:2 wind:2 hills:3 movers:2 gates:2 open:1',
+  { n: 3, uni: 'water', seed: 53033, look: adv(16), sections: 'open:1 hills:2 movers:2 peaks:2 gates:2 forest:2 hills:2 peaks:2 wind:2 hills:3 movers:2 gates:2 open:1',
     story: [['ship', 0.12], ['ship', 0.3, { flip: 1 }], ['beacon', 0.5], ['arch', 0.66], ['ship', 0.84]] },
   { n: 4, uni: 'water', seed: 54041, look: adv(28, { sky: [['#2f7fb8', '#cfeefc'], ['#f08a5d', '#ffe0a8']] }), sections: 'open:1 mills:2 hills:2 peaks:2 mills:2 gates:2 wind:2 hills:2 mills:3 peaks:2 towers:2 gates:3 open:1',
     story: [['wheel', 0.08], ['falls', 0.26], ['wheel', 0.42], ['arch', 0.6], ['wheel', 0.76], ['beacon', 0.9]] },
