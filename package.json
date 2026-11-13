@@ -1,1 +1,16 @@
-{"name":"heli","private":true,"type":"module","scripts":{"check":"node tools/sim.mjs && node tools/sim-rescue.mjs && node tools/sim-race.mjs && node tools/sim-cargo.mjs && node tools/i18n-check.mjs","serve":"python3 -m http.server 8080"}}
+{
+  "name": "heli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node tools/sim.mjs && node tools/sim-rescue.mjs && node tools/sim-race.mjs && node tools/sim-cargo.mjs && node tools/i18n-check.mjs",
+    "serve": "python3 -m http.server 8080",
+    "www": "node tools/make-www.mjs",
+    "android:sync": "npm run www && npx cap sync android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/cli": "^7.6.10",
+    "@capacitor/core": "^7.6.10"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "appId": "fr.labarthe.heliadventure",
+  "appName": "Heli Adventure",
+  "webDir": "www",
+  "android": { "backgroundColor": "#1b1840" }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Heli Adventure</string>
+    <string name="title_activity_main">Heli Adventure</string>
+    <string name="package_name">fr.labarthe.heliadventure</string>
+    <string name="custom_url_scheme">fr.labarthe.heliadventure</string>
+</resources>

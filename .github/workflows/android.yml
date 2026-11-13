@@ -1,0 +1,48 @@
+name: Construire l'APK Android
+
+# Compile l'application Android (Capacitor) à chaque envoi sur la branche android,
+# et publie l'APK de test dans la version « apk-latest » du dépôt, pour le télécharger depuis un téléphone.
+on:
+  push:
+    branches: [android]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Installer Capacitor
+        run: npm ci
+      - name: Valider les niveaux et les traductions
+        run: npm run check
+      - name: Copier le jeu dans le projet Android
+        run: npm run android:sync
+      - name: Compiler l'APK de test
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+      - name: Nommer l'APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk heli-adventure-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: heli-adventure-apk
+          path: heli-adventure-debug.apk
+      - name: Publier l'APK dans la version apk-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest heli-adventure-debug.apk --prerelease --target "$GITHUB_SHA" \
+            --title "APK Android de test" --notes "APK de test (signature de développement) construit depuis la branche android. À installer directement sur un téléphone ; ce n'est pas le fichier à envoyer sur la Play Console."
