@@ -21,6 +21,7 @@ export const LOADS = {
   tower: { w: 26, h: 62, m: 0.75 }, transfo: { w: 36, h: 30, m: 1.05 }, spool: { w: 34, h: 34, m: 0.5 }, mast: { w: 12, h: 66, m: 0.45 },
   crate: { w: 34, h: 26, m: 0.35 }, skipylon: { w: 22, h: 60, m: 0.8 }, gondola: { w: 34, h: 32, m: 1.1 }, logs: { w: 52, h: 20, m: 0.6 }, snowcat: { w: 46, h: 28, m: 1.45 },
   urn: { w: 26, h: 30, m: 0.35 }, statue: { w: 24, h: 56, m: 1.1 }, sarco: { w: 50, h: 22, m: 1.45 }, obelisk: { w: 16, h: 70, m: 1.5 }, sphinx: { w: 48, h: 34, m: 1.5 },
+  drums: { w: 40, h: 30, m: 0.4 },
 };
 const starsOf = (r) => Object.values(r.levels).reduce((n, l) => { let k = 0; for (let m = l.sm | 0; m; m >>= 1) k += m & 1; return n + k; }, 0);
 export const cargoStars = (save) => starsOf(save.heliCargo);

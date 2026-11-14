@@ -15,6 +15,15 @@ const ptDist = (sh, x, y) => {
 export const HOOK = { dx: 24, lo: 38, hi: 125, vx: 32, vy: 48 }; // fenêtre de prise : écart latéral, hauteur au-dessus de la charge, vitesses
 export const HOOK_EASY = { dx: 85, lo: 22, hi: 240, vx: 95, vy: 115, speed: 170 }; // mode facile : on peut être très décalé, plus haut et peu immobile ; le câble descend deux fois plus vite
 
+// Départ du cargo une fois chargé : corne de brume, fumée, puis il s'éloigne tout doucement en accélérant (décalage et vitesse à l'instant t).
+export const SAIL = { wait: 2.6, acc: 7, vmax: 60 };
+export const sailSpeed = (t) => (t < SAIL.wait ? 0 : Math.min(SAIL.vmax, (t - SAIL.wait) * SAIL.acc));
+export function sailOff(t) {
+  if (t < SAIL.wait) return 0;
+  const u = t - SAIL.wait, tv = SAIL.vmax / SAIL.acc;
+  return u < tv ? 0.5 * SAIL.acc * u * u : 0.5 * SAIL.acc * tv * tv + SAIL.vmax * (u - tv);
+}
+
 export class CargoGame extends RescueGame {
   constructor(level, heli, owned = 0, diff = 'normal') { super(level, heli, diff, owned); this.hook = diff === 'easy' ? HOOK_EASY : HOOK; }
 
@@ -24,6 +33,14 @@ export class CargoGame extends RescueGame {
     if (!fromPad || !this.loads) this.loads = src.map((l) => ({ ...l, state: 'ground' }));
     else this.loads.forEach((l, i) => { if (l.state === 'carried') Object.assign(l, src[i], { state: 'ground' }); }); // reprise : la charge en cours retourne à sa place
     this.carry = null; this.cable = 0; this.target = null; this.th = 0; this.om = 0; this.rope = 0; this.pvx = 0; this.doneT = 0;
+    if (!fromPad || this.sailT == null) { this.sailT = -1; this.moveShip(0); }
+  }
+  // Déplace la coque et le château du cargo (obstacles solides) de off vers la droite.
+  moveShip(off) {
+    for (const s of this.L.cargo.ship || []) {
+      const o = s.o; o.x = s.x + off; o.minX = s.minX + off; o.maxX = s.maxX + off;
+      o.shapes.forEach((sh, i) => { sh.p = s.p[i].map((v, k) => (k % 2 ? v : v + off)); });
+    }
   }
   missionDone() { return false; } // la fin de mission est décidée ici : tout livré, puis posé sur l'aire d'arrivée
   get delivered() { return this.loads.filter((l) => l.state === 'delivered').length; }
@@ -35,6 +52,11 @@ export class CargoGame extends RescueGame {
   step(dt) {
     super.step(dt);
     const h = this.heli, H = this.H, L = this.L, mod = L.def.mod || {}, Gl = G * (mod.grav || 1);
+    if (L.cargo.ship && !this.carry && this.loads.every((l) => l.state === 'delivered')) { // tout est à bord : le cargo appareille, les barils avec lui
+      if (this.sailT < 0) { this.sailT = 0; this.ev.push({ type: 'horn' }); }
+      this.sailT += dt; const off = sailOff(this.sailT);
+      this.moveShip(off); for (const l of this.loads) l.x = l.sx + off;
+    }
     this.mass = 1 + (this.carry ? this.carry.m / H.lift : 0); // la charge alourdit l'appareil : il pousse moins fort et réagit moins vite
     if (this.state !== 'fly') return;
     const ax = (h.vx - this.pvx) / dt; this.pvx = h.vx;
@@ -50,7 +72,7 @@ export class CargoGame extends RescueGame {
       if (bottom > Math.min(gy, wy)) {
         const z = c.to, inZone = Math.abs(lx - z.x) < z.w / 2 && Math.abs(gy - z.y) < 8 && gy <= wy;
         if (inZone && Math.abs(h.vy) < 80 && Math.abs(h.vx) < 50) { // posée dans sa zone : elle se décroche toute seule
-          c.state = 'delivered'; c.x = lx; c.y = gy; this.carry = null; this.cable = 0;
+          c.state = 'delivered'; c.x = lx; c.sx = lx; c.y = gy; this.carry = null; this.cable = 0;
           this.ev.push({ type: 'delivered', x: lx, y: gy, n: this.delivered, of: this.loads.length });
         } else if (wy < gy) { // la charge trempe dans l'eau : choc, et l'appareil est renvoyé vers le haut
           h.y -= bottom - wy; this.damage(1, lx, wy); h.vy = -110; this.ev.push({ type: 'splash', x: lx, y: wy });

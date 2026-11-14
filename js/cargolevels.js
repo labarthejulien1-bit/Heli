@@ -17,11 +17,12 @@ const DESERT = { tree: ['cactus', 'dead', 'palm'], pillar: ['ruin'], hang: ['roc
 
 export const CARGO_LEVELS = [
   // ---------- En mer : barges, plateformes pétrolières, navires marchands
-  { n: 1, uni: 'sea', seed: 81013, ...SEA(4700), tank: 117, recommended: 'mulet', objectives: [{ t: 'finish' }, { t: 'time', v: 170 }, { t: 'hits', v: 1 }], look: adv(4), base: { x: 250 }, finish: { x: 4420 },
-    props: [deck(250, 240, 26, 'barge'), deck(1200, 200, 26, 'barge'), deck(2360, 300, 150, 'rig'), deck(3450, 380, 70, 'ship'), spire(3600, 46, 250, 'bridge'), deck(4350, 320, 26, 'barge'), { type: 'boat', x: 760 }],
-    hazards: [{ type: 'flyer', x0: 1500, x1: 2000, y: 470, speed: 60 }, { type: 'flyer', x0: 2800, x1: 3200, y: 520, speed: 55, phase: 0.5 }],
-    loads: [{ type: 'container', x: 1250, to: 2280, zw: 100 }, { type: 'anchor', x: 2470, to: 3330 }, { type: 'pile', x: 1150, to: 2385, zw: 90 }, { type: 'tank', x: 3460, to: 4280 }],
-    starsAt: [[1750, 150], [2900, 60], [3950, 230]], story: [['beacon', 620], ['ship', 5200]] },
+  { n: 1, uni: 'sea', seed: 81013, ...SEA(3200), tank: 132, recommended: 'mulet', objectives: [{ t: 'finish' }, { t: 'time', v: 195 }, { t: 'hits', v: 1 }], look: adv(4), base: { x: 250 }, finish: { x: 2160, w: 110 },
+    // palettes de barils sur quatre plateformes pétrolières, à charger sur le cargo amarré tout à droite ; une fois chargé, il appareille (sail)
+    props: [deck(250, 240, 26, 'barge'), deck(800, 260, 150, 'rig'), spire(885, 40, 470, 'derrick'), deck(1200, 160, 90, 'rig'), deck(1600, 260, 170, 'rig'), spire(1690, 40, 480, 'derrick'), deck(1950, 160, 110, 'rig'), deck(2160, 150, 26, 'barge'), deck(2510, 440, 70, 'ship'), spire(2510, 46, 250, 'bridge')],
+    hazards: [{ type: 'flyer', x0: 950, x1: 1100, y: 470, speed: 50 }, { type: 'flyer', x0: 1780, x1: 1900, y: 450, speed: 55, phase: 0.5 }],
+    loads: [{ type: 'drums', x: 750, to: 2675, zw: 90 }, { type: 'drums', x: 1200, to: 2583, zw: 90 }, { type: 'drums', x: 1550, to: 2437, zw: 90 }, { type: 'drums', x: 1950, to: 2345, zw: 90 }],
+    sail: true, starsAt: [[1000, 260], [1400, 60], [2060, 250]], story: [['beacon', 540]] },
   { n: 2, uni: 'sea', seed: 82021, ...SEA(5000), tank: 167, recommended: 'mulet', objectives: [{ t: 'finish' }, { t: 'time', v: 230 }, { t: 'stars' }], look: adv(14, { extras: ['clouds', 'sea', 'birds'] }), base: { x: 250 }, finish: { x: 4650, w: 100 },
     waves: { x0: 1800, x1: 2700, height: 44, speed: 60, spacing: 700, width: 120 },
     props: [deck(250, 240, 26, 'barge'), deck(760, 280, 26, 'barge'), deck(1500, 320, 170, 'rig'), spire(1630, 40, 470, 'derrick'), deck(3000, 300, 170, 'rig'), spire(3120, 40, 470, 'derrick'), deck(4520, 400, 26, 'barge')],

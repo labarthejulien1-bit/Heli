@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.13.0';
+const VERSION = '4.14.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -862,6 +862,7 @@ function events() {
       case 'hooked': R.spawn(e.x, e.y, 10, { v: 90, col: '#ffd34d', life: 0.5, size: 1.6 }); if (play) { toast('⚓ ' + t('g_hooked')); snd.sfx('cp'); vibe(25); } break;
       case 'unhook': if (play) { toast(t('g_unhook')); snd.sfx('bump'); } break;
       case 'delivered': R.spawn(e.x, e.y - 10, 16, { a: -Math.PI / 2, spread: 2.4, v: 110, col: '#7dffb0', life: 0.7 }); if (play) { toast('✔ ' + t('g_delivered') + ' ' + e.n + '/' + e.of); snd.sfx('repair'); vibe([20, 30, 40]); if (liftFixed(g, e)) setTimeout(() => snd.sfx('liftOn'), 600); } break;
+      case 'horn': if (play) snd.sfx('horn'); break;
       case 'ring': R.spawn(e.x, e.y, 12, { v: 120, col: '#ffd34d', life: 0.5, size: 1.8 }); if (play) { snd.sfx('ring'); vibe(12); } break;
       case 'miss': if (play) { toast('✕ ' + t('c_miss')); snd.sfx('bump'); vibe([30, 40, 30]); } break;
       case 'quake': R.shake = 30; if (play) { snd.sfx('thunder'); vibe([40, 30, 40, 30, 60]); } break;

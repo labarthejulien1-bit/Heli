@@ -27,5 +27,7 @@ export function buildCargoLevel(cfg) {
   const busy = (x) => loads.some((l) => Math.abs(l.to.x - x) < 230 || Math.abs(l.x - x) < 230);
   L.story = (cfg.story || []).filter(([type, x]) => !(['epyl', 'skilift'].includes(type) && busy(x))).map(([type, x, o]) => ({ type, x, y: floor(x), v: (x * 0.137) % 1, ...(o || {}) }));
   L.cargo = { cfg, loads, topAt, finish };
+  // Cargo qui appareille une fois chargé (sail) : sa coque et son château, avec leur position d'origine
+  if (cfg.sail) L.cargo.ship = L.obs.filter((o) => (o.st === 'deck' && o.deck === 'ship') || o.st === 'bridge').map((o) => ({ o, x: o.x, minX: o.minX, maxX: o.maxX, p: o.shapes.map((s) => s.p.slice()) }));
   return L;
 }
