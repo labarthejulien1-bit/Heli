@@ -96,7 +96,7 @@ export const CARGO_LEVELS = [
     props: [deck(1200, 120, 8, 'slab'), deck(1900, 120, 8, 'slab'), deck(2600, 120, 8, 'slab'), deck(3320, 150, 26, 'refuge'), spire(4150, 60, 160, 'ice')],
     hazards: [{ type: 'faller', x: 1450, period: 3.4 }, { type: 'faller', x: 2850, period: 3.1, phase: 0.5 }, { type: 'gust', x: 2100, w: 900, fx: -130, period: 5, on: 0.4 }, { type: 'flyer', x0: 3600, x1: 4000, y: 280, speed: 65 }],
     loads: [{ type: 'skipylon', x: 640, to: 1200 }, { type: 'skipylon', x: 740, to: 1900 }, { type: 'skipylon', x: 840, to: 2600 }, { type: 'crate', x: 4700, to: 3320 }],
-    starsAt: [[1550, 60], [3000, 170], [4150, 240]], story: [['cabin', 950], ['skilift', 1550], ['skilift', 2250], ['skilift', 2950], ['flags', 3460]] },
+    starsAt: [[1550, 60], [3000, 170], [4150, 240]], story: [['chairlift', 1040, { to: 3170, poles: [1550, 2250, 2950] }], ['flags', 3460]] },
   { n: 13, uni: 'peak', seed: 93029, worldLength: 5600, tank: 106, recommended: 'cigogne', objectives: [{ t: 'finish' }, { t: 'time', v: 185 }, { t: 'hits', v: 1 }], look: adv(21, { sky: [['#243b6b', '#f3a683'], ['#1b2a4a', '#f7d794']] }), mod: { windX: 12 }, base: { x: 250 }, finish: { x: 5300 },
     terrain: [[0, 720], [700, 720], [1200, 620], [1700, 520], [2100, 500], [2140, 740], [2300, 746], [2460, 740], [2500, 500], [3000, 420], [3500, 340], [3750, 340], [4200, 450], [4800, 500], [5600, 520]], rough: 5,
     props: [deck(3620, 180, 30, 'refuge'), deck(1500, 120, 8, 'slab'), deck(4500, 120, 8, 'slab'), { type: 'ledge', x: 2300, side: -1, y: 600, w: 40 }],

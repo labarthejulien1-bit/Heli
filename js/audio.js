@@ -178,6 +178,8 @@ export class Sound {
       case 'medal': this.tone(mtof(84), 0.4, 'triangle', 0.25); this.tone(mtof(91), 0.5, 'sine', 0.18, 0.08); break;
       case 'ui': this.tone(660, 0.06, 'triangle', 0.12); break;
       case 'splash': this.burst(0.5, 1400, 0.5); break;
+      case 'liftOn': this.tone(55, 1.6, 'sawtooth', 0.16, 0, 2.4); this.tone(110, 1.4, 'triangle', 0.1, 0.15, 2); [0, 4, 7].forEach((n, i) => this.tone(mtof(67 + n), 0.3, 'triangle', 0.14, 1.1 + i * 0.09)); break; // moteur du télésiège qui démarre, puis carillon
+      case 'clack': this.burst(0.05, 2400, 0.12); this.tone(1300, 0.04, 'square', 0.03, 0.05); break; // un siège passe sur les galets d'un pylône
       case 'thunder': this.burst(1.6, 300, 0.35); break;
     }
   }
