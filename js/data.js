@@ -69,9 +69,9 @@ export const heliUnlock = (h) => { const i = HELIS.indexOf(h); return i <= 0 ? 0
 // price : coût d'achat au hangar, en pièces (coins) ou en étoiles (stars). 3 étoiles et 100 pièces par niveau.
 export const LEVELS = [
   { id: 1, fuel: 'easy trees easy', seed: 1101, lenScale: 1,
-    // niveau témoin du décor qui raconte : au loin des montgolfières, des oies et un train sur son viaduc ; au sol, le bivouac du randonneur,
-    // une harde de bouquetins qui détale, un aigle qui s'envole, puis le randonneur arrivé au sommet ; au tout premier plan, cimes et herbes
-    scene: { far: ['balloons', 'geese', 'train'], fg: 'alpine' }, story: [['camp', 0.115, { k: 1.35 }], ['herd', 0.335, { k: 1.4 }], ['eagle', 0.6, { k: 1.3 }], ['herd', 0.705, { flip: 1, k: 1.4 }], ['summit', 0.865, { k: 1.35 }]],
+    // niveau témoin du décor qui raconte : au loin des montgolfières et un train sur son viaduc ; au sol, des hardes de bouquetins qui s'éloignent
+    // au pas vers la droite, un aigle qui s'envole, puis un randonneur au sommet ; au tout premier plan, cimes et herbes
+    scene: { far: ['balloons', 'train'], fg: 'alpine' }, story: [['herd', 0.335, { k: 1.4 }], ['eagle', 0.6, { k: 1.3 }], ['herd', 0.705, { flip: 1, k: 1.4 }], ['summit', 0.865, { k: 1.35 }]],
     sky: [['#3b4a7a', '#f6a98c'], ['#6db3d8', '#fdebd0']], mid: '#8a7aa8', ground: '#262a48', obs: '#2f3357', rim: '#f8d9c4', accent: '#ffd98a',
     sun: { c: '#fff3c9', x: 0.72, y: [0.62, 0.3], r: 34 },
     layers: ['jag', 'jag', 'pines'], extras: ['clouds', 'birds'], weather: null,

@@ -23,7 +23,7 @@ export class Renderer {
     this.s = this.cv.width / VW; this.vh = this.cv.height / this.s;
   }
   setLevel(L) {
-    this.L = L; this.def = L.def; this.parts.length = 0; this.camX = 0; this.snap = true;
+    this.L = L; this.def = L.def; this.parts.length = 0; this.camX = 0; this.snap = true; this._herd = {}; this._eg = {}; // états du décor vivant (harde, aigle) remis à zéro à chaque niveau
     const n = this.def.weather ? (this.quality === 'low' ? 24 : 60) : 0;
     this.amb = Array.from({ length: n }, (_, i) => ({ x: hash(i, 1) * 440 - 20, y: hash(i, 2) * 900, z: 0.5 + hash(i, 3), ph: hash(i, 4) * 7 }));
   }
@@ -376,26 +376,30 @@ export class Renderer {
         if (Math.sin(time * 1.3 + k * 4) > 0.82) { c.fillStyle = '#ffd98a'; c.beginPath(); c.arc(0, 33, 3.4, 0, TAU); c.fill(); } // coup de brûleur
         c.restore();
       }
-      if (F.includes('geese')) { // oies en V, qui traversent lentement le ciel
-        const gx = ((((time * 13 - camX * 0.03) % 900) + 900) % 900) - 150, gy = vh * 0.13;
-        c.strokeStyle = rgba(def.ground, 0.55); c.lineWidth = 1.5; c.lineCap = 'round'; c.beginPath();
-        for (let k = 0; k < 7; k++) { const r = Math.ceil(k / 2), sd = k % 2 ? 1 : -1, px = gx - r * 15, py = gy + sd * r * 9, f = Math.sin(time * 6 + k) * 3.5; c.moveTo(px - 6, py - f); c.lineTo(px, py); c.lineTo(px + 6, py - f); }
-        c.stroke();
-      }
       return;
     }
-    if (F.includes('train')) { // viaduc dans la brume et son train à vapeur, entre deux chaînes de montagnes
+    if (F.includes('train')) { // viaduc dans la brume, tendu entre deux épaulements de montagne où il entre en tunnel, et son train à vapeur
       const u = (((camX * 0.16) % 1500) + 1500) % 1500, vx = 760 - u, vy = base + 40, st = mix(col, skyB, 0.25);
-      if (vx > -520 && vx < 500) {
+      if (vx > -700 && vx < 620) {
         c.fillStyle = st; c.beginPath(); c.moveTo(vx, vy + 220); c.lineTo(vx, vy); c.lineTo(vx + 420, vy); c.lineTo(vx + 420, vy + 220);
         for (let k = 0; k < 6; k++) { const ax = vx + 35 + k * 70; c.moveTo(ax - 26, vy + 220); c.lineTo(ax - 26, vy + 44); c.arc(ax, vy + 44, 26, Math.PI, 0); c.lineTo(ax + 26, vy + 220); c.closePath(); }
-        c.fill('evenodd'); c.fillRect(vx - 60, vy - 5, 540, 7);
-        const tp = (time * 0.035 + 0.2) % 1, tx = vx - 150 + tp * 760, dk2 = mix(col, '#1b1b2a', 0.55);
-        if (tx > vx - 70 && tx < vx + 470) {
-          c.fillStyle = dk2; for (let k = 1; k <= 3; k++) c.fillRect(tx - k * 34, vy - 21, 30, 16); // wagons
-          c.fillRect(tx, vy - 23, 34, 18); c.fillRect(tx + 4, vy - 32, 12, 10); c.fillRect(tx + 24, vy - 31, 5, 9);
-          c.fillStyle = rgba('#ffd98a', 0.9); for (let k = 1; k <= 3; k++) { c.fillRect(tx - k * 34 + 5, vy - 17, 6, 5); c.fillRect(tx - k * 34 + 17, vy - 17, 6, 5); }
-          for (let k = 0; k < 6; k++) { c.fillStyle = rgba('#ffffff', 0.5 - k * 0.07); c.beginPath(); c.arc(tx + 26 - k * 17 - ((time * 20) % 17), vy - 36 - k * 6, 6 + k * 2.6, 0, TAU); c.fill(); } // panache de vapeur
+        c.fill('evenodd'); c.fillRect(vx - 20, vy - 5, 460, 7);
+        // le train va d'un tunnel à l'autre ; chaque bouffée de vapeur reste là où elle a été lâchée, monte et se dissout
+        const V = 27, span = 620, tx = vx - 100 + ((time * V) % span), dk2 = mix(col, '#1b1b2a', 0.55);
+        c.save(); c.beginPath(); c.rect(vx - 6, vy - 140, 432, 140); c.clip();
+        for (let j = 0; j < 9; j++) { const age = (((time * 1.6) % 1) + j) / 1.6, px = tx + 26 - V * age, py = vy - 34 - 11 * age - 1.5 * age * age; c.fillStyle = rgba('#ffffff', Math.max(0, 0.55 - age * 0.1)); c.beginPath(); c.arc(px, py, 4.5 + age * 3, 0, TAU); c.fill(); }
+        c.fillStyle = dk2; for (let k = 1; k <= 3; k++) c.fillRect(tx - k * 34, vy - 21, 30, 16); // wagons
+        c.fillRect(tx, vy - 23, 34, 18); c.fillRect(tx + 4, vy - 32, 12, 10); c.fillRect(tx + 24, vy - 31, 5, 9);
+        c.fillStyle = rgba('#ffd98a', 0.9); for (let k = 1; k <= 3; k++) { c.fillRect(tx - k * 34 + 5, vy - 17, 6, 5); c.fillRect(tx - k * 34 + 17, vy - 17, 6, 5); }
+        c.restore();
+        // épaulements : le viaduc sort d'une montagne et rentre dans l'autre, par une bouche de tunnel
+        const hillC = mix(col, def.mid, 0.3), hillL = mix(hillC, '#ffffff', 0.12); // un ton plus soutenu que la chaîne du fond : une crête plus proche
+        for (const [ex, sd] of [[vx, -1], [vx + 420, 1]]) {
+          c.fillStyle = hillC; c.beginPath(); c.moveTo(ex - sd * 30, vy + 230); c.lineTo(ex - sd * 30, vy + 10); c.quadraticCurveTo(ex - sd * 22, vy - 70, ex + sd * 60, vy - 118); c.quadraticCurveTo(ex + sd * 180, vy - 160, ex + sd * 360, vy + 230); c.fill();
+          c.fillStyle = hillL; c.beginPath(); c.moveTo(ex - sd * 30, vy + 10); c.quadraticCurveTo(ex - sd * 22, vy - 70, ex + sd * 60, vy - 118); c.quadraticCurveTo(ex + sd * 10, vy - 60, ex - sd * 8, vy + 10); c.fill(); // flanc éclairé
+          // portail du tunnel : arche de pierre claire, ouverture sombre
+          c.fillStyle = mix(st, '#ffffff', 0.15); c.beginPath(); c.moveTo(ex - 17, vy + 2); c.lineTo(ex - 17, vy - 20); c.arc(ex, vy - 20, 17, Math.PI, 0); c.lineTo(ex + 17, vy + 2); c.fill();
+          c.fillStyle = mix(col, '#1b1b2a', 0.62); c.beginPath(); c.moveTo(ex - 12, vy + 2); c.lineTo(ex - 12, vy - 20); c.arc(ex, vy - 20, 12, Math.PI, 0); c.lineTo(ex + 12, vy + 2); c.fill();
         }
       }
     }
@@ -810,26 +814,19 @@ export class Renderer {
           else { Ln('#f1c9a5', 2.4, [px, -17, px + 4, -9]); Ln('#f1c9a5', 2.4, [px, -17, px - 4, -9]); }
           break;
         }
-        case 'camp': { // bivouac au petit matin : tente, feu qui crépite, randonneur assis qui se réchauffe
-          const fl = 0.6 + 0.4 * Math.sin(time * 9 + d.v * 7);
-          E(rgba('#ffb257', 0.16 + 0.08 * fl), 6, -8, 74, 46); // lueur du feu
-          F(dk, [-78, 10, -46, -40, -14, 10]); F(mix(dk, ac, 0.28), [-46, -40, -14, 10, -30, 10]); Ln(dk, 1.6, [-46, -40, -46, -50]); F(ac, [-46, -50, -34, -46, -46, -42]);
-          for (const [px, w] of [[-4, 9], [8, 8], [18, 7]]) E(dk, px, 8, w, 4); // pierres du foyer
-          F('#ff9a3c', [0, 6, 4 + fl * 2, -14 - fl * 8, 8, -4, 12, -10 - fl * 5, 16, 6]); F('#ffe08a', [5, 6, 8, -5 - fl * 4, 12, 6]);
-          for (let k = 0; k < 4; k++) E(rgba('#ffffff', 0.2 - k * 0.04), 9 + Math.sin(time * 0.9 + k) * (4 + k * 3), -26 - k * 18 - ((time * 9) % 18), 5 + k * 3);
-          E(dk, 44, -6, 9, 12); E(dk, 44, -22, 5.5); Ln(dk, 4, [40, 2, 28, 8]); Ln(dk, 3.4, [42, -12, 28, -6 + fl]); F(mix(dk, ac, 0.4), [48, -14, 58, -12, 58, 4, 50, 4]); // randonneur et son sac
-          break;
-        }
-        case 'herd': { // harde de bouquetins : ils broutent, dressent la tête quand l'appareil approche, puis détalent par bonds
-          const dist = Math.abs(this._hx - d.x), alert = dist < 420, run = dist < 250, away = (Math.sign(d.x - this._hx) || 1) * (d.flip ? -1 : 1);
+        case 'herd': { // harde de bouquetins : ils broutent, dressent la tête quand l'appareil approche, puis s'éloignent au pas, toujours vers la droite
+          const dist = Math.abs(this._hx - d.x), alert = dist < 460, walk = dist < 300, k1 = d.k || 1;
+          this._herd = this._herd || {}; const st = this._herd[d.x] || (this._herd[d.x] = { off: 0, t: time });
+          const dtm = Math.min(0.05, Math.max(0, time - st.t)); st.t = time;
+          if (walk && st.off < 240) st.off += 13 * dtm; // avance lente, qui ne revient jamais en arrière
+          const moving = walk && st.off < 240, dirx = d.flip ? -1 : 1; // sens « droite » dans le repère de la scène
           for (let k = 0; k < 5; k++) {
-            const ox = -86 + k * 43 + hash(k, d.x) * 14, sz = 0.75 + 0.45 * hash(k, d.x + 3), ph = time * 7 + k * 1.7;
-            const hop = run ? Math.abs(Math.sin(ph)) * 13 : 0, gx = ox + (run ? away * (18 + 10 * Math.sin(ph * 0.5 + k)) : 0);
-            const gy = (L.groundAt(d.x + (d.flip ? -gx : gx) * (d.k || 1)) - d.y) / (d.k || 1) - 1 - hop;
-            c.save(); c.translate(gx, gy); c.scale((run ? away : k % 2 ? -1 : 1) * sz, sz);
-            const leg = run ? Math.sin(ph) * 5 : 0, head = run || alert ? -1 : k % 3 === 0 ? 0.2 : 1; // 1 : tête basse, -1 : tête haute
+            const ox = -86 + k * 43 + hash(k, d.x) * 14, sz = 0.75 + 0.45 * hash(k, d.x + 3), ph = time * 3.2 + k * 1.7;
+            const gx = ox + dirx * st.off / k1, gy = (L.groundAt(d.x + (d.flip ? -gx : gx) * k1) - d.y) / k1 - 1;
+            c.save(); c.translate(gx, gy); c.scale(dirx * sz, sz);
+            const leg = moving ? Math.sin(ph) * 3 : 0, head = alert ? -1 : k % 3 === 0 ? 0.2 : 1; // 1 : tête basse, -1 : tête haute
             Ln(dk, 2.4, [-8, -9, -9 - leg, 0]); Ln(dk, 2.4, [-4, -9, -3 + leg, 0]); Ln(dk, 2.4, [5, -9, 4 - leg, 0]); Ln(dk, 2.4, [9, -9, 10 + leg, 0]);
-            E(dk, 0, -13, 12, 6.5); const hx2 = 13, hy2 = head > 0 ? -6 + head * 3 : -22;
+            E(dk, 0, -13 - (moving ? Math.abs(Math.sin(ph)) * 0.8 : 0), 12, 6.5); const hx2 = 13, hy2 = head > 0 ? -6 + head * 3 : -22;
             Ln(dk, 4.6, [9, -14, hx2, hy2 + 2]); E(dk, hx2 + 2, hy2, 4.6, 3.4);
             Ln(lt, 1.7, [hx2, hy2 - 2, hx2 - 4, hy2 - 10, hx2 - 9, hy2 - 9]); // corne recourbée
             Ln(dk, 2, [-12, -14, -15, -10]);
