@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.6.0';
+const VERSION = '4.7.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -260,7 +260,7 @@ function home() {
       <button class="round" data-go="settings" aria-label="${t('settings')}">${ICON.settings}</button></div>
     <div class="title"><h1>HELI<span>${w === 'rescue' ? 'RESCUE' : w === 'race' ? 'RACE' : w === 'cargo' ? 'CARGO' : 'ADVENTURE'}</span></h1><p>${t('tagline')}</p></div>
     <div class="homebot">
-      <div class="worlds">${bubble('adv', t('adventure'), `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, rsky)}${bubble('race', 'Heli Race', `★ ${raceStars(save)}/${RACE_LEVELS.length * 3}`, raceLevel(nextRace()).look.sky[0])}${bubble('cargo', 'Heli Cargo', `★ ${cargoStars(save)}/${CARGO_LEVELS.length * 3}`, cargoLevel(nextCargo()).look.sky[0])}</div>
+      <div class="worlds">${bubble('adv', 'Heli Adventure', `★ ${starCount(save)}/${LEVELS.length * 3}`, LEVELS[id - 1].sky[0])}${bubble('rescue', 'Heli Rescue', `★ ${rescueStars(save)}/60`, rsky)}${bubble('race', 'Heli Race', `★ ${raceStars(save)}/${RACE_LEVELS.length * 3}`, raceLevel(nextRace()).look.sky[0])}${bubble('cargo', 'Heli Cargo', `★ ${cargoStars(save)}/${CARGO_LEVELS.length * 3}`, cargoLevel(nextCargo()).look.sky[0])}</div>
     </div>
   </section>${(S.navWorld = w, nav('home'))}`;
   ui.querySelectorAll('canvas[data-bubble]').forEach((c) => heliCanvas(c, (c.dataset.bubble === 'rescue' ? RESCUE_HELIS[2] : c.dataset.bubble === 'race' ? myRaceHeli() : c.dataset.bubble === 'cargo' ? cargoHeli('cigogne') : heliOf(save.heli)).look, 1.05)); // vignettes : Mouette pour Rescue, Cigogne pour Cargo

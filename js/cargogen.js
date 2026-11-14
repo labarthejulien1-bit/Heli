@@ -23,7 +23,9 @@ export function buildCargoLevel(cfg) {
   const floor = (x) => Math.min(topAt(x), L.waterAt ? L.waterAt(0) : 1e9);
   L.items = (cfg.starsAt || []).map(([x, up]) => ({ type: 'star', x, y: floor(x) - up })).sort((a, b) => a.x - b.x);
   L.orbTotal = 0; L.starTotal = L.items.length;
-  L.story = (cfg.story || []).map(([type, x, o]) => ({ type, x, y: floor(x), v: (x * 0.137) % 1, ...(o || {}) }));
+  // Aucun pylône de décor (ligne électrique, télésiège) sur une zone de livraison ni près d'une charge : la place doit être vide
+  const busy = (x) => loads.some((l) => Math.abs(l.to.x - x) < 230 || Math.abs(l.x - x) < 230);
+  L.story = (cfg.story || []).filter(([type, x]) => !(['epyl', 'skilift'].includes(type) && busy(x))).map(([type, x, o]) => ({ type, x, y: floor(x), v: (x * 0.137) % 1, ...(o || {}) }));
   L.cargo = { cfg, loads, topAt, finish };
   return L;
 }

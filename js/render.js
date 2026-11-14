@@ -519,9 +519,10 @@ export class Renderer {
   // Sangle et fanion à la couleur de la charge : on la reconnaît aussi une fois livrée ou en vol.
   loadTag(c, l) {
     c.fillStyle = l.col;
-    if (l.type !== 'anchor') c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4); // sangle (l'ancre, elle, a ses pattes de la couleur)
+    if (l.type === 'engine') c.fillRect(-l.w / 2, -l.h * 0.75, l.w, 4); // moteur : sangle en haut du bloc
+    else if (l.type !== 'anchor') c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4); // sangle (l'ancre, elle, a ses pattes de la couleur)
     // le mât du fanion est planté sur le point le plus haut de la charge, un peu à côté de l'anneau de levage
-    const fx = (l.type === 'sphinx' ? l.w * 0.2 : l.type === 'sarco' ? -l.w * 0.25 : l.type === 'snowcat' ? -l.w * 0.2 : 0) + 4, fy = -l.h + (['spool', 'tank', 'urn', 'statue', 'logs', 'engine'].includes(l.type) ? 3 : 1);
+    const fx = (l.type === 'sphinx' ? l.w * 0.2 : l.type === 'sarco' ? -l.w * 0.25 : l.type === 'snowcat' ? -l.w * 0.2 : l.type === 'engine' ? -l.w * 0.22 : 0) + 4, fy = -l.h + (['spool', 'tank', 'urn', 'statue', 'logs'].includes(l.type) ? 3 : 1);
     c.fillRect(fx - 1, fy - 14, 2, 15); c.beginPath(); c.moveTo(fx + 1, fy - 14); c.lineTo(fx + 12, fy - 10); c.lineTo(fx + 1, fy - 6); c.fill();
   }
   // Dessin d'une charge, posée en (0, 0) : l'origine est le milieu de sa base.
