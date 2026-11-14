@@ -1,6 +1,6 @@
 // Service worker : tout le jeu est mis en cache à l'installation, puis servi hors ligne.
 // Incrémenter VERSION à chaque mise à jour pour renouveler le cache.
-const VERSION = 'heli-4.7.0';
+const VERSION = 'heli-4.8.0';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/main.js', 'js/util.js', 'js/data.js', 'js/levelgen.js', 'js/game.js', 'js/render.js', 'js/helidraw.js', 'js/audio.js', 'js/i18n.js', 'js/save.js', 'js/rescue.js', 'js/rescuelevels.js', 'js/rescuegen.js', 'js/rescuegame.js', 'js/rescuehazards.js', 'js/race.js', 'js/racelevels.js', 'js/racegen.js', 'js/racegame.js', 'js/cargo.js', 'js/cargolevels.js', 'js/cargogen.js', 'js/cargogame.js',

@@ -138,7 +138,9 @@ export class Renderer {
       const f = [0.3, 0.55, 0.8][i], col = f < 0.5 ? mix(skyB, def.mid, f * 2) : mix(def.mid, def.ground === '#dcebf8' ? '#7ba2cf' : def.ground, (f - 0.5) * 2);
       const par = [0.1, 0.22, 0.4][i], base = bottom - [330, 235, 140][i], amp = [160, 135, 105][i];
       if (i === 2 && ex.includes('sea')) this.sea(c, bottom - 215, vh, time, skyB, def);
+      if (def.scene && i === 0) this.far(c, def, 'sky', camX, vh, time, skyB);
       this.layer(c, def.layers[i], camX * par + i * 913, base, amp, col, vh, def, i, time, hi);
+      if (def.scene && i === 0) this.far(c, def, 'mid', camX, vh, time, skyB, base, col);
       if (i === 1 && ex.includes('mist')) {
         gr = c.createLinearGradient(0, base - 60, 0, base + 150);
         gr.addColorStop(0, rgba('#ffffff', 0)); gr.addColorStop(0.5, rgba('#eafff2', 0.28 + 0.06 * Math.sin(time * 0.4))); gr.addColorStop(1, rgba('#ffffff', 0));
@@ -172,6 +174,7 @@ export class Renderer {
       if (o.draw) o.draw(c, g.t, time, def); else this.obstacle(c, o, g.t, time, def, hi);
     }
     this.terrain(c, L, def, x0, x1, camY, vh);
+    if (L.story) this.story(c, L, def, time, x0, x1, true);
     this.pads(c, L, def, g, time, x0, x1);
     if (L.rescue) this.rescue(c, L, def, g, time, x0, x1);
     if (L.cargo) this.cargo(c, L, def, g, time, x0, x1);
@@ -232,6 +235,7 @@ export class Renderer {
     // --- premier plan (écran)
     c.setTransform(s, 0, 0, s, 0, 0);
     this.weather(c, def, vh, time, dt, camDX);
+    if (def.scene && def.scene.fg) this.foreground(c, def, camX, camY, vh, time);
     if (L.smoke) { // fumée ou cendres : nappes sombres qui dérivent et masquent une partie de la vue
       c.fillStyle = L.smoke.col ? rgba(L.smoke.col, 0.5 * L.smoke.density) : `rgba(30,22,20,${0.5 * L.smoke.density})`; // col : brume claire, poussière...
       for (let k = 0; k < 7; k++) {
@@ -355,6 +359,68 @@ export class Renderer {
         c.beginPath(); c.moveTo(P[k], P[k + 1]); c.lineTo(P[k + 4], P[k + 5]); c.lineTo(P[k + 2], Math.max(P[k + 1], P[k + 5]) + 46); c.fill();
       }
     }
+  }
+
+  // Lointain spectaculaire d'un niveau (def.scene.far) : montgolfières qui dérivent, vol d'oies en V, train à vapeur sur un viaduc.
+  far(c, def, where, camX, vh, time, skyB, base, col) {
+    const F = def.scene.far || [];
+    if (where === 'sky') {
+      if (F.includes('balloons')) for (let k = 0; k < 3; k++) { // trois ballons, de plus en plus petits avec la distance
+        const s = [1, 0.7, 0.5][k], bx = ((((hash(k, 71) * 900 - camX * (0.05 + 0.03 * (2 - k)) + time * (3 + k * 1.5)) % 760) + 760) % 760) - 120, by = vh * (0.2 + 0.1 * k) + Math.sin(time * 0.35 + k * 2) * 9;
+        const cols = [['#e8836b', '#f6dcc0'], ['#7fb7c9', '#f3efe0'], ['#e9c46a', '#f6eedb']][k];
+        c.save(); c.translate(bx, by); c.scale(s, s); c.globalAlpha = 0.78 - k * 0.12;
+        c.fillStyle = cols[0]; c.beginPath(); c.moveTo(-9, 30); c.bezierCurveTo(-40, 6, -34, -40, 0, -40); c.bezierCurveTo(34, -40, 40, 6, 9, 30); c.fill();
+        c.fillStyle = cols[1]; c.beginPath(); c.moveTo(-3, 30); c.bezierCurveTo(-14, 6, -12, -40, 0, -40); c.bezierCurveTo(12, -40, 14, 6, 3, 30); c.fill();
+        c.strokeStyle = 'rgba(40,30,40,.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-8, 31); c.lineTo(-5, 42); c.moveTo(8, 31); c.lineTo(5, 42); c.stroke();
+        c.fillStyle = '#5c4636'; c.fillRect(-6, 42, 12, 8);
+        if (Math.sin(time * 1.3 + k * 4) > 0.82) { c.fillStyle = '#ffd98a'; c.beginPath(); c.arc(0, 33, 3.4, 0, TAU); c.fill(); } // coup de brûleur
+        c.restore();
+      }
+      if (F.includes('geese')) { // oies en V, qui traversent lentement le ciel
+        const gx = ((((time * 13 - camX * 0.03) % 900) + 900) % 900) - 150, gy = vh * 0.13;
+        c.strokeStyle = rgba(def.ground, 0.55); c.lineWidth = 1.5; c.lineCap = 'round'; c.beginPath();
+        for (let k = 0; k < 7; k++) { const r = Math.ceil(k / 2), sd = k % 2 ? 1 : -1, px = gx - r * 15, py = gy + sd * r * 9, f = Math.sin(time * 6 + k) * 3.5; c.moveTo(px - 6, py - f); c.lineTo(px, py); c.lineTo(px + 6, py - f); }
+        c.stroke();
+      }
+      return;
+    }
+    if (F.includes('train')) { // viaduc dans la brume et son train à vapeur, entre deux chaînes de montagnes
+      const u = (((camX * 0.16) % 1500) + 1500) % 1500, vx = 760 - u, vy = base + 40, st = mix(col, skyB, 0.25);
+      if (vx > -520 && vx < 500) {
+        c.fillStyle = st; c.beginPath(); c.moveTo(vx, vy + 220); c.lineTo(vx, vy); c.lineTo(vx + 420, vy); c.lineTo(vx + 420, vy + 220);
+        for (let k = 0; k < 6; k++) { const ax = vx + 35 + k * 70; c.moveTo(ax - 26, vy + 220); c.lineTo(ax - 26, vy + 44); c.arc(ax, vy + 44, 26, Math.PI, 0); c.lineTo(ax + 26, vy + 220); c.closePath(); }
+        c.fill('evenodd'); c.fillRect(vx - 60, vy - 5, 540, 7);
+        const tp = (time * 0.035 + 0.2) % 1, tx = vx - 150 + tp * 760, dk2 = mix(col, '#1b1b2a', 0.55);
+        if (tx > vx - 70 && tx < vx + 470) {
+          c.fillStyle = dk2; for (let k = 1; k <= 3; k++) c.fillRect(tx - k * 34, vy - 21, 30, 16); // wagons
+          c.fillRect(tx, vy - 23, 34, 18); c.fillRect(tx + 4, vy - 32, 12, 10); c.fillRect(tx + 24, vy - 31, 5, 9);
+          c.fillStyle = rgba('#ffd98a', 0.9); for (let k = 1; k <= 3; k++) { c.fillRect(tx - k * 34 + 5, vy - 17, 6, 5); c.fillRect(tx - k * 34 + 17, vy - 17, 6, 5); }
+          for (let k = 0; k < 6; k++) { c.fillStyle = rgba('#ffffff', 0.5 - k * 0.07); c.beginPath(); c.arc(tx + 26 - k * 17 - ((time * 20) % 17), vy - 36 - k * 6, 6 + k * 2.6, 0, TAU); c.fill(); } // panache de vapeur
+        }
+      }
+    }
+  }
+  // Tout premier plan (def.scene.fg) : cimes de sapins et herbes sombres qui défilent plus vite que le décor et donnent de la profondeur.
+  // Elles restent au ras du relief pour ne jamais cacher l'appareil ni le parcours.
+  foreground(c, def, camX, camY, vh, time) {
+    const baseY = vh, top = WORLD_H - camY - 700 + vh - (WORLD_H - camY), par = 1.55, col = mix(def.ground, '#000000', 0.5), rim = rgba(def.rim, 0.22);
+    const line = vh - (WORLD_H - camY - 700) - 0; // hauteur à l'écran du sol de plaine
+    const k0 = Math.floor((camX * par - 200) / 430);
+    for (let k = k0; k < k0 + 4; k++) {
+      const x = k * 430 + hash(k, 91) * 220 - camX * par, kind = hash(k, 92), hgt = (WORLD_H - camY - 700) + 60 + hash(k, 93) * 60; // dépasse un peu le sol de plaine
+      if (x < -120 || x > VW + 120) continue;
+      c.fillStyle = col;
+      if (kind < 0.6) { // cime de sapin
+        const w = 78 + hash(k, 94) * 40; c.beginPath(); c.moveTo(x - w / 2, baseY);
+        for (let j = 0; j < 4; j++) { const yy = baseY - (hgt * (j + 1)) / 4, ww = (w / 2) * (1 - (j + 1) / 4.6); c.lineTo(x - ww - 12, yy + hgt / 4 - 6); c.lineTo(x - ww * 0.55, yy); }
+        c.lineTo(x, baseY - hgt - 10 + Math.sin(time * 1.4 + k) * 2);
+        for (let j = 3; j >= 0; j--) { const yy = baseY - (hgt * (j + 1)) / 4, ww = (w / 2) * (1 - (j + 1) / 4.6); c.lineTo(x + ww * 0.55, yy); c.lineTo(x + ww + 12, yy + hgt / 4 - 6); }
+        c.lineTo(x + w / 2, baseY); c.fill(); c.strokeStyle = rim; c.lineWidth = 2; c.stroke();
+      } else { // touffe d'herbes hautes
+        c.beginPath(); for (let j = 0; j < 9; j++) { const gx = x - 50 + j * 12, gh = hgt * (0.45 + 0.4 * hash(j, k)), sway = Math.sin(time * 1.8 + j + k) * 6; c.moveTo(gx - 6, baseY); c.quadraticCurveTo(gx + sway * 0.5, baseY - gh * 0.6, gx + sway, baseY - gh); c.quadraticCurveTo(gx + sway * 0.5 + 4, baseY - gh * 0.6, gx + 6, baseY); } c.fill(); c.strokeStyle = rim; c.lineWidth = 1.5; c.stroke();
+      }
+    }
+    void top; void line; void rim;
   }
 
   sea(c, y, vh, time, skyB, def) {
@@ -580,14 +646,15 @@ export class Renderer {
   }
 
   // Monuments et statues des courses (décor sans collision), dessinés dans les tons de l'arrière-plan.
-  story(c, L, def, time, x0, x1) {
+  story(c, L, def, time, x0, x1, front = false) {
     const base = mix(def.mid, def.obs, 0.55), dk = mix(base, '#000000', 0.25), lt = mix(base, '#ffffff', 0.3), rim = def.rim, ac = def.accent;
     const F = (col, pts) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
     const E = (col, x, y, rx, ry = rx, a0 = 0, a1 = TAU) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, a0, a1); c.fill(); };
     const Ln = (col, w, pts) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
+    const k0c = (px) => (px < 0 ? base : dk); // pierres du cairn : face claire, face sombre
     for (const d of L.story) {
-      if (d.x < x0 - 260 || d.x > x1 + 260) continue;
-      c.save(); c.translate(d.x, d.y + 6); c.scale((d.flip ? -1 : 1) * (d.k || 1), d.k || 1); // k : taille de l'élément
+      if (d.x < x0 - 260 || d.x > x1 + 260 || !!d.front !== front) continue; // front : scène vivante posée sur le sol, dessinée par-dessus le relief
+      c.save(); c.translate(d.x, d.y + (d.front ? 1 : 6)); c.scale((d.flip ? -1 : 1) * (d.k || 1), d.k || 1); // k : taille de l'élément
       const bl = 0.5 + 0.5 * Math.sin(time * 3 + d.v * 9);
       switch (d.type) {
         case 'falls': { // falaise et cascade : l'eau file, l'écume bouillonne au pied
@@ -741,6 +808,53 @@ export class Renderer {
           E('#f1c9a5', px, -24 - bob, 4.4); F(d.v > 0.5 ? '#264653' : '#e9c46a', [px - 4.8, -25 - bob, px, -31 - bob, px + 4.8, -25 - bob]);
           if (near) { Ln('#f1c9a5', 2.4, [px, -17 - bob, px + look * (7 + wv * 3), -30 - bob]); Ln('#f1c9a5', 2.4, [px, -17 - bob, px - look * 5, -11 - bob]); }
           else { Ln('#f1c9a5', 2.4, [px, -17, px + 4, -9]); Ln('#f1c9a5', 2.4, [px, -17, px - 4, -9]); }
+          break;
+        }
+        case 'camp': { // bivouac au petit matin : tente, feu qui crépite, randonneur assis qui se réchauffe
+          const fl = 0.6 + 0.4 * Math.sin(time * 9 + d.v * 7);
+          E(rgba('#ffb257', 0.16 + 0.08 * fl), 6, -8, 74, 46); // lueur du feu
+          F(dk, [-78, 10, -46, -40, -14, 10]); F(mix(dk, ac, 0.28), [-46, -40, -14, 10, -30, 10]); Ln(dk, 1.6, [-46, -40, -46, -50]); F(ac, [-46, -50, -34, -46, -46, -42]);
+          for (const [px, w] of [[-4, 9], [8, 8], [18, 7]]) E(dk, px, 8, w, 4); // pierres du foyer
+          F('#ff9a3c', [0, 6, 4 + fl * 2, -14 - fl * 8, 8, -4, 12, -10 - fl * 5, 16, 6]); F('#ffe08a', [5, 6, 8, -5 - fl * 4, 12, 6]);
+          for (let k = 0; k < 4; k++) E(rgba('#ffffff', 0.2 - k * 0.04), 9 + Math.sin(time * 0.9 + k) * (4 + k * 3), -26 - k * 18 - ((time * 9) % 18), 5 + k * 3);
+          E(dk, 44, -6, 9, 12); E(dk, 44, -22, 5.5); Ln(dk, 4, [40, 2, 28, 8]); Ln(dk, 3.4, [42, -12, 28, -6 + fl]); F(mix(dk, ac, 0.4), [48, -14, 58, -12, 58, 4, 50, 4]); // randonneur et son sac
+          break;
+        }
+        case 'herd': { // harde de bouquetins : ils broutent, dressent la tête quand l'appareil approche, puis détalent par bonds
+          const dist = Math.abs(this._hx - d.x), alert = dist < 420, run = dist < 250, away = (Math.sign(d.x - this._hx) || 1) * (d.flip ? -1 : 1);
+          for (let k = 0; k < 5; k++) {
+            const ox = -86 + k * 43 + hash(k, d.x) * 14, sz = 0.75 + 0.45 * hash(k, d.x + 3), ph = time * 7 + k * 1.7;
+            const hop = run ? Math.abs(Math.sin(ph)) * 13 : 0, gx = ox + (run ? away * (18 + 10 * Math.sin(ph * 0.5 + k)) : 0);
+            const gy = (L.groundAt(d.x + (d.flip ? -gx : gx) * (d.k || 1)) - d.y) / (d.k || 1) - 1 - hop;
+            c.save(); c.translate(gx, gy); c.scale((run ? away : k % 2 ? -1 : 1) * sz, sz);
+            const leg = run ? Math.sin(ph) * 5 : 0, head = run || alert ? -1 : k % 3 === 0 ? 0.2 : 1; // 1 : tête basse, -1 : tête haute
+            Ln(dk, 2.4, [-8, -9, -9 - leg, 0]); Ln(dk, 2.4, [-4, -9, -3 + leg, 0]); Ln(dk, 2.4, [5, -9, 4 - leg, 0]); Ln(dk, 2.4, [9, -9, 10 + leg, 0]);
+            E(dk, 0, -13, 12, 6.5); const hx2 = 13, hy2 = head > 0 ? -6 + head * 3 : -22;
+            Ln(dk, 4.6, [9, -14, hx2, hy2 + 2]); E(dk, hx2 + 2, hy2, 4.6, 3.4);
+            Ln(lt, 1.7, [hx2, hy2 - 2, hx2 - 4, hy2 - 10, hx2 - 9, hy2 - 9]); // corne recourbée
+            Ln(dk, 2, [-12, -14, -15, -10]);
+            c.restore();
+          }
+          break;
+        }
+        case 'eagle': { // aigle perché sur un arbre mort : il s'envole et tourne en cercle quand l'appareil passe
+          Ln(dk, 6, [0, 10, -3, -70]); Ln(dk, 3.5, [-2, -40, 20, -62]); Ln(dk, 3, [-3, -56, -22, -74]); Ln(dk, 2.4, [14, -56, 26, -78]);
+          const near = Math.abs(this._hx - d.x) < 330;
+          this._eg = this._eg || {}; const k0 = this._eg[d.x] = lerp(this._eg[d.x] || 0, near ? 1 : 0, 0.03); // 0 : perché, 1 : en vol
+          const a = time * 0.9 + d.v * 6, bx = lerp(20, Math.cos(a) * 92, k0), by = lerp(-70, -168 + Math.sin(a) * 34, k0), flap = k0 > 0.1 ? Math.sin(time * 6) * 9 * k0 : 0;
+          E(dk, bx, by, 7, 4.5); E(lt, bx + (k0 > 0.1 ? Math.sign(-Math.sin(a)) : 1) * 6, by - 1.5, 3);
+          if (k0 > 0.1) { F(dk, [bx, by, bx - 30, by - 6 - flap, bx - 12, by + 3]); F(dk, [bx, by, bx + 30, by - 6 - flap, bx + 12, by + 3]); }
+          else F(dk, [bx - 6, by, bx - 2, by + 12, bx + 5, by + 2]);
+          break;
+        }
+        case 'summit': { // le sommet : cairn, fanion, et le randonneur du bivouac qui lève les bras au passage de l'appareil
+          for (const [px, py, w] of [[-14, 6, 15], [8, 6, 16], [-2, -8, 13], [-9, -20, 9], [3, -22, 8], [-2, -34, 7]]) E(k0c(px), px, py, w, w * 0.62);
+          Ln(dk, 2.2, [-2, -38, -2, -92]); F('#e0564a', [-2, -92, 22 + Math.sin(time * 5) * 2, -86, -2, -78]);
+          const near = Math.abs(this._hx - d.x) < 380, wv = near ? Math.sin(time * 8) * 4 : 0, px = 46, jump = near ? Math.abs(Math.sin(time * 4)) * 4 : 0;
+          Ln(dk, 3.2, [px - 3, 8, px - 2, -8 - jump]); Ln(dk, 3.2, [px + 3, 8, px + 2, -8 - jump]); Ln(dk, 7.5, [px, -9 - jump, px, -22 - jump]); E(dk, px, -28 - jump, 5.4);
+          F(mix(dk, ac, 0.4), [px - 10, -22 - jump, px - 3, -22 - jump, px - 3, -8 - jump, px - 10, -8 - jump]);
+          if (near) { Ln(dk, 3, [px, -20 - jump, px - 9 + wv, -36 - jump]); Ln(dk, 3, [px, -20 - jump, px + 9 + wv, -36 - jump]); }
+          else { Ln(dk, 3, [px, -20, px + 6, -10]); Ln(dk, 2, [px + 6, -10, px + 8, 8]); } // appuyé sur son bâton
           break;
         }
         case 'farm': // ferme : grange rouge, silo, moulin à vent
