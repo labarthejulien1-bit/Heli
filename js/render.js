@@ -23,7 +23,7 @@ export class Renderer {
     this.s = this.cv.width / VW; this.vh = this.cv.height / this.s;
   }
   setLevel(L) {
-    this.L = L; this.def = L.def; this.parts.length = 0; this.camX = 0; this.snap = true; this._herd = {}; this._eg = {}; this._trainCyc = null; this._trainT0 = null; // états du décor vivant (harde, aigle) remis à zéro à chaque niveau
+    this.L = L; this.def = L.def; this.parts.length = 0; this.camX = 0; this.snap = true; this._herd = {}; this._eg = {}; this._trainCyc = null; this._trainT0 = null; this._lift = null; // états du décor vivant (harde, aigle) remis à zéro à chaque niveau
     const n = this.def.weather ? (this.quality === 'low' ? 24 : 60) : 0;
     this.amb = Array.from({ length: n }, (_, i) => ({ x: hash(i, 1) * 440 - 20, y: hash(i, 2) * 900, z: 0.5 + hash(i, 3), ph: hash(i, 4) * 7 }));
   }
@@ -178,6 +178,7 @@ export class Renderer {
     this.pads(c, L, def, g, time, x0, x1);
     if (L.rescue) this.rescue(c, L, def, g, time, x0, x1);
     if (L.cargo) this.cargo(c, L, def, g, time, x0, x1);
+    if (L.story && L.story.some((d) => d.type === 'chairlift')) this.chairlift(c, L, def, g, time, x0, x1);
     this.items(c, L, def, g, time, x0, x1);
     if (L.race) this.rings(c, L, g, time, x0, x1, 0);
     this.traffic(c, L, def, g, time, camX);
@@ -587,6 +588,76 @@ export class Renderer {
       c.strokeStyle = '#6ee7a0'; c.beginPath(); c.arc(hx, h.y - 34, 9, -Math.PI / 2, -Math.PI / 2 + TAU * k); c.stroke();
     }
   }
+  // Télésiège en panne (Heli Cargo) : une seule ligne de câble entre deux gares, portée par les pylônes du décor et les
+  // pylônes rouges à livrer. Là où un pylône manque, le câble retombe sur la neige ; chaque pylône posé relève sa portion
+  // avec un petit rebond ; quand tous sont en place, les gares s'allument, la roue tourne et les sièges défilent.
+  chairlift(c, L, def, g, time, x0, x1) {
+    const d = L.story.find((s) => s.type === 'chairlift'), gr = (x) => L.groundAt(x);
+    if (d.to < x0 - 200 || d.x > x1 + 200) { this._liftT = time; return; }
+    const base = mix(def.mid, def.obs, 0.55), dk = mix(base, '#000000', 0.25), lt = mix(base, '#ffffff', 0.3);
+    const loads = (g.loads || L.cargo.loads).filter((l) => l.type === 'skipylon');
+    const st = this._lift || (this._lift = { on: 0, s: 0, wheel: 0, r: loads.map(() => 0), was: loads.map(() => false), tick: 0 });
+    const dt = clamp(time - (this._liftT ?? time), 0, 0.1); this._liftT = time;
+    const all = loads.length && loads.every((l) => l.state === 'delivered');
+    st.on = all ? Math.min(1, st.on + dt * 0.45) : 0;
+    const spd = 46 * st.on * st.on; st.s += spd * dt; st.wheel += (spd / 12) * dt;
+    const sup = [{ x: d.x + 30, y: gr(d.x) - 67, r: 1 }, { x: d.to - 30, y: gr(d.to) - 67, r: 1 }]; /* le câble part du haut de la grande roue de chaque gare */
+    for (const px of d.poles || []) sup.push({ x: px, y: gr(px) - 72, r: 1, pole: 1 });
+    loads.forEach((l, i) => {
+      const del = l.state === 'delivered';
+      if (del && !st.was[i]) st.r[i] = 0; st.was[i] = del;
+      st.r[i] = del ? Math.min(1, st.r[i] + dt * 0.7) : 0;
+      const k = st.r[i], e = k <= 0 ? 0 : 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); /* montée avec léger dépassement */
+      const x = del ? l.x : l.to.x, top = del ? l.y - l.h - 3 : gr(x) - 1;
+      sup.push({ x, y: lerp(gr(x) - 1, top, e), r: del ? k : 0 });
+    });
+    sup.sort((a, b) => a.x - b.x);
+    const cy = (x) => { /* hauteur du câble en x */
+      let i = 0; while (i < sup.length - 2 && x > sup[i + 1].x) i++;
+      const A = sup[i], B = sup[i + 1], t = clamp((x - A.x) / (B.x - A.x), 0, 1), slackK = 1 - Math.min(A.r, B.r);
+      const sag = 6 + 70 * slackK + Math.sin(time * 1.1 + A.x) * 2 * slackK;
+      return Math.min(A.y + (B.y - A.y) * t + sag * 4 * t * (1 - t), gr(x) - 1.5);
+    };
+    const X0 = Math.max(d.x + 30, x0 - 40), X1 = Math.min(d.to - 30, x1 + 40);
+    const F = (col, pts) => { c.fillStyle = col; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.fill(); };
+    const Ln = (col, w, pts) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
+    for (const p of sup) if (p.pole && p.x > x0 - 60 && p.x < x1 + 60) { /* pylônes du décor : fût, potence, galets */
+      const g0 = gr(p.x) + 2; Ln(dk, 4, [p.x, g0, p.x, p.y + 4]); Ln(dk, 3.5, [p.x - 18, p.y + 3, p.x + 18, p.y + 3]); for (const sx of [-12, 12]) { c.fillStyle = dk; c.beginPath(); c.arc(p.x + sx, p.y + 2, 3, 0, TAU); c.fill(); }
+    }
+    for (const [sx, dir] of [[d.x, 1], [d.to, -1]]) { /* gares : socle, cabine, toit enneigé, grande roue côté ligne */
+      if (sx < x0 - 120 || sx > x1 + 120) continue;
+      const gy = gr(sx), low = Math.max(gr(sx - 44), gr(sx + 44)) + 3, wx = sx + dir * 30, wy = gy - 60;
+      F(dk, [sx - 40, low, sx - 40, gy - 30, sx + 40, gy - 30, sx + 40, low]);
+      F(base, [sx - 34, gy - 30, sx - 34, gy - 66, sx + 30, gy - 66, sx + 30, gy - 30]);
+      F('#f4faff', [sx - 44, gy - 64, sx - 2, gy - 84, sx + 40, gy - 64, sx + 34, gy - 62, sx - 2, gy - 78, sx - 38, gy - 62]);
+      F(dk, [sx - 38, gy - 64, sx - 2, gy - 80, sx + 34, gy - 64]);
+      const lit = st.on, win = lit > 0 ? mix('#2a3346', '#ffd27a', lit) : '#2a3346';
+      for (const k of [-24, -6]) { c.fillStyle = win; c.fillRect(sx + k * dir - (dir < 0 ? 12 : 0), gy - 56, 12, 12); }
+      c.save(); c.translate(wx, wy); c.rotate(st.wheel * dir); c.strokeStyle = '#2b2d42'; c.lineWidth = 2.6; c.beginPath(); c.arc(0, 0, 7, 0, TAU); c.stroke();
+      c.lineWidth = 1.4; c.beginPath(); for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 4; c.moveTo(-7 * Math.cos(a), -7 * Math.sin(a)); c.lineTo(7 * Math.cos(a), 7 * Math.sin(a)); } c.stroke(); c.restore();
+    }
+    c.strokeStyle = '#2b2d42'; c.lineWidth = 1.5; c.lineJoin = 'round'; c.beginPath(); /* le câble */
+    for (let x = X0; x <= X1; x += 6) { const y = cy(x); if (x === X0) c.moveTo(x, y); else c.lineTo(x, y); } c.lineTo(X1, cy(X1)); c.stroke();
+    const chair = (x, far) => { /* siège : suspente, assise, dossier ; couché dans la neige si le câble y repose */
+      const y = cy(x), down = y >= gr(x) - 3, col = far ? mix(base, '#ffffff', 0.25) : '#e63946';
+      c.save(); c.translate(x, y);
+      if (down) { c.translate(0, 3); c.rotate(0.35 + 0.25 * Math.sin(x)); c.globalAlpha = 0.6; c.fillStyle = col; c.fillRect(-6, -3, 12, 3); c.fillRect(-6, -8, 2.5, 6); c.globalAlpha = 1; c.restore(); return; } /* à moitié enfoui dans la neige */
+      c.rotate((1 - st.on) * Math.sin(time * 1.4 + x * 0.05) * 0.12 + st.on * Math.sin(time * 2.2 + x) * 0.04);
+      c.strokeStyle = '#2b2d42'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 17); c.stroke();
+      c.fillStyle = col; c.fillRect(-8 * (far ? 0.8 : 1), 17, 16 * (far ? 0.8 : 1), 3.5); c.fillRect(-8 * (far ? 0.8 : 1), 9, 3, 9); c.restore();
+    };
+    const sp = 70, len = d.to - d.x;
+    for (const far of [true, false]) for (let k = 0; k * sp < len; k++) {
+      let x = far ? d.x + ((((k + 0.5) * sp - st.s) % len) + len) % len : d.x + (((k * sp + st.s) % len) + len) % len;
+      if (x < d.x + 40 || x > d.to - 40 || x < x0 - 30 || x > x1 + 30) continue; /* pas de siège dans les gares */
+      chair(x, far);
+    }
+    if (st.on > 0.5) { /* cliquetis : un siège passe sur un pylône près de l'appareil */
+      const hx = g.heli ? g.heli.x : (x0 + x1) / 2; let near = sup[0];
+      for (const p of sup) if (Math.abs(p.x - hx) < Math.abs(near.x - hx)) near = p;
+      const ph = Math.floor((st.s + near.x - d.x) / sp); if (st.tick !== ph && Math.abs(near.x - hx) < 400) this.liftClack = true; st.tick = ph;
+    }
+  }
   // Sangle et fanion à la couleur de la charge : on la reconnaît aussi une fois livrée ou en vol.
   loadTag(c, l) {
     c.fillStyle = l.col;
@@ -845,13 +916,8 @@ export class Renderer {
           else F(dk, [bx - 6, by, bx - 2, by + 12, bx + 5, by + 2]);
           break;
         }
-        case 'summit': { // le sommet : un cairn, et un randonneur qui lève les bras au passage de l'appareil
+        case 'summit': { // le sommet : un cairn
           for (const [px, py, w] of [[-14, 6, 15], [8, 6, 16], [-2, -8, 13], [-9, -20, 9], [3, -22, 8], [-2, -34, 7]]) E(k0c(px), px, py, w, w * 0.62);
-          const near = Math.abs(this._hx - d.x) < 380, wv = near ? Math.sin(time * 8) * 4 : 0, px = 46, jump = near ? Math.abs(Math.sin(time * 4)) * 4 : 0;
-          Ln(dk, 3.2, [px - 3, 8, px - 2, -8 - jump]); Ln(dk, 3.2, [px + 3, 8, px + 2, -8 - jump]); Ln(dk, 7.5, [px, -9 - jump, px, -22 - jump]); E(dk, px, -28 - jump, 5.4);
-          F(mix(dk, ac, 0.4), [px - 10, -22 - jump, px - 3, -22 - jump, px - 3, -8 - jump, px - 10, -8 - jump]);
-          if (near) { Ln(dk, 3, [px, -20 - jump, px - 9 + wv, -36 - jump]); Ln(dk, 3, [px, -20 - jump, px + 9 + wv, -36 - jump]); }
-          else { Ln(dk, 3, [px, -20, px + 6, -10]); Ln(dk, 2, [px + 6, -10, px + 8, 8]); } // appuyé sur son bâton
           break;
         }
         case 'farm': // ferme : grange rouge, silo, moulin à vent
