@@ -7,7 +7,7 @@ const KEY = 'heli-save-v1';
 
 export function defaults() {
   return {
-    v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false,
+    v: 1, pilot: '', lang: null, heli: 'moineau', helis: ['moineau'], lastLevel: 1, tut: false, tutHangar: false, tutRescue: false, tutRace: false, tutCargo: false, // tutoriels déjà vus
     world: 'adv', // monde affiché à l'accueil : 'adv' (Aventure) ou 'rescue' (Heli Rescue)
     heliRescue: { levels: {}, heli: 'mesange', coins: 0, starsSpent: 0, helis: ['mesange'] }, // progression du monde Heli Rescue, indépendante de l'Aventure
     heliRace: { levels: {}, heli: 'eclair', starsSpent: 0, helis: ['eclair'] }, // monde Heli Race : n -> { done, time (meilleur chrono), sm (étoiles ramassées) }
@@ -51,6 +51,7 @@ function sanitize(raw) {
   if (!k.helis.includes('mulet')) k.helis.unshift('mulet');
   if (!k.helis.includes(k.heli)) k.heli = 'mulet';
   k.starsSpent = Math.max(0, Math.floor(+k.starsSpent || 0));
+  for (const [f, w] of [['tutRescue', s.heliRescue], ['tutRace', s.heliRace], ['tutCargo', s.heliCargo]]) s[f] = raw[f] === undefined ? !!w.levels[1]?.done : !!raw[f];
   s.coins = Math.max(0, Math.floor(+s.coins || 0)); s.starsSpent = Math.max(0, Math.floor(+s.starsSpent || 0));
   s.lastLevel = Math.min(LEVELS.length, Math.max(1, s.lastLevel | 0 || 1));
   return s;

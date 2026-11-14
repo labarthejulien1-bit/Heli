@@ -604,11 +604,11 @@ export class Renderer {
     const steel = '#8d99ae', dk = '#2b2d42', stone = '#d9b77e', stoneD = '#a8834e';
     switch (l.type) {
       case 'container': R('#c1121f', -w / 2, -hh, w, hh); c.fillStyle = 'rgba(0,0,0,.25)'; for (let k = 4; k < w - 2; k += 6) c.fillRect(-w / 2 + k, -hh + 2, 1.5, hh - 4); R('#780000', -w / 2, -hh, w, 2.5); break;
-      case 'tank': E('#e9ecef', 0, -hh / 2, w / 2, hh / 2); R('#e9ecef', -w / 2 + 6, -hh, w - 12, hh); R('#f77f00', -w / 2 + 6, -hh * 0.62, w - 12, 5); R(dk, -w * 0.3, -3, 4, 3); R(dk, w * 0.3 - 4, -3, 4, 3); R(steel, -3, -hh - 4, 6, 4); break;
+      case 'tank': E('#e9ecef', 0, -hh / 2, w / 2, hh / 2); R('#e9ecef', -w / 2 + 6, -hh, w - 12, hh); R(dk, -w * 0.3, -3, 4, 3); R(dk, w * 0.3 - 4, -3, 4, 3); R(steel, -3, -hh - 4, 6, 4); break;
       case 'pile': R(steel, -w / 2, -hh, w, hh); R('#adb5bd', -w / 2, -hh, 4, hh); for (let y = -hh + 8; y < -4; y += 14) R('#6c757d', -w / 2, y, w, 2); break;
       case 'engine': R('#495057', -w / 2, -hh * 0.75, w, hh * 0.75); R('#6c757d', -w / 2 + 4, -hh, w * 0.5, hh * 0.3); for (let k = 0; k < 4; k++) R('#adb5bd', -w / 2 + 5 + k * 8, -hh * 0.6, 5, hh * 0.35); E('#f77f00', w / 2 - 7, -hh * 0.4, 5); R(dk, -w / 2, -3, w, 3); break;
       case 'anchor': c.strokeStyle = '#343a40'; c.lineWidth = 4.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -hh + 6); c.lineTo(0, -4); c.moveTo(-7, -hh + 12); c.lineTo(7, -hh + 12); c.stroke();
-        c.strokeStyle = l.col || '#343a40'; c.beginPath(); c.moveTo(-w / 2 + 3, -12); c.quadraticCurveTo(0, 4, w / 2 - 3, -12); c.stroke(); c.strokeStyle = '#343a40'; // les pattes de l'ancre portent sa couleur c.lineWidth = 3; c.beginPath(); c.arc(0, -hh + 4, 4, 0, TAU); c.stroke(); break;
+        c.strokeStyle = l.col || '#343a40'; c.beginPath(); c.moveTo(-w / 2 + 3, -12); c.quadraticCurveTo(0, 4, w / 2 - 3, -12); c.stroke(); c.strokeStyle = '#343a40'; /* les pattes de l'ancre portent sa couleur */ c.lineWidth = 3; c.beginPath(); c.arc(0, -hh + 4, 4, 0, TAU); c.stroke(); break;
       case 'tower': case 'skipylon': case 'mast': { // tronçon de pylône : treillis d'acier
         const col = l.type === 'mast' ? '#9a6b3f' : l.type === 'skipylon' ? '#e63946' : steel;
         if (l.type === 'mast') { R(col, -w / 2 + 2, -hh, w - 4, hh); R('#7a5230', -w / 2 + 2, -hh, 2.5, hh); R(dk, -w, -hh + 6, w * 2, 3); break; }
@@ -636,16 +636,16 @@ export class Renderer {
   rings(c, L, g, time, x0, x1, front) {
     const R = L.race.rings, st = g.ring;
     for (let i = 0; i < R.length; i++) {
-      const r = R[i];
+      const r = R[i], rr = r.r * (g.ringK || 1); // taille dessinée selon la difficulté
       if (r.x < x0 - 30 || r.x > x1 + 30) continue;
       const s = st ? st[i] : 0, next = st && i === g.rk, pulse = next ? 0.5 + 0.5 * Math.sin(time * 7) : 0;
       if (s === 1 && g.heli.x - r.x > 260) continue;
       c.save(); c.translate(r.x, r.y);
       c.globalAlpha = s === 1 ? Math.max(0, 1 - (g.heli.x - r.x) / 260) : s === 2 ? 0.35 : 1;
       const a0 = front ? -Math.PI / 2 : Math.PI / 2, col = s === 1 ? '#7dffb0' : s === 2 ? '#9aa0ad' : '#ffd34d';
-      if (!front && s === 0) { c.strokeStyle = rgba('#ffd34d', 0.18 + 0.2 * pulse); c.lineWidth = 9 + 5 * pulse; c.beginPath(); c.ellipse(0, 0, r.r * 0.34, r.r, 0, 0, TAU); c.stroke(); }
-      c.strokeStyle = mix(col, '#7a5200', front ? 0 : 0.35); c.lineWidth = 4.2; c.beginPath(); c.ellipse(0, 0, r.r * 0.34, r.r, 0, a0, a0 + Math.PI); c.stroke();
-      c.strokeStyle = rgba('#ffffff', front ? 0.75 : 0.3); c.lineWidth = 1.2; c.beginPath(); c.ellipse(-1, 0, r.r * 0.34, r.r, 0, a0 + 0.3, a0 + Math.PI - 0.3); c.stroke();
+      if (!front && s === 0) { c.strokeStyle = rgba('#ffd34d', 0.18 + 0.2 * pulse); c.lineWidth = 9 + 5 * pulse; c.beginPath(); c.ellipse(0, 0, rr * 0.34, rr, 0, 0, TAU); c.stroke(); }
+      c.strokeStyle = mix(col, '#7a5200', front ? 0 : 0.35); c.lineWidth = 4.2; c.beginPath(); c.ellipse(0, 0, rr * 0.34, rr, 0, a0, a0 + Math.PI); c.stroke();
+      c.strokeStyle = rgba('#ffffff', front ? 0.75 : 0.3); c.lineWidth = 1.2; c.beginPath(); c.ellipse(-1, 0, rr * 0.34, rr, 0, a0 + 0.3, a0 + Math.PI - 0.3); c.stroke();
       c.restore();
     }
   }
@@ -1296,7 +1296,7 @@ export class Renderer {
           break;
         }
         case 'bridge': // château d'un navire : passerelle vitrée, cheminée, mât
-          c.fillStyle = '#f1faee'; c.fillRect(l, top + 30, w, Math.min(h, 62)); c.fillRect(l - 8, top + 30, w + 16, 16); // le château s'arrête au pont : il ne traverse pas la coque c.fillStyle = '#9ad1e6'; c.fillRect(l - 5, top + 34, w + 10, 7);
+          c.fillStyle = '#f1faee'; c.fillRect(l, top + 30, w, Math.min(h, 62)); c.fillRect(l - 8, top + 30, w + 16, 16); /* le château s'arrête au pont : il ne traverse pas la coque */ c.fillStyle = '#9ad1e6'; c.fillRect(l - 5, top + 34, w + 10, 7);
           c.fillStyle = '#c1121f'; c.fillRect(l + 8, top, w - 16, 30); c.fillStyle = '#1b1b26'; c.fillRect(l + 8, top, w - 16, 7);
           break;
         case 'derrick': { // derrick : tour en treillis, torchère au sommet
