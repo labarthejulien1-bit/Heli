@@ -445,7 +445,8 @@ export function generateLevel(def) {
   const story = (def.story || []).map(([type, at, o]) => {
     let bx = at * LEN, best = 1e9;
     for (let x = at * LEN - 320; x <= at * LEN + 320; x += 20) { if (inFuel(x)) continue; const d = Math.abs(groundAt(x + 50) - groundAt(x - 50)) + Math.abs(x - at * LEN) * 0.02; if (d < best) { best = d; bx = x; } }
-    return { type, x: bx, y: Math.max(groundAt(bx - 30), groundAt(bx + 30)), v: (bx * 0.137) % 1, ...(o || {}) };
+    const front = ['camp', 'herd', 'eagle', 'summit'].includes(type); // scènes vivantes : posées exactement sur le sol, par-dessus le relief
+    return { type, x: bx, y: front ? groundAt(bx) : Math.max(groundAt(bx - 30), groundAt(bx + 30)), v: (bx * 0.137) % 1, front, ...(o || {}) };
   });
 
   return {

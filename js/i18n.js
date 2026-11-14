@@ -30,7 +30,8 @@ g_lvl1 g_lvl2 g_lvl3 g_lvl4 g_lvl5 g_lvl6 g_lvl7 g_lvl8 g_lvl9 g_lvl10 g_lvl11 g
 g_uni_sea g_uni_land g_uni_peak g_uni_sand g_p1 g_p2 g_p3 g_p4 g_p5
 g_l_container g_l_tank g_l_pile g_l_engine g_l_anchor g_l_tower g_l_transfo g_l_spool g_l_mast g_l_crate g_l_skipylon g_l_gondola g_l_logs g_l_snowcat g_l_urn g_l_statue g_l_sarco g_l_obelisk g_l_sphinx
 g_levels g_loads g_hooked g_unhook g_delivered g_tooHeavy g_done g_unlock g_lift g_rule g_land
-c_bronze c_silver c_gold`.split(/\s+/);
+c_bronze c_silver c_gold
+g_heavyList g_needHeli g_confirmWeak`.split(/\s+/);
 
 const T = {
   fr: `Jouer|Niveaux|Hangar|Profil|Réglages|Niveau|Pilote|Maîtrise la gravité|Bienvenue, pilote|Choisis ton nom de pilote. Ta progression est enregistrée uniquement sur cet appareil.|Ton nom de pilote|Décoller
@@ -63,7 +64,8 @@ Premier levage|Plateforme Alpha|Le cargo en panne|Tempête au large|Champ pétro
 En mer|Campagne|Montagne|Désert|Léger et maniable, pour les petites charges|Bon à tout faire du chantier|Grue volante, taillée pour les charges lourdes|Gros porteur, soulève presque tout|Le plus puissant : rien ne lui résiste
 Conteneur|Cuve de carburant|Pieu d'acier|Moteur de navire|Ancre|Tronçon de pylône|Transformateur|Touret de câble|Poteau électrique|Caisse de vivres|Pylône de remontée|Cabine de télécabine|Grumes|Dameuse|Jarre antique|Statue de pharaon|Sarcophage|Obélisque|Tête de sphinx
 Chantiers|Charges|Charge accrochée|Câble remonté : reste bien stationnaire|Charge livrée|Charge trop lourde pour cet appareil|Chantier terminé !|Réussis le niveau {v} de Heli Cargo|Levage|Reste stationnaire au-dessus de la charge : le câble la saisit tout seul. Pose-la dans la zone rayée, puis atterris sur l'aire d'arrivée.|Tout est livré : pose-toi sur l'aire d'arrivée
-Bronze : moins de {v}|Argent : moins de {v}|Or : moins de {v}`,
+Bronze : moins de {v}|Argent : moins de {v}|Or : moins de {v}
+Trop lourd pour ton appareil : {v}|Appareil minimum : {v}|Ton appareil ne pourra pas lever toutes les charges de ce chantier : tu ne pourras pas le terminer. Jouer quand même ?`,
   en: `Play|Levels|Hangar|Profile|Settings|Level|Pilot|Master gravity|Welcome, pilot|Choose your pilot name. Your progress is saved on this device only.|Your pilot name|Take off
 Alpine Dawn|Misty Forest|Ochre Canyon|Turquoise Coast|Dusk Metropolis|Frozen Peaks|Temple Valley|Heart of the Volcano|Neon Night|Sky Archipelago
 Finish the level|Collect {v}% of the coins|Finish in under {v}|Finish with at least {v}% armour|{v} collisions at most|Finish without crashing|Soft landing|Fly through every ring|Earn {v} medals
@@ -94,7 +96,8 @@ First Lift|Platform Alpha|The Stranded Freighter|Storm Offshore|Oil Field|High-V
 At sea|Countryside|Mountains|Desert|Light and nimble, for small loads|The site's all-rounder|Flying crane, built for heavy loads|Heavy lifter, raises almost anything|The most powerful: nothing resists it
 Container|Fuel tank|Steel pile|Ship engine|Anchor|Pylon section|Transformer|Cable drum|Utility pole|Supply crate|Ski-lift pylon|Gondola cabin|Logs|Snow groomer|Ancient jar|Pharaoh statue|Sarcophagus|Obelisk|Sphinx head
 Sites|Loads|Load hooked|Cable retracted: hold a steady hover|Load delivered|Load too heavy for this aircraft|Job done!|Complete Heli Cargo level {v}|Lift|Hover steadily above the load: the cable grabs it by itself. Set it down in the striped zone, then land on the finish pad.|Everything is delivered: land on the finish pad
-Bronze: under {v}|Silver: under {v}|Gold: under {v}`,
+Bronze: under {v}|Silver: under {v}|Gold: under {v}
+Too heavy for your aircraft: {v}|Minimum aircraft: {v}|Your aircraft cannot lift every load on this site: you will not be able to finish it. Play anyway?`,
   es: `Jugar|Niveles|Hangar|Perfil|Ajustes|Nivel|Piloto|Domina la gravedad|Bienvenido, piloto|Elige tu nombre de piloto. Tu progreso se guarda solo en este dispositivo.|Tu nombre de piloto|Despegar
 Amanecer alpino|Bosque de niebla|Cañón ocre|Costa turquesa|Metrópolis al atardecer|Picos helados|Valle de los templos|Corazón del volcán|Noche de neón|Archipiélago celeste
 Terminar el nivel|Recoger el {v} % de las monedas|Terminar en menos de {v}|Terminar con al menos {v} % de blindaje|{v} colisiones como máximo|Terminar sin estrellarse|Aterrizaje suave|Atravesar todos los anillos|Conseguir {v} medallas
@@ -125,7 +128,8 @@ Primer izado|Plataforma Alfa|El carguero averiado|Tormenta en alta mar|Campo pet
 En el mar|Campo|Montaña|Desierto|Ligero y manejable, para cargas pequeñas|El todoterreno de la obra|Grúa voladora, hecha para cargas pesadas|Gran porteador, levanta casi todo|El más potente: nada se le resiste
 Contenedor|Depósito de combustible|Pilote de acero|Motor de barco|Ancla|Tramo de torre|Transformador|Bobina de cable|Poste eléctrico|Caja de víveres|Pilona de remonte|Cabina de telecabina|Troncos|Pisanieves|Vasija antigua|Estatua de faraón|Sarcófago|Obelisco|Cabeza de esfinge
 Obras|Cargas|Carga enganchada|Cable recogido: mantente bien inmóvil|Carga entregada|Carga demasiado pesada para este aparato|¡Obra terminada!|Completa el nivel {v} de Heli Cargo|Izado|Mantente inmóvil sobre la carga: el cable la engancha solo. Déjala en la zona rayada y aterriza en la zona de llegada.|Todo entregado: pósate en la zona de llegada
-Bronce: menos de {v}|Plata: menos de {v}|Oro: menos de {v}`,
+Bronce: menos de {v}|Plata: menos de {v}|Oro: menos de {v}
+Demasiado pesado para tu aparato: {v}|Aparato mínimo: {v}|Tu aparato no podrá levantar todas las cargas de esta obra: no podrás terminarla. ¿Jugar de todos modos?`,
   pt: `Jogar|Níveis|Hangar|Perfil|Definições|Nível|Piloto|Domina a gravidade|Bem-vindo, piloto|Escolhe o teu nome de piloto. O teu progresso é guardado apenas neste dispositivo.|O teu nome de piloto|Descolar
 Aurora alpina|Floresta da névoa|Desfiladeiro ocre|Costa turquesa|Metrópole ao entardecer|Picos gelados|Vale dos templos|Coração do vulcão|Noite de néon|Arquipélago celeste
 Terminar o nível|Recolher {v} % das moedas|Terminar em menos de {v}|Terminar com pelo menos {v} % de blindagem|{v} colisões no máximo|Terminar sem se despenhar|Aterragem suave|Atravessar todos os anéis|Obter {v} medalhas
@@ -156,7 +160,8 @@ Primeira elevação|Plataforma Alfa|O cargueiro avariado|Tempestade ao largo|Cam
 No mar|Campo|Montanha|Deserto|Leve e manobrável, para cargas pequenas|O faz-tudo da obra|Grua voadora, feita para cargas pesadas|Grande carregador, levanta quase tudo|O mais potente: nada lhe resiste
 Contentor|Depósito de combustível|Estaca de aço|Motor de navio|Âncora|Troço de torre|Transformador|Bobina de cabo|Poste elétrico|Caixa de mantimentos|Pilar de teleférico|Cabine de telecabine|Toros|Pisa-neve|Jarra antiga|Estátua de faraó|Sarcófago|Obelisco|Cabeça de esfinge
 Obras|Cargas|Carga engatada|Cabo recolhido: mantém-te bem imóvel|Carga entregue|Carga demasiado pesada para este aparelho|Obra terminada!|Termina o nível {v} de Heli Cargo|Elevação|Mantém-te imóvel por cima da carga: o cabo agarra-a sozinho. Pousa-a na zona listrada e aterra na zona de chegada.|Tudo entregue: pousa na zona de chegada
-Bronze: menos de {v}|Prata: menos de {v}|Ouro: menos de {v}`,
+Bronze: menos de {v}|Prata: menos de {v}|Ouro: menos de {v}
+Demasiado pesado para o teu aparelho: {v}|Aparelho mínimo: {v}|O teu aparelho não conseguirá levantar todas as cargas desta obra: não poderás terminá-la. Jogar mesmo assim?`,
   de: `Spielen|Level|Hangar|Profil|Einstellungen|Level|Pilot|Meistere die Schwerkraft|Willkommen, Pilot|Wähle deinen Pilotennamen. Dein Fortschritt wird nur auf diesem Gerät gespeichert.|Dein Pilotenname|Abheben
 Alpenmorgen|Nebelwald|Ockercanyon|Türkisküste|Metropole in der Dämmerung|Eisgipfel|Tal der Tempel|Herz des Vulkans|Neonnacht|Himmelsarchipel
 Level abschließen|{v} % der Münzen einsammeln|In unter {v} abschließen|Mit mindestens {v} % Panzerung abschließen|Höchstens {v} Kollisionen|Ohne Absturz abschließen|Sanfte Landung|Durch alle Ringe fliegen|{v} Medaillen verdienen
@@ -187,7 +192,8 @@ Erster Hub|Plattform Alpha|Der havarierte Frachter|Sturm auf hoher See|Ölfeld|H
 Auf See|Land|Gebirge|Wüste|Leicht und wendig, für kleine Lasten|Der Alleskönner der Baustelle|Fliegender Kran, gebaut für schwere Lasten|Schwerlaster, hebt fast alles|Der Stärkste: nichts hält ihm stand
 Container|Treibstofftank|Stahlpfahl|Schiffsmotor|Anker|Mastsegment|Transformator|Kabeltrommel|Strommast|Proviantkiste|Liftstütze|Gondelkabine|Baumstämme|Pistenraupe|Antiker Krug|Pharaonenstatue|Sarkophag|Obelisk|Sphinxkopf
 Baustellen|Lasten|Last eingehängt|Seil eingezogen: ruhig schweben|Last abgeliefert|Last zu schwer für diese Maschine|Baustelle fertig!|Schließe Heli-Cargo-Level {v} ab|Hubkraft|Schwebe ruhig über der Last: das Seil greift sie von selbst. Setze sie in der gestreiften Zone ab und lande dann auf dem Zielplatz.|Alles geliefert: lande auf dem Zielplatz
-Bronze: unter {v}|Silber: unter {v}|Gold: unter {v}`,
+Bronze: unter {v}|Silber: unter {v}|Gold: unter {v}
+Zu schwer für deine Maschine: {v}|Mindestens nötig: {v}|Deine Maschine kann nicht alle Lasten dieser Baustelle heben: du kannst sie nicht abschließen. Trotzdem spielen?`,
   it: `Gioca|Livelli|Hangar|Profilo|Impostazioni|Livello|Pilota|Domina la gravità|Benvenuto, pilota|Scegli il tuo nome da pilota. I tuoi progressi sono salvati solo su questo dispositivo.|Il tuo nome da pilota|Decolla
 Alba alpina|Foresta delle nebbie|Canyon ocra|Costa turchese|Metropoli al tramonto|Vette ghiacciate|Valle dei templi|Cuore del vulcano|Notte al neon|Arcipelago celeste
 Completa il livello|Raccogli il {v} % delle monete|Finisci in meno di {v}|Finisci con almeno il {v} % di corazza|Massimo {v} collisioni|Finisci senza schiantarti|Atterraggio morbido|Attraversa tutti gli anelli|Ottieni {v} medaglie
@@ -218,7 +224,8 @@ Primo sollevamento|Piattaforma Alfa|Il mercantile in avaria|Tempesta al largo|Ca
 In mare|Campagna|Montagna|Deserto|Leggero e maneggevole, per piccoli carichi|Il tuttofare del cantiere|Gru volante, fatta per i carichi pesanti|Grande portatore, solleva quasi tutto|Il più potente: niente gli resiste
 Container|Serbatoio di carburante|Palo d'acciaio|Motore navale|Ancora|Tronco di traliccio|Trasformatore|Bobina di cavo|Palo elettrico|Cassa di viveri|Pilone di risalita|Cabina di cabinovia|Tronchi|Gatto delle nevi|Giara antica|Statua di faraone|Sarcofago|Obelisco|Testa di sfinge
 Cantieri|Carichi|Carico agganciato|Cavo rientrato: resta ben fermo|Carico consegnato|Carico troppo pesante per questo velivolo|Cantiere finito!|Completa il livello {v} di Heli Cargo|Sollevamento|Resta fermo sopra il carico: il cavo lo aggancia da solo. Posalo nella zona a strisce, poi atterra sull'area di arrivo.|Tutto consegnato: atterra sull'area di arrivo
-Bronzo: meno di {v}|Argento: meno di {v}|Oro: meno di {v}`,
+Bronzo: meno di {v}|Argento: meno di {v}|Oro: meno di {v}
+Troppo pesante per il tuo velivolo: {v}|Velivolo minimo: {v}|Il tuo velivolo non potrà sollevare tutti i carichi di questo cantiere: non potrai terminarlo. Giocare lo stesso?`,
 };
 
 export const KEYS = K;

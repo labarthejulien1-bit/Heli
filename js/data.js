@@ -63,11 +63,15 @@ export const heliUnlock = (h) => { const i = HELIS.indexOf(h); return i <= 0 ? 0
 // Types d'objectifs : finish, orbs (% des 100 pièces), time (s), hits (max), soft (vitesse max à l'arrivée), stars.
 // fuel : arrêts de ravitaillement dans l'ordre (easy, roof, peak = principaux ; trees, cave = bonus difficiles avec une étoile).
 // traffic : appareils qui croisent à contresens ('plane', 'heli', 'ufo').
+// scene : décor qui raconte une histoire, { far : éléments du lointain (balloons, geese, train), fg : tout premier plan (cimes, herbes) }.
 // story : décor sans collision, [type, position de 0 à 1 le long du niveau, options] (dessiné par Renderer.story).
 // mod : particularités de niveau (grav, windX, dark) ; wcol : couleur de la météo.
 // price : coût d'achat au hangar, en pièces (coins) ou en étoiles (stars). 3 étoiles et 100 pièces par niveau.
 export const LEVELS = [
   { id: 1, fuel: 'easy trees easy', seed: 1101, lenScale: 1,
+    // niveau témoin du décor qui raconte : au loin des montgolfières, des oies et un train sur son viaduc ; au sol, le bivouac du randonneur,
+    // une harde de bouquetins qui détale, un aigle qui s'envole, puis le randonneur arrivé au sommet ; au tout premier plan, cimes et herbes
+    scene: { far: ['balloons', 'geese', 'train'], fg: 'alpine' }, story: [['camp', 0.115, { k: 1.35 }], ['herd', 0.335, { k: 1.4 }], ['eagle', 0.6, { k: 1.3 }], ['herd', 0.705, { flip: 1, k: 1.4 }], ['summit', 0.865, { k: 1.35 }]],
     sky: [['#3b4a7a', '#f6a98c'], ['#6db3d8', '#fdebd0']], mid: '#8a7aa8', ground: '#262a48', obs: '#2f3357', rim: '#f8d9c4', accent: '#ffd98a',
     sun: { c: '#fff3c9', x: 0.72, y: [0.62, 0.3], r: 34 },
     layers: ['jag', 'jag', 'pines'], extras: ['clouds', 'birds'], weather: null,
