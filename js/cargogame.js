@@ -114,9 +114,9 @@ export class CargoGame extends RescueGame {
       else if (ok) this.retract = false;
     }
 
-    // Mission accomplie : toutes les charges livrées, appareil posé rotor au ralenti sur l'aire d'arrivée
+    // Mission accomplie : toutes les charges livrées, appareil posé rotor au ralenti sur l'aire d'arrivée ou sur la base de départ
     const fin = L.cargo.finish;
-    if (!this.carry && this.delivered === this.loads.length && this.onPad === fin.i && h.grounded && h.power < 0.5 && Math.abs(h.vx) < 20) {
+    if (!this.carry && this.delivered === this.loads.length && (this.onPad === fin.i || this.onPad === 0) && h.grounded && h.power < 0.5 && Math.abs(h.vx) < 20) {
       this.doneT += dt;
       if (this.doneT > 0.6) { this.state = 'win'; this.stateT = 0; this.ev.push({ type: 'win' }); }
     } else this.doneT = 0;
