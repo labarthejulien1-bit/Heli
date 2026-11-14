@@ -13,7 +13,7 @@ const ptDist = (sh, x, y) => {
   return inside ? -best : best;
 };
 export const HOOK = { dx: 24, lo: 38, hi: 125, vx: 32, vy: 48 }; // fenêtre de prise : écart latéral, hauteur au-dessus de la charge, vitesses
-export const HOOK_EASY = { dx: 58, lo: 26, hi: 185, vx: 62, vy: 80 }; // mode facile : on peut être nettement décalé, plus haut et moins immobile
+export const HOOK_EASY = { dx: 85, lo: 22, hi: 240, vx: 95, vy: 115, speed: 170 }; // mode facile : on peut être très décalé, plus haut et peu immobile ; le câble descend deux fois plus vite
 
 export class CargoGame extends RescueGame {
   constructor(level, heli, owned = 0, diff = 'normal') { super(level, heli, diff, owned); this.hook = diff === 'easy' ? HOOK_EASY : HOOK; }
@@ -81,7 +81,7 @@ export class CargoGame extends RescueGame {
         const inWin = Math.abs(best.x - h.x) < K.dx + slim && hgt > K.lo && hgt < K.hi;
         if (inWin && best.m / H.lift > MAX_RATIO) this.warn('tooHeavy');
         else if (inWin && Math.abs(h.vx) < K.vx && Math.abs(h.vy) < K.vy && !h.grounded) {
-          ok = true; this.target = best; this.cable += 80 * dt;
+          ok = true; this.target = best; this.cable += (K.speed || 80) * dt;
           if (this.cable >= hgt) { // le crochet a saisi la charge
             this.carry = best; best.state = 'carried'; this.rope = Math.hypot(best.x - h.x, hgt); this.th = Math.atan2(best.x - h.x, hgt); this.om = 0; this.cable = 0; this.target = null;
             this.ev.push({ type: 'hooked', x: best.x, y: best.y - best.h });

@@ -3,7 +3,7 @@ import { HELIS, LEVELS, RANKS, TOTAL_MEDALS, LANGS, heliUnlock } from './data.js
 import { generateLevel } from './levelgen.js';
 import { Game, autopilot, DT, BASE_TILT, MIN_TILT, MAX_TILT } from './game.js';
 import { Renderer } from './render.js';
-import { drawHeli, drawOccupant } from './helidraw.js';
+import { drawHeli, drawOccupant, drawRescueCross } from './helidraw.js';
 import { Sound } from './audio.js';
 import { t, setLang, getLang, detectLang } from './i18n.js';
 import { load, store, defaults, importSave, medalCount, starCount, rescueStars, starWallet, levelStars, levelUnlocked, canBuy, buy, heliOpen } from './save.js';
@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.10.0';
+const VERSION = '4.11.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -136,6 +136,7 @@ function startRace(n) {
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
   save.stats.flights++; persist();
   requestWake(); guardBack();
+  if (n === 1) worldTutorial('race');
 }
 // Lance un chantier Heli Cargo : même écran de jeu, règles de levage (câble, charges, zones de livraison).
 function startCargo(n) {
@@ -149,6 +150,7 @@ function startCargo(n) {
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
   save.stats.flights++; persist();
   requestWake(); guardBack();
+  if (n === 1) worldTutorial('cargo');
 }
 function startRescue(n) {
   S.rescue = n; S.race = 0; S.cargo = 0; S.mode = 'play'; S.level = getRescue(n); S.ended = false; S.tut = null;
@@ -161,6 +163,7 @@ function startRescue(n) {
   snd.unlock(); snd.playMusic(S.level.def.music); snd.rotorStart(S.game.H);
   save.stats.flights++; persist();
   requestWake(); guardBack();
+  if (n === 1) worldTutorial('rescue');
 }
 // Tutoriel du premier vol : une carte sur l'état de l'appareil, puis quatre gestes à réussir.
 // Vignettes des fenêtres d'aide : l'appareil de départ, annoté (fumée, flèches, héliport).
@@ -187,6 +190,25 @@ function tutIcon(cv2, kind) {
   else if (kind === 'ctl2') { heli(36, 26, 0, 0.1); arrow(76, 14, 76, 42, '#ffd34d'); }
   else if (kind === 'ctl3') { heli(46, 32, 0.32); arrow(40, 52, 14, 52, '#ffffff'); arrow(52, 52, 78, 52, '#ffffff'); }
   else if (kind === 'land1') { pad(); heli(34, 37, 0, 0.5); mark(true); }
+  // Tutoriels des mondes Heli Rescue, Heli Race et Heli Cargo
+  else if (kind.startsWith('r_t') || kind.startsWith('c_t') || kind.startsWith('g_t')) {
+    const look = (kind[0] === 'r' ? RESCUE_HELIS[0] : kind[0] === 'c' ? RACE_HELIS[0] : CARGO_HELIS[0]).look;
+    const hl = (x, y, rot = 0, power = 0.9) => { c.setTransform(dpr * 0.8, 0, 0, dpr * 0.8, x * dpr, y * dpr); c.rotate(rot); drawHeli(c, look, 0.31, power); };
+    const ground = () => { px(); c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(0, 52, 92, 6); };
+    const fig = (v, x) => { px(); R.figure(c, v, x, 52, 0.3, false, -1, true); };
+    const cargo = (type, col, x, y, rot = 0) => { px(); c.translate(x, y); c.rotate(rot); const l = { type, col, w: 30, h: 18 }; R.load(c, l, S.level.def, 0); R.loadTag(c, l); };
+    if (kind === 'r_t1') { ground(); hl(30, 43, 0, 0.1); fig({ type: 'person', col: '#2a9d8f', hat: '#e76f51' }, 70); }
+    else if (kind === 'r_t2') { ground(); px(); c.fillStyle = '#f4f1de'; c.fillRect(56, 32, 30, 20); c.fillStyle = '#d62828'; c.fillRect(54, 28, 34, 5); drawRescueCross(c, 71, 42, 5); hl(26, 43, 0, 0.1); }
+    else if (kind === 'r_t3') { ground(); hl(28, 30); px(); for (const [x, on] of [[60, 1], [70, 1], [80, 0]]) { c.fillStyle = on ? '#ffd34d' : 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(x, 16, 4, 0, 7); c.fill(); } fig({ type: 'animal', variant: 'elephant', size: 'big', col: '#8d8f96' }, 74); }
+    else if (kind === 'r_t4') { px(); for (const [x, y] of [[26, 30], [46, 24], [66, 30]]) { c.fillStyle = '#ffd34d'; c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); c.strokeStyle = '#f2a900'; c.lineWidth = 2; c.stroke(); } }
+    else if (kind === 'c_t1') { hl(30, 32); px(); c.strokeStyle = '#ffd34d'; c.lineWidth = 3.5; c.beginPath(); c.ellipse(70, 30, 7, 20, 0, 0, 7); c.stroke(); }
+    else if (kind === 'c_t2') { ground(); px(); for (const x of [56, 76]) { c.fillStyle = '#d7263d'; c.beginPath(); c.moveTo(x - 7, 52); c.lineTo(x, 6); c.lineTo(x + 7, 52); c.fill(); c.fillStyle = '#ffffff'; c.fillRect(x - 4, 26, 8, 5); } hl(24, 30); }
+    else if (kind === 'c_t3') { px(); for (const [x, col] of [[22, '#cd7f32'], [46, '#d7dde4'], [70, '#ffd34d']]) { c.fillStyle = col; c.beginPath(); c.arc(x, 29, 10, 0, 7); c.fill(); } }
+    else if (kind === 'g_t1') { ground(); hl(46, 16); px(); c.strokeStyle = '#20222c'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(46, 25); c.lineTo(46, 34); c.stroke(); cargo('tank', '#4dd6ff', 46, 52); }
+    else if (kind === 'g_t2') { hl(34, 16, 0.25); px(); c.strokeStyle = '#20222c'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(34, 25); c.lineTo(22, 38); c.stroke(); cargo('crate', '#ff7ad1', 22, 52, 0.35); arrow(60, 46, 84, 46, '#ffffff'); }
+    else if (kind === 'g_t3') { ground(); px(); c.fillStyle = 'rgba(157,255,106,.25)'; c.fillRect(22, 26, 48, 26); c.strokeStyle = '#9dff6a'; c.lineWidth = 2; c.strokeRect(22, 26, 48, 26); cargo('crate', '#9dff6a', 46, 52); }
+    else if (kind === 'g_t4') { pad(); hl(34, 42, 0, 0.3); mark(true); }
+  }
   else if (kind === 'land2') { pad(); heli(34, 38, 0.2, 0.1); dots([[14, 12, 3, '#ffd34d'], [-18, 13, 2.5, '#ffd34d'], [20, 9, 2, '#ff8a3a']]); mark(false); }
 }
 // Fenêtres d'aide du premier vol : état de l'appareil, commandes, atterrissage ; puis quatre gestes à réussir.
@@ -204,6 +226,20 @@ function tutorialCard(page = 0) {
     ${pg.rows.map((k) => `<div class="tutrow"><canvas data-tut="${k}"></canvas><span>${t(k)}</span></div>`).join('')}
     ${pg.note ? `<p class="sub" style="margin:10px 0 0">${t(pg.note)}</p>` : ''}
     <button class="btn primary" style="width:100%;margin-top:14px" data-act="${last ? 'resume' : 'tutNext'}">${last ? ICON.play + t('go') : t('next')}</button>
+  </div></div>`;
+  ui.querySelectorAll('canvas[data-tut]').forEach((cv2) => tutIcon(cv2, cv2.dataset.tut));
+}
+// Page « Comment jouer » d'un monde, à la première ouverture de son premier niveau (le jeu reste en pause en attendant).
+const WORLD_TUT = { rescue: { flag: 'tutRescue', rows: ['r_t1', 'r_t2', 'r_t3', 'r_t4'] }, race: { flag: 'tutRace', rows: ['c_t1', 'c_t2', 'c_t3'] }, cargo: { flag: 'tutCargo', rows: ['g_t1', 'g_t2', 'g_t3', 'g_t4'] } };
+const WORLD_NAME = { rescue: 'Heli Rescue', race: 'Heli Race', cargo: 'Heli Cargo' };
+function worldTutorial(w) {
+  if (save[WORLD_TUT[w].flag]) return;
+  updateHud(); hint.classList.remove('on'); hintKey = ''; // affichage du nouveau niveau, sans le message d'aide du niveau précédent
+  S.mode = 'pause'; snd.rotorStop();
+  ui.innerHTML = `<div class="overlay center"><div class="sheet">
+    <p class="sub" style="margin:0 0 4px">${WORLD_NAME[w]}</p><h2 style="margin-bottom:10px">${t('tutHow')}</h2>
+    ${WORLD_TUT[w].rows.map((k) => `<div class="tutrow"><canvas data-tut="${k}"></canvas><span>${t(k)}</span></div>`).join('')}
+    <button class="btn primary" style="width:100%;margin-top:14px" data-act="worldTutGo" data-w="${w}">${ICON.play}${t('go')}</button>
   </div></div>`;
   ui.querySelectorAll('canvas[data-tut]').forEach((cv2) => tutIcon(cv2, cv2.dataset.tut));
 }
@@ -716,6 +752,7 @@ ui.addEventListener('click', (e) => {
     case 'closeSheet': b.remove(); break;
     case 'soon': toast(t('soon')); break;
     case 'closeTip': b.closest('.overlay').remove(); break;
+    case 'worldTutGo': save[WORLD_TUT[d.w].flag] = true; persist(); resume(); break;
     case 'tutNext': tutorialCard(S.tut.page + 1); break;
     case 'respawn': S.game.reset(true); S.ended = false; S.mode = 'play'; ui.innerHTML = ''; snd.rotorStart(S.game.H); R.snap = true; guardBack(); break;
     case 'welcomeOk': {
@@ -741,7 +778,7 @@ ui.addEventListener('click', (e) => {
       };
       inp.click(); break;
     }
-    case 'replayTut': save.tut = false; persist(); startLevel(1); break;
+    case 'replayTut': save.tut = false; save.tutRescue = save.tutRace = save.tutCargo = false; persist(); startLevel(1); break; // les tutoriels des autres mondes reviendront à leur premier niveau
     case 'reset':
       confirmBox(t('resetConfirm'), () => { const keep = { lang: save.lang, settings: save.settings }; save = { ...defaults(), ...keep }; persist(); setDemo(); go('home'); });
       break;
