@@ -3,6 +3,7 @@ import { clamp, lerp, hash, noise1, fbm, mix, rgba, TAU, DEG } from './util.js';
 import { WORLD_H, STEP, moverY, millAngle, geyserState } from './levelgen.js';
 import { drawHeli, drawOccupant } from './helidraw.js';
 import { HELIS } from './data.js';
+import { SAIL, sailOff, sailSpeed } from './cargogame.js';
 
 export const VW = 400; // largeur visible en unités de jeu
 const GEYSER_COL = { steam: '#ffffff', water: '#c9f6ff', lava: '#ff8a2a', laser: '#22e6ff', bolt: '#fff7c9', sand: '#e8c890', acid: '#a8ff5a', plasma: '#c58bff' };
@@ -44,7 +45,10 @@ export class Renderer {
     if (this.snap || this.lead == null) this.lead = h.dir;
     else { const dl = h.dir - this.lead; this.lead += Math.sign(dl) * Math.min(Math.abs(dl), dt * (0.5 + 1.1 * Math.min(1, Math.abs(dl)))); }
     const ld = this.lead, e = ld * (1.5 - 0.5 * ld * ld), fw = (e + 1) / 2; // e : même trajet, adouci au départ et à l'arrivée
-    const tx = clamp(h.x - VW * (0.5 - 0.2 * e) + clamp(h.vx * 0.22, lerp(-70, -40, fw), lerp(40, 70, fw)), 0, L.length - VW);
+    let tx = clamp(h.x - VW * (0.5 - 0.2 * e) + clamp(h.vx * 0.22, lerp(-70, -40, fw), lerp(40, 70, fw)), 0, L.length - VW);
+    if (L.cargo?.ship && g.sailT >= 0) { /* le cargo appareille : la caméra glisse pour le montrer, l'appareil restant à l'écran */
+      const hull = L.cargo.ship[0].o; if (hull.minX - h.x < 900) tx = clamp(Math.max(tx, Math.min(h.x - 50, hull.minX - 40)), 0, L.length - VW);
+    }
     // Sur les écrans hauts, on montre jusqu'à 110 unités de terre sous le monde : le sol paraît plus haut et le bas de l'écran reste libre pour le pouce.
     const ty = vh >= WORLD_H - 10 ? WORLD_H - vh + clamp(vh - 790, 0, 110) : clamp(h.y - vh * 0.45, 0, WORLD_H - vh);
     const ocx = this.camX;
@@ -555,6 +559,7 @@ export class Renderer {
   // Monde Heli Cargo : zones de livraison, charges (au sol, portées, livrées), câble et crochet.
   cargo(c, L, def, g, time, x0, x1) {
     const h = g.heli, loads = g.loads || L.cargo.loads.map((l) => ({ ...l, state: 'ground' }));
+    if (L.cargo.ship && g.sailT >= 0) this.sail(c, L, g, time, x0, x1);
     for (const l of loads) { // zone de livraison : cadre rayé et fanion, tant que la charge n'y est pas
       const z = l.to; if (l.state === 'delivered' || z.x < x0 - 120 || z.x > x1 + 120) continue;
       const on = l === g.carry, col = l.col; // la zone porte la couleur de sa charge ; elle bat quand on apporte la bonne
@@ -658,11 +663,34 @@ export class Renderer {
       const ph = Math.floor((st.s + near.x - d.x) / sp); if (st.tick !== ph && Math.abs(near.x - hx) < 400) this.liftClack = true; st.tick = ph;
     }
   }
+  // Le cargo appareille : fumée sombre puis panaches de vapeur à la cheminée, sillage d'écume et vague d'étrave.
+  sail(c, L, g, time, x0, x1) {
+    const hull = L.cargo.ship.find((s) => s.o.st === 'deck').o, fun = L.cargo.ship.find((s) => s.o.st === 'bridge')?.o;
+    const t = g.sailT, v = sailSpeed(t), kv = v / SAIL.vmax, off = sailOff(t), l = hull.x - hull.w / 2, r = hull.x + hull.w / 2;
+    if (r + 60 < x0 || l - 600 > x1) return;
+    const dt = clamp(time - (this._sailLast ?? time), 0, 0.1); this._sailLast = time;
+    if (fun) { /* une bouffée toutes les 0,12 s : sombre au démarrage du moteur, blanche ensuite */
+      this._puff = (this._puff || 0) + dt;
+      while (this._puff > 0.12) { this._puff -= 0.12; this.spawn(fun.x + (Math.random() - 0.5) * 8, fun.y - 2, 1, { a: -Math.PI / 2, spread: 0.5, v: 26, vx: -10 - v * 0.4, col: t < SAIL.wait + 0.8 ? '#4a4e5a' : '#f4f7fa', life: 2.8, size: 5, grow: 8 }); }
+    }
+    if (v <= 0) return;
+    const wy = (x) => (L.surfAt ? L.surfAt(x, g.t) : L.waterAt(g.t)) + Math.sin(x * 0.045 + time * 1.8) * 2.4;
+    const sx = l - 10, len = Math.min(off * 0.9, 560);
+    for (let x = sx; x > sx - len; x -= 7) { /* sillage : bande d'écume qui s'élargit et s'efface vers l'arrière */
+      const f = (sx - x) / Math.max(1, len), a = 0.7 * (1 - f) * (0.4 + 0.6 * kv), j = hash(Math.floor(x / 7), Math.floor(time * 5));
+      c.fillStyle = rgba('#ffffff', a); c.beginPath(); c.ellipse(x + j * 4, wy(x) + 1 + f * 2, 6 + 4 * f, 1.6 + 4 * f, 0, 0, TAU); c.fill();
+    }
+    for (let i = 0; i < 6; i++) { /* remous à l'arrière, sous l'hélice */
+      const j = hash(i, Math.floor(time * 8)); c.fillStyle = rgba('#ffffff', 0.55 * kv); c.beginPath(); c.arc(sx - 4 - j * 26, wy(sx) - 1 - j * 5, 2 + 3 * j, 0, TAU); c.fill();
+    }
+    const bx = r + 34; c.strokeStyle = rgba('#ffffff', 0.75 * kv); c.lineWidth = 2.2; c.beginPath(); /* vague d'étrave */
+    c.moveTo(bx - 22, wy(bx) - 1); c.quadraticCurveTo(bx + 2, wy(bx) - 6 - 3 * kv, bx + 14, wy(bx) + 1); c.stroke();
+  }
   // Sangle et fanion à la couleur de la charge : on la reconnaît aussi une fois livrée ou en vol.
   loadTag(c, l) {
     c.fillStyle = l.col;
     if (l.type === 'engine') c.fillRect(-l.w / 2, -l.h * 0.75, l.w, 4); // moteur : sangle en haut du bloc
-    else if (l.type !== 'anchor') c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4); // sangle (l'ancre, elle, a ses pattes de la couleur)
+    else if (l.type !== 'anchor' && l.type !== 'drums') c.fillRect(-l.w / 2, -l.h * 0.5 - 2, l.w, 4); // sangle (l'ancre, elle, a ses pattes de la couleur)
     // le mât du fanion est planté sur le point le plus haut de la charge, un peu à côté de l'anneau de levage
     const fx = (l.type === 'sphinx' ? l.w * 0.2 : l.type === 'sarco' ? -l.w * 0.25 : l.type === 'snowcat' ? -l.w * 0.2 : l.type === 'engine' ? -l.w * 0.22 : 0) + 4, fy = -l.h + (['spool', 'tank', 'urn', 'statue', 'logs'].includes(l.type) ? 3 : 1);
     c.fillRect(fx - 1, fy - 14, 2, 15); c.beginPath(); c.moveTo(fx + 1, fy - 14); c.lineTo(fx + 12, fy - 10); c.lineTo(fx + 1, fy - 6); c.fill();
@@ -674,6 +702,12 @@ export class Renderer {
     const E = (col, x, y, rx, ry = rx, a0 = 0, a1 = TAU) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, a0, a1); c.fill(); };
     const steel = '#8d99ae', dk = '#2b2d42', stone = '#d9b77e', stoneD = '#a8834e';
     switch (l.type) {
+      case 'drums': { /* palette de barils : trois fûts cerclés, de la couleur de leur zone, sur une palette en bois */
+        const col = l.col || '#2a9d8f', dw = 12;
+        R('#8d6e4f', -w / 2, -4, w, 4); R('#5c4630', -w / 2 + 3, -2, 4, 2); R('#5c4630', w / 2 - 7, -2, 4, 2);
+        for (const k of [-1, 0, 1]) { const bx = k * 13; R(mix(col, '#000000', 0.15), bx - dw / 2, -hh + 2, dw, hh - 6); R(mix(col, '#ffffff', 0.25), bx - dw / 2 + 2, -hh + 3, 2.5, hh - 8); R('rgba(0,0,0,.35)', bx - dw / 2, -hh + 9, dw, 1.6); R('rgba(0,0,0,.35)', bx - dw / 2, -11, dw, 1.6); E(mix(col, '#000000', 0.35), bx, -hh + 2, dw / 2, 2); }
+        break;
+      }
       case 'container': R('#c1121f', -w / 2, -hh, w, hh); c.fillStyle = 'rgba(0,0,0,.25)'; for (let k = 4; k < w - 2; k += 6) c.fillRect(-w / 2 + k, -hh + 2, 1.5, hh - 4); R('#780000', -w / 2, -hh, w, 2.5); break;
       case 'tank': E('#e9ecef', 0, -hh / 2, w / 2, hh / 2); R('#e9ecef', -w / 2 + 6, -hh, w - 12, hh); R(dk, -w * 0.3, -3, 4, 3); R(dk, w * 0.3 - 4, -3, 4, 3); R(steel, -3, -hh - 4, 6, 4); break;
       case 'pile': R(steel, -w / 2, -hh, w, hh); R('#adb5bd', -w / 2, -hh, 4, hh); for (let y = -hh + 8; y < -4; y += 14) R('#6c757d', -w / 2, y, w, 2); break;
