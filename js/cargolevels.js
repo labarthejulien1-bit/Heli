@@ -90,7 +90,7 @@ export const CARGO_LEVELS = [
     props: [deck(2600, 170, 30, 'refuge'), deck(4230, 170, 30, 'refuge'), spire(3350, 60, 150, 'ice'), { type: 'cow', x: 800 }],
     hazards: [{ type: 'gust', x: 1700, w: 700, fx: -120, period: 6, on: 0.35 }, { type: 'gust', x: 3500, w: 600, fx: 110, period: 5, on: 0.35 }, { type: 'flyer', x0: 2900, x1: 3300, y: 300, speed: 60 }, { type: 'cloud', x0: 800, x1: 2300, w: 480, speed: 60, y: 300, thick: 150, col: '#e6eef6' }],
     loads: [{ type: 'crate', x: 640, to: 2600 }, { type: 'crate', x: 730, to: 4230 }, { type: 'logs', x: 3050, to: 4760 }],
-    starsAt: [[1500, 60], [3350, 230], [4500, 60]], story: [['flags', 2760], ['cabin', 900], ['flags', 4400]] },
+    starsAt: [[1500, 60], [3350, 230], [4500, 60]], story: [['flags', 2760], ['cabin', 1010], ['flags', 4400]] },
   { n: 12, uni: 'peak', seed: 92017, worldLength: 5600, tank: 102, recommended: 'cigogne', objectives: [{ t: 'finish' }, { t: 'time', v: 190 }, { t: 'hits', v: 0 }], look: adv(25), base: { x: 250 }, finish: { x: 5300 },
     terrain: [[0, 720], [600, 720], [1100, 640], [1300, 640], [1800, 540], [2000, 540], [2500, 440], [2700, 440], [3200, 350], [3450, 350], [3900, 470], [4400, 420], [4900, 480], [5600, 470]], rough: 5,
     props: [deck(1200, 120, 8, 'slab'), deck(1900, 120, 8, 'slab'), deck(2600, 120, 8, 'slab'), deck(3320, 150, 26, 'refuge'), spire(4150, 60, 160, 'ice')],

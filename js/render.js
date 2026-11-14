@@ -845,13 +845,8 @@ export class Renderer {
           else F(dk, [bx - 6, by, bx - 2, by + 12, bx + 5, by + 2]);
           break;
         }
-        case 'summit': { // le sommet : un cairn, et un randonneur qui lève les bras au passage de l'appareil
+        case 'summit': { // le sommet : un cairn
           for (const [px, py, w] of [[-14, 6, 15], [8, 6, 16], [-2, -8, 13], [-9, -20, 9], [3, -22, 8], [-2, -34, 7]]) E(k0c(px), px, py, w, w * 0.62);
-          const near = Math.abs(this._hx - d.x) < 380, wv = near ? Math.sin(time * 8) * 4 : 0, px = 46, jump = near ? Math.abs(Math.sin(time * 4)) * 4 : 0;
-          Ln(dk, 3.2, [px - 3, 8, px - 2, -8 - jump]); Ln(dk, 3.2, [px + 3, 8, px + 2, -8 - jump]); Ln(dk, 7.5, [px, -9 - jump, px, -22 - jump]); E(dk, px, -28 - jump, 5.4);
-          F(mix(dk, ac, 0.4), [px - 10, -22 - jump, px - 3, -22 - jump, px - 3, -8 - jump, px - 10, -8 - jump]);
-          if (near) { Ln(dk, 3, [px, -20 - jump, px - 9 + wv, -36 - jump]); Ln(dk, 3, [px, -20 - jump, px + 9 + wv, -36 - jump]); }
-          else { Ln(dk, 3, [px, -20, px + 6, -10]); Ln(dk, 2, [px + 6, -10, px + 8, 8]); } // appuyé sur son bâton
           break;
         }
         case 'farm': // ferme : grange rouge, silo, moulin à vent

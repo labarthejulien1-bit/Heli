@@ -21,7 +21,7 @@ import { rescueLevel } from './rescuelevels.js';
 import { buildRescueLevel } from './rescuegen.js';
 import { RescueGame, rescueAutopilot } from './rescuegame.js';
 
-const VERSION = '4.11.0';
+const VERSION = '4.12.0';
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), cv = $('#cv'), ui = $('#ui'), hud = $('#hud');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -973,4 +973,4 @@ setDemo();
 home();
 requestAnimationFrame(loop);
 // Accès de débogage (console) : window.__heli
-window.__heli = { S, R, get save() { return save; }, startLevel, autopilot, rescueAutopilot, cargoAutopilot };
+window.__heli = { S, R, get save() { return save; }, startLevel, startCargo, autopilot, rescueAutopilot, cargoAutopilot };

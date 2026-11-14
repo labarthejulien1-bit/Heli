@@ -71,7 +71,7 @@ export const LEVELS = [
   { id: 1, fuel: 'easy trees easy', seed: 1101, lenScale: 1,
     // niveau témoin du décor qui raconte : au loin des montgolfières et un train sur son viaduc ; au sol, des hardes de bouquetins qui s'éloignent
     // au pas vers la droite, un aigle qui s'envole, puis un randonneur au sommet ; au tout premier plan, cimes et herbes
-    scene: { far: ['balloons', 'train'], fg: 'alpine' }, story: [['herd', 0.335, { k: 1.4 }], ['eagle', 0.6, { k: 1.3 }], ['herd', 0.705, { flip: 1, k: 1.4 }], ['summit', 0.865, { k: 1.35 }]],
+    scene: { far: ['balloons', 'train'], fg: 'alpine' }, story: [['herd', 0.335, { k: 1.4 }], ['herd', 0.705, { flip: 1, k: 1.4 }], ['summit', 0.865, { k: 1.35 }]],
     sky: [['#3b4a7a', '#f6a98c'], ['#6db3d8', '#fdebd0']], mid: '#8a7aa8', ground: '#262a48', obs: '#2f3357', rim: '#f8d9c4', accent: '#ffd98a',
     sun: { c: '#fff3c9', x: 0.72, y: [0.62, 0.3], r: 34 },
     layers: ['jag', 'jag', 'pines'], extras: ['clouds', 'birds'], weather: null,
