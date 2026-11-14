@@ -23,7 +23,7 @@ export class Renderer {
     this.s = this.cv.width / VW; this.vh = this.cv.height / this.s;
   }
   setLevel(L) {
-    this.L = L; this.def = L.def; this.parts.length = 0; this.camX = 0; this.snap = true; this._herd = {}; this._eg = {}; // états du décor vivant (harde, aigle) remis à zéro à chaque niveau
+    this.L = L; this.def = L.def; this.parts.length = 0; this.camX = 0; this.snap = true; this._herd = {}; this._eg = {}; this._trainCyc = null; this._trainT0 = null; // états du décor vivant (harde, aigle) remis à zéro à chaque niveau
     const n = this.def.weather ? (this.quality === 'low' ? 24 : 60) : 0;
     this.amb = Array.from({ length: n }, (_, i) => ({ x: hash(i, 1) * 440 - 20, y: hash(i, 2) * 900, z: 0.5 + hash(i, 3), ph: hash(i, 4) * 7 }));
   }
@@ -385,21 +385,22 @@ export class Renderer {
         for (let k = 0; k < 6; k++) { const ax = vx + 35 + k * 70; c.moveTo(ax - 26, vy + 220); c.lineTo(ax - 26, vy + 44); c.arc(ax, vy + 44, 26, Math.PI, 0); c.lineTo(ax + 26, vy + 220); c.closePath(); }
         c.fill('evenodd'); c.fillRect(vx - 20, vy - 5, 460, 7);
         // le train va d'un tunnel à l'autre ; chaque bouffée de vapeur reste là où elle a été lâchée, monte et se dissout
-        const V = 27, span = 620, tx = vx - 100 + ((time * V) % span), dk2 = mix(col, '#1b1b2a', 0.55);
+        // il ne s'engage qu'une fois le viaduc bien en vue (et repart pour un tour après chaque traversée), pour qu'on le voie passer en entier
+        const V = 27, span = 700, cyc = Math.floor((camX * 0.16) / 1500), dk2 = mix(col, '#1b1b2a', 0.55);
+        if (this._trainCyc !== cyc) { this._trainCyc = cyc; this._trainT0 = null; }
+        if (this._trainT0 == null && vx < 215) this._trainT0 = time;
+        const tx = this._trainT0 == null ? vx - 300 : vx - 110 + (((time - this._trainT0) * V) % span);
         c.save(); c.beginPath(); c.rect(vx - 6, vy - 140, 432, 140); c.clip();
         for (let j = 0; j < 9; j++) { const age = (((time * 1.6) % 1) + j) / 1.6, px = tx + 26 - V * age, py = vy - 34 - 11 * age - 1.5 * age * age; c.fillStyle = rgba('#ffffff', Math.max(0, 0.55 - age * 0.1)); c.beginPath(); c.arc(px, py, 4.5 + age * 3, 0, TAU); c.fill(); }
         c.fillStyle = dk2; for (let k = 1; k <= 3; k++) c.fillRect(tx - k * 34, vy - 21, 30, 16); // wagons
         c.fillRect(tx, vy - 23, 34, 18); c.fillRect(tx + 4, vy - 32, 12, 10); c.fillRect(tx + 24, vy - 31, 5, 9);
         c.fillStyle = rgba('#ffd98a', 0.9); for (let k = 1; k <= 3; k++) { c.fillRect(tx - k * 34 + 5, vy - 17, 6, 5); c.fillRect(tx - k * 34 + 17, vy - 17, 6, 5); }
         c.restore();
-        // épaulements : le viaduc sort d'une montagne et rentre dans l'autre, par une bouche de tunnel
+        // épaulements : le viaduc sort d'une montagne et rentre dans l'autre
         const hillC = mix(col, def.mid, 0.3), hillL = mix(hillC, '#ffffff', 0.12); // un ton plus soutenu que la chaîne du fond : une crête plus proche
         for (const [ex, sd] of [[vx, -1], [vx + 420, 1]]) {
           c.fillStyle = hillC; c.beginPath(); c.moveTo(ex - sd * 30, vy + 230); c.lineTo(ex - sd * 30, vy + 10); c.quadraticCurveTo(ex - sd * 22, vy - 70, ex + sd * 60, vy - 118); c.quadraticCurveTo(ex + sd * 180, vy - 160, ex + sd * 360, vy + 230); c.fill();
           c.fillStyle = hillL; c.beginPath(); c.moveTo(ex - sd * 30, vy + 10); c.quadraticCurveTo(ex - sd * 22, vy - 70, ex + sd * 60, vy - 118); c.quadraticCurveTo(ex + sd * 10, vy - 60, ex - sd * 8, vy + 10); c.fill(); // flanc éclairé
-          // portail du tunnel : arche de pierre claire, ouverture sombre
-          c.fillStyle = mix(st, '#ffffff', 0.15); c.beginPath(); c.moveTo(ex - 17, vy + 2); c.lineTo(ex - 17, vy - 20); c.arc(ex, vy - 20, 17, Math.PI, 0); c.lineTo(ex + 17, vy + 2); c.fill();
-          c.fillStyle = mix(col, '#1b1b2a', 0.62); c.beginPath(); c.moveTo(ex - 12, vy + 2); c.lineTo(ex - 12, vy - 20); c.arc(ex, vy - 20, 12, Math.PI, 0); c.lineTo(ex + 12, vy + 2); c.fill();
         }
       }
     }
@@ -844,9 +845,8 @@ export class Renderer {
           else F(dk, [bx - 6, by, bx - 2, by + 12, bx + 5, by + 2]);
           break;
         }
-        case 'summit': { // le sommet : cairn, fanion, et le randonneur du bivouac qui lève les bras au passage de l'appareil
+        case 'summit': { // le sommet : un cairn, et un randonneur qui lève les bras au passage de l'appareil
           for (const [px, py, w] of [[-14, 6, 15], [8, 6, 16], [-2, -8, 13], [-9, -20, 9], [3, -22, 8], [-2, -34, 7]]) E(k0c(px), px, py, w, w * 0.62);
-          Ln(dk, 2.2, [-2, -38, -2, -92]); F('#e0564a', [-2, -92, 22 + Math.sin(time * 5) * 2, -86, -2, -78]);
           const near = Math.abs(this._hx - d.x) < 380, wv = near ? Math.sin(time * 8) * 4 : 0, px = 46, jump = near ? Math.abs(Math.sin(time * 4)) * 4 : 0;
           Ln(dk, 3.2, [px - 3, 8, px - 2, -8 - jump]); Ln(dk, 3.2, [px + 3, 8, px + 2, -8 - jump]); Ln(dk, 7.5, [px, -9 - jump, px, -22 - jump]); E(dk, px, -28 - jump, 5.4);
           F(mix(dk, ac, 0.4), [px - 10, -22 - jump, px - 3, -22 - jump, px - 3, -8 - jump, px - 10, -8 - jump]);
